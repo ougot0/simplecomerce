@@ -190,7 +190,8 @@ export async function createAdapter(
     case "demo": {
       if (appMode() !== "demo") throw new AdapterError("invalid", "Connecteur réservé à la démonstration.");
       const root = path.resolve(process.cwd(), "demo", "sites", path.basename(s("folder")));
-      return new FileSiteAdapter(new LocalBackend(root), { ...fileOptions(config, ctx, true), publicUrl: ctx.publicUrl });
+      // Détection comme pour un vrai site : public/ si le site en a un, sinon la racine.
+      return new FileSiteAdapter(new LocalBackend(root), { ...fileOptions(config, ctx, false), publicUrl: ctx.publicUrl });
     }
   }
 }
