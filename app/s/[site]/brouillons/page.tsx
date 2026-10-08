@@ -24,12 +24,12 @@ export default async function DraftsPage({ params, searchParams }: { params: Pro
       <div className="page-head">
         <div>
           <h1>Brouillons</h1>
-          <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>Préparés mais pas encore visibles sur votre site.</p>
+          <p className="page-intro">Préparés mais pas encore visibles sur votre site.</p>
         </div>
       </div>
       <Flash ok={ok} delayText={publishDelayText(site.connector)} />
       {drafts.length === 0 ? (
-        <p className="muted">Aucun brouillon. Pour en créer un, utilisez « Garder en brouillon » dans un formulaire.</p>
+        <p className="muted">Aucun brouillon. Pour en créer un, utilisez « Enregistrer sans publier » dans un formulaire.</p>
       ) : (
         <ul className="lines">
           {drafts.map((d) => {
@@ -56,7 +56,7 @@ export default async function DraftsPage({ params, searchParams }: { params: Pro
                   </div>
                 </div>
                 <div className="actions">
-                  <ActionButton action={publishDraftAction} fields={{ site: site.slug, draftId: d.id }} label="Mettre en ligne" pendingLabel="Mise en ligne…" className="btn btn-small btn-primary" />
+                  <ActionButton action={publishDraftAction} fields={{ site: site.slug, draftId: d.id }} label="Publier" pendingLabel="Publication…" className="btn btn-small btn-primary" />
                   <ActionButton action={discardDraftAction} fields={{ site: site.slug, draftId: d.id }} label="Jeter" className="btn btn-small btn-quiet" confirm={`Jeter le brouillon « ${d.label} » ?`} />
                 </div>
               </li>

@@ -12,6 +12,7 @@ import { Flash } from "./flash";
 import { Reorder } from "./reorder";
 import type { Field } from "@/lib/content/schema";
 import { addLabel } from "@/lib/ui/words";
+import { Icon } from "@/components/icon";
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string; section: string }> }): Promise<Metadata> {
   const { site, section } = await params;
@@ -123,7 +124,11 @@ export default async function SectionPage({
       <div className="page-head">
         <div>
           <h1>{section.label}</h1>
-          {!error && <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>{plural(entries.length, itemLabel)} sur votre site.</p>}
+          {!error && (
+            <p className="page-intro">
+              {plural(entries.length, itemLabel)} sur votre site. Cliquez sur un élément pour le modifier.
+            </p>
+          )}
         </div>
         <div className="actions">
           {canReorder && entries.length > 1 && (
@@ -133,7 +138,7 @@ export default async function SectionPage({
           )}
           {canCreate && (
             <Link className="btn btn-primary" href={`${base}/nouveau`}>
-              {addLabel(section.itemLabel)}
+              <Icon name="plus" /> {addLabel(section.itemLabel)}
             </Link>
           )}
         </div>
@@ -156,61 +161,70 @@ export default async function SectionPage({
       )}
 
       {!error && entries.length === 0 ? (
-        <p className="muted">Aucun élément pour l&apos;instant.</p>
+        <div className="notice">
+          <p>Aucun élément pour l&apos;instant. Cliquez sur « {addLabel(section.itemLabel)} » pour commencer.</p>
+        </div>
+      ) : !error && imageKey ? (
+        <div className="cards-grid">
+          {entries.map((e) => {
+            const thumb = thumbOf(e);
+            const draft = draftFor.get(e.id);
+            const hidden = visKey ? e.data[visKey] === false : false;
+            const href = `${base}/e/${encodeURIComponent(e.id)}`;
+            return (
+              <Link key={e.id} className="item-card" href={draft ? `${href}?brouillon=${draft.id}` : href}>
+                {thumb ? <img className="item-photo" src={thumb} alt="" /> : <span className="item-photo">Pas de photo</span>}
+                <span className="item-body">
+                  <span className="item-title">{titleOf(e)}</span>
+                  <span className="item-row">
+                    <span className="item-price">{subField ? subtitle(subField, e.data[subField.key]) : ""}</span>
+                    {draft ? <span className="tag tag-draft">Brouillon</span> : hidden ? <span className="tag tag-off">Masqué</span> : <span className="tag tag-live">En ligne</span>}
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       ) : (
         !error && (
-          <table className="ledger">
-            <thead>
-              <tr>
-                {imageKey && <th className="shrink"><span className="visually-hidden">Photo</span></th>}
-                <th>Nom</th>
-                {subField && <th className="num hide-small">{subField.label}</th>}
-                <th className="shrink">État</th>
-                <th className="shrink"><span className="visually-hidden">Action</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => {
-                const thumb = thumbOf(e);
-                const draft = draftFor.get(e.id);
-                const hidden = visKey ? e.data[visKey] === false : false;
-                const href = `${base}/e/${encodeURIComponent(e.id)}`;
-                return (
-                  <tr key={e.id}>
-                    {imageKey && (
-                      <td className="shrink">
-                        {thumb ? <img className="thumb" src={thumb} alt="" /> : <span className="thumb thumb-empty">pas de photo</span>}
+          <div className="ledger-wrap">
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  {subField && <th className="num hide-small">{subField.label}</th>}
+                  <th className="shrink">État</th>
+                  <th className="shrink">
+                    <span className="visually-hidden">Action</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((e) => {
+                  const draft = draftFor.get(e.id);
+                  const hidden = visKey ? e.data[visKey] === false : false;
+                  const href = `${base}/e/${encodeURIComponent(e.id)}`;
+                  return (
+                    <tr key={e.id}>
+                      <td className="title-cell">
+                        <Link href={href}>{titleOf(e)}</Link>
                       </td>
-                    )}
-                    <td className="title-cell">
-                      <Link href={href}>{titleOf(e)}</Link>
-                    </td>
-                    {subField && <td className="num hide-small">{subtitle(subField, e.data[subField.key])}</td>}
-                    <td className="shrink">
-                      {draft ? (
-                        <span className="tag tag-draft">Brouillon</span>
-                      ) : hidden ? (
-                        <span className="tag tag-off">Masqué</span>
-                      ) : (
-                        <span className="tag tag-live">En ligne</span>
-                      )}
-                    </td>
-                    <td className="shrink">
-                      <Link className="btn btn-small" href={draft ? `${href}?brouillon=${draft.id}` : href}>
-                        Modifier
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {subField && <td className="num hide-small">{subtitle(subField, e.data[subField.key])}</td>}
+                      <td className="shrink">
+                        {draft ? <span className="tag tag-draft">Brouillon</span> : hidden ? <span className="tag tag-off">Masqué</span> : <span className="tag tag-live">En ligne</span>}
+                      </td>
+                      <td className="shrink">
+                        <Link className="btn btn-small" href={draft ? `${href}?brouillon=${draft.id}` : href}>
+                          Modifier
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )
-      )}
-      {role === "admin" && (
-        <p className="faint small" style={{ marginTop: 18 }}>
-          Vue administrateur.
-        </p>
       )}
     </>
   );

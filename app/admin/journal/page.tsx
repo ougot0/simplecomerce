@@ -44,9 +44,10 @@ export default async function JournalPage() {
             <Link href="/admin">Administration</Link>
           </div>
           <h1>Journal d&apos;activité</h1>
-          <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>Connexions, accès, invitations, assistance. Les modifications de contenu sont dans l&apos;historique de chaque site.</p>
+          <p className="page-intro">Connexions, accès, invitations, assistance. Les modifications de contenu sont dans l&apos;historique de chaque site.</p>
         </div>
       </div>
+      <div className="ledger-wrap">
       <table className="ledger">
         <thead>
           <tr>
@@ -75,6 +76,7 @@ export default async function JournalPage() {
           })}
         </tbody>
       </table>
+</div>
     </PlainShell>
   );
 }

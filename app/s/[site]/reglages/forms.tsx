@@ -53,7 +53,7 @@ export function ConnectionForm({
   const err = state.fieldErrors ?? {};
   // Les champs dérivés (owner/repo…) ne sont pas dans le formulaire : on réaffiche la saisie d'origine.
   return (
-    <form onSubmit={submitKeepingValues(action)} className="form" noValidate>
+    <form onSubmit={submitKeepingValues(action)} className="form panel" noValidate>
       <input type="hidden" name="site" value={site} />
       {state.error && <div className="notice notice-error">{state.error}</div>}
       {state.saved && !state.report?.ok && <div className="notice notice-warn">Enregistré, mais la connexion ne fonctionne pas encore.</div>}
@@ -86,7 +86,7 @@ export function ConnectionForm({
 export function InviteForm({ site }: { site: string }) {
   const [state, action, pending] = useActionState<SettingsState, FormData>(inviteAction, {});
   return (
-    <form onSubmit={submitKeepingValues(action)} className="form" noValidate>
+    <form onSubmit={submitKeepingValues(action)} className="form panel" noValidate>
       <input type="hidden" name="site" value={site} />
       <Messages state={state} />
       <div className="field">
@@ -148,6 +148,7 @@ export function SectionsForm({ site, sections }: { site: string; sections: Secti
         {sections.length === 0 ? (
           <p className="muted">Aucune rubrique.</p>
         ) : (
+          <div className="ledger-wrap">
           <table className="ledger">
             <thead>
               <tr>
@@ -173,6 +174,7 @@ export function SectionsForm({ site, sections }: { site: string; sections: Secti
               ))}
             </tbody>
           </table>
+</div>
         )}
         <div className="actions">
           <button className="btn btn-primary" type="submit" disabled={pending}>
@@ -213,7 +215,7 @@ export function SchemaJsonForm({ site, schema }: { site: string; schema: string 
 export function ClosureForm({ site, closed, message, reopenOn, delayText }: { site: string; closed: boolean; message: string; reopenOn: string | null; delayText: string }) {
   const [state, action, pending] = useActionState<SettingsState, FormData>(closureAction, {});
   return (
-    <form onSubmit={submitKeepingValues(action)} className="form">
+    <form onSubmit={submitKeepingValues(action)} className="form panel">
       <input type="hidden" name="site" value={site} />
       <Messages state={state} />
       {closed ? (
@@ -256,7 +258,7 @@ export function ClosureForm({ site, closed, message, reopenOn, delayText }: { si
 export function DeleteSiteForm({ site, name }: { site: string; name: string }) {
   const [state, action, pending] = useActionState<SettingsState, FormData>(deleteSiteAction, {});
   return (
-    <form action={action} className="form">
+    <form action={action} className="form panel">
       <input type="hidden" name="site" value={site} />
       <Messages state={state} />
       <p>

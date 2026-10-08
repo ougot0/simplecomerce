@@ -16,7 +16,7 @@ function Msg({ s }: { s: AccountState }) {
 export function NameForm({ name }: { name: string }) {
   const [state, action, pending] = useActionState<AccountState, FormData>(saveNameAction, {});
   return (
-    <form onSubmit={submitKeepingValues(action)} className="form">
+    <form onSubmit={submitKeepingValues(action)} className="form panel">
       <Msg s={state} />
       <div className="field">
         <label htmlFor="fullName">Prénom et nom</label>
@@ -34,7 +34,7 @@ export function NameForm({ name }: { name: string }) {
 export function PasswordForm() {
   const [state, action, pending] = useActionState<AccountState, FormData>(changePasswordAction, {});
   return (
-    <form action={action} className="form">
+    <form action={action} className="form panel">
       <Msg s={state} />
       <div className="field">
         <label htmlFor="password">Nouveau mot de passe</label>

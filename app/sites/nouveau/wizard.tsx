@@ -40,7 +40,7 @@ export function ConnectWizard({ demo, isAdmin }: { demo: boolean; isAdmin: boole
             ) : null,
           )}
         </div>
-        <aside>
+        <aside className="card">
           <h3>Pas encore disponibles</h3>
           <ul className="lines small" style={{ marginTop: 10 }}>
             {NOT_YET_SUPPORTED.map((n) => (
@@ -64,7 +64,7 @@ export function ConnectWizard({ demo, isAdmin }: { demo: boolean; isAdmin: boole
   const err = state.fieldErrors ?? {};
   return (
     <div className="two-cols">
-      <form onSubmit={submitKeepingValues(action)} className="form" noValidate>
+      <form onSubmit={submitKeepingValues(action)} className="form panel" noValidate>
         <input type="hidden" name="connector" value={choice.id} />
         <div>
           <button type="button" className="btn btn-quiet" style={{ padding: 0 }} onClick={() => setChoice(null)}>
@@ -102,7 +102,7 @@ export function ConnectWizard({ demo, isAdmin }: { demo: boolean; isAdmin: boole
         </div>
         <p className="help">Vos accès sont chiffrés dès leur enregistrement. Ils ne sont plus jamais affichés, ni à vous ni à personne.</p>
       </form>
-      <aside>
+      <aside className="card">
         <h3>Où trouver ces informations</h3>
         <ol className="steps" style={{ marginTop: 12 }}>
           {choice.steps.map((s, i) => (

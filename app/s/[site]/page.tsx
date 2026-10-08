@@ -6,6 +6,7 @@ import { formatWhen, plural } from "@/lib/ui/format";
 import { actorNames } from "@/lib/ui/people";
 import { listOf } from "@/lib/ui/words";
 import { withAdapter } from "@/lib/sites";
+import { Icon } from "@/components/icon";
 
 export const metadata: Metadata = { title: "Accueil" };
 
@@ -25,7 +26,15 @@ export default async function SiteHome({ params, searchParams }: { params: Promi
   return (
     <>
       <div className="page-head">
-        <h1>{firstName ? `Bonjour ${firstName}.` : "Bonjour."}</h1>
+        <div>
+          <h1>{firstName ? `Bonjour ${firstName}` : "Bonjour"}</h1>
+          <p className="page-intro">Choisissez ce que vous voulez modifier. Vos changements apparaissent sur votre site dès que vous cliquez sur « Publier ».</p>
+        </div>
+        {site.publicUrl && (
+          <a className="btn" href={site.publicUrl} target="_blank" rel="noopener noreferrer">
+            <Icon name="eye" /> Voir mon site
+          </a>
+        )}
       </div>
 
       {bienvenue && (
@@ -57,28 +66,25 @@ export default async function SiteHome({ params, searchParams }: { params: Promi
       )}
 
       <section>
-        <h2 style={{ marginBottom: 14 }}>Que voulez-vous mettre à jour ?</h2>
+        <h2 style={{ marginBottom: 14 }}>Que voulez-vous modifier ?</h2>
         {sections.length === 0 ? (
           <p className="muted">Aucune rubrique pour le moment.</p>
         ) : (
-          <ul className="lines">
+          <div className="cards-grid">
             {sections.map((s) => (
-              <li key={s.key}>
-                <div className="line-main">
-                  <Link className="line-title" href={`${base}/r/${s.key}`} style={{ fontSize: 20 }}>
-                    {s.label}
-                  </Link>
-                  <div className="muted small">
-                    {s.kind === "collection" ? listOf(s.label) : "Textes et informations"}
-                    {lastBySection.has(s.key) && ` · modifié ${formatWhen(lastBySection.get(s.key)!)}`}
-                  </div>
-                </div>
-                <Link className="btn btn-small" href={`${base}/r/${s.key}`}>
-                  {s.kind === "collection" ? "Ouvrir" : "Modifier"}
-                </Link>
-              </li>
+              <Link key={s.key} className="section-card" href={`${base}/r/${s.key}`}>
+                <span className="section-icon">
+                  <Icon name={s.kind === "collection" ? "list" : "text"} />
+                </span>
+                <strong>{s.label}</strong>
+                <span className="muted small">
+                  {s.kind === "collection" ? listOf(s.label) : "Textes et informations"}
+                  {lastBySection.has(s.key) && ` · modifié ${formatWhen(lastBySection.get(s.key)!)}`}
+                </span>
+                <span className="go">{s.kind === "collection" ? "Voir la liste →" : "Modifier →"}</span>
+              </Link>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 

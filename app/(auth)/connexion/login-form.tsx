@@ -8,7 +8,7 @@ import { loginAction, type AuthFormState } from "../actions";
 export function LoginForm({ next, demo }: { next: string; demo: boolean }) {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(loginAction, {});
   return (
-    <form onSubmit={submitKeepingValues(action)} className="form" noValidate>
+    <form onSubmit={submitKeepingValues(action)} className="form panel" noValidate>
       <input type="hidden" name="next" value={next} />
       {state.error && <div className="notice notice-error" role="alert">{state.error}</div>}
       {state.info && (

@@ -5,6 +5,7 @@ import { AssistBar } from "@/components/assist-bar";
 import { UserFoot } from "@/components/user-foot";
 import { NavLinks } from "./nav-links";
 import { MobileMenu } from "./mobile-menu";
+import { Icon } from "@/components/icon";
 
 export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: Promise<{ site: string }> }) {
   const { site: slug } = await params;
@@ -25,17 +26,17 @@ export default async function SiteLayout({ children, params }: { children: React
             <br />
             {publicHref && (
               <a className="site-link" href={publicHref} target="_blank" rel="noopener noreferrer">
-                Voir mon site ↗
+                <Icon name="eye" /> Voir mon site
               </a>
             )}
           </div>
           <MobileMenu>
           <nav aria-label="Contenu du site">
-            <div className="nav-title">Contenu</div>
+            <div className="nav-title">Mon contenu</div>
             <NavLinks
               items={[
-                { href: base, label: "Vue d'ensemble", exact: true },
-                ...sections.map((s) => ({ href: `${base}/r/${s.key}`, label: s.label })),
+                { href: base, label: "Accueil du portail", icon: "home", exact: true },
+                ...sections.map((s) => ({ href: `${base}/r/${s.key}`, label: s.label, icon: s.kind === "collection" ? "list" : "text" })),
               ]}
             />
           </nav>
@@ -43,9 +44,9 @@ export default async function SiteLayout({ children, params }: { children: React
             <div className="nav-title">Suivi</div>
             <NavLinks
               items={[
-                { href: `${base}/brouillons`, label: "Brouillons", count: drafts.length ? String(drafts.length) : undefined },
-                { href: `${base}/historique`, label: "Historique" },
-                ...(role !== "editor" ? [{ href: `${base}/reglages`, label: "Réglages" }] : []),
+                { href: `${base}/brouillons`, label: "Brouillons", icon: "draft", count: drafts.length ? String(drafts.length) : undefined },
+                { href: `${base}/historique`, label: "Historique", icon: "clock" },
+                ...(role !== "editor" ? [{ href: `${base}/reglages`, label: "Réglages", icon: "settings" }] : []),
               ]}
             />
           </nav>

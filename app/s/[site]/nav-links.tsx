@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Icon } from "@/components/icon";
 
-export function NavLinks({ items }: { items: { href: string; label: string; count?: string; exact?: boolean }[] }) {
+export function NavLinks({ items }: { items: { href: string; label: string; icon: string; count?: string; exact?: boolean }[] }) {
   const path = usePathname();
   return (
     <ul className="nav">
@@ -12,6 +13,7 @@ export function NavLinks({ items }: { items: { href: string; label: string; coun
         return (
           <li key={item.href}>
             <Link href={item.href} aria-current={active ? "page" : undefined}>
+              <Icon name={item.icon} />
               <span>{item.label}</span>
               {item.count && <span className="count">{item.count}</span>}
             </Link>

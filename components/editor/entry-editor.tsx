@@ -79,7 +79,7 @@ export function EntryEditor({
   const title = section.titleField ? String(values[section.titleField] ?? "") : "";
 
   const form = (
-    <form onSubmit={submitKeepingValues(action)} className="form" noValidate>
+    <form onSubmit={submitKeepingValues(action)} className="form panel" noValidate>
       <input type="hidden" name="site" value={site} />
       <input type="hidden" name="section" value={section.key} />
       <input type="hidden" name="entryId" value={entryId ?? ""} />
@@ -119,10 +119,10 @@ export function EntryEditor({
 
       <div className="savebar">
         <button className="btn btn-primary" type="submit" name="mode" value="publish" disabled={pending}>
-          {pending ? "Enregistrement…" : "Enregistrer et mettre en ligne"}
+          {pending ? "Publication…" : "Publier sur mon site"}
         </button>
         <button className="btn" type="submit" name="mode" value="draft" disabled={pending}>
-          Garder en brouillon
+          Enregistrer sans publier
         </button>
         <Link
           className="btn btn-quiet"

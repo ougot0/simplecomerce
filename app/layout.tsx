@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/atkinson-hyperlegible-next/400.css";
-import "@fontsource/atkinson-hyperlegible-next/700.css";
-import "@fontsource/atkinson-hyperlegible-next/800.css";
+import "@fontsource/figtree/400.css";
+import "@fontsource/figtree/500.css";
+import "@fontsource/figtree/600.css";
+import "@fontsource/figtree/700.css";
 import "./globals.css";
 import { appMode } from "@/lib/env";
 import { ensureDemoSeed } from "@/lib/demo-seed";
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f1ece2" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f4efe6" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const demo = appMode() === "demo";

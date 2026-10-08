@@ -12,7 +12,7 @@ export default async function AccountPage() {
       <div className="page-head">
         <div>
           <h1>Mon compte</h1>
-          <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>{viewer.user.email}</p>
+          <p className="page-intro">{viewer.user.email}</p>
         </div>
       </div>
       <section>

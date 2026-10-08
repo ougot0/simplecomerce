@@ -26,7 +26,7 @@ export default async function AdminPage() {
       <div className="page-head">
         <div>
           <h1>Administration</h1>
-          <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
+          <p className="page-intro">
             {sites.length} site{sites.length > 1 ? "s" : ""} · {profiles.length} compte{profiles.length > 1 ? "s" : ""} · <Link href="/admin/journal">Journal d&apos;activité</Link>
           </p>
         </div>
@@ -37,6 +37,7 @@ export default async function AdminPage() {
 
       <section>
         <h2 style={{ marginBottom: 14 }}>Sites</h2>
+        <div className="ledger-wrap">
         <table className="ledger">
           <thead>
             <tr>
@@ -91,10 +92,12 @@ export default async function AdminPage() {
             ))}
           </tbody>
         </table>
+</div>
       </section>
 
       <section className="section-block">
         <h2>Comptes</h2>
+        <div className="ledger-wrap">
         <table className="ledger">
           <thead>
             <tr>
@@ -130,6 +133,7 @@ export default async function AdminPage() {
             ))}
           </tbody>
         </table>
+</div>
         <p className="muted small" style={{ marginTop: 12 }}>
           « Agir pour ce client » ouvre son espace tel qu&apos;il le voit, pendant une heure au plus. Tout ce que vous y faites est enregistré à votre nom.
         </p>

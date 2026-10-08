@@ -16,7 +16,7 @@ export function SignupForm({ next, email }: { next: string; email?: string }) {
   }
   const err = state.fieldErrors ?? {};
   return (
-    <form onSubmit={submitKeepingValues(action)} className="form" noValidate>
+    <form onSubmit={submitKeepingValues(action)} className="form panel" noValidate>
       <input type="hidden" name="next" value={next} />
       {state.error && <div className="notice notice-error" role="alert">{state.error}</div>}
       <div className={`field ${err.fullName ? "field-invalid" : ""}`}>

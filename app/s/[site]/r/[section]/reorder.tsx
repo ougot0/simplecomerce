@@ -27,6 +27,7 @@ export function Reorder({ site, section, rows, cancelHref }: { site: string; sec
       <input type="hidden" name="ids" value={JSON.stringify(order.map((r) => r.id))} />
       {state.error && <div className="notice notice-error" role="alert">{state.error}</div>}
       <p className="muted">L&apos;ordre ici est l&apos;ordre d&apos;affichage sur votre site.</p>
+      <div className="ledger-wrap">
       <table className="ledger">
         <tbody>
           {order.map((r, i) => (
@@ -50,6 +51,7 @@ export function Reorder({ site, section, rows, cancelHref }: { site: string; sec
           ))}
         </tbody>
       </table>
+</div>
       <div className="savebar">
         <button className="btn btn-primary" type="submit" disabled={!changed || pending}>
           {pending ? "Enregistrement…" : "Enregistrer cet ordre"}

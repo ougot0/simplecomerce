@@ -61,7 +61,7 @@ export default async function HistoryPage({ params, searchParams }: { params: Pr
       <div className="page-head">
         <div>
           <h1>Historique</h1>
-          <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>Qui a modifié quoi, et quand. Une modification peut être annulée tant que le contenu n&apos;a pas changé depuis.</p>
+          <p className="page-intro">Qui a modifié quoi, et quand. Une modification peut être annulée tant que le contenu n&apos;a pas changé depuis.</p>
         </div>
       </div>
       {ok === "annule" && <div className="notice notice-ok">Modification annulée.</div>}

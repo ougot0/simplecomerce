@@ -35,7 +35,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ site:
       <div className="page-head">
         <div>
           <h1>Réglages</h1>
-          <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
+          <p className="page-intro">
             {connectorLabel(site.connector)}
             {site.lastCheckAt && ` · dernière vérification ${formatWhen(site.lastCheckAt)} : ${site.lastCheckOk ? "connexion correcte" : "problème de connexion"}`}
           </p>
