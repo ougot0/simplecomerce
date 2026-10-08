@@ -3,6 +3,12 @@
 Portail où vos clients mettent à jour leur site eux-mêmes : produits, prix, photos, textes, horaires, actualités.
 Un seul portail, plusieurs sites ; chaque client ne voit que les siens.
 
+Deux versions, mêmes fonctions :
+
+- **`portail/` — version PHP + MySQL, pour un hébergement web mutualisé (OVHcloud et autres).** C'est celle à mettre en ligne
+  sur votre hébergement OVH : guide pas à pas dans [`portail/README.md`](portail/README.md).
+- La racine du dépôt — version Next.js + Supabase, pour Vercel (décrite ci-dessous).
+
 ## Essayer tout de suite (démonstration, sans aucun compte)
 
 ```bash

@@ -1,0 +1,87 @@
+{
+  "accueil": {
+    "titre": "Pâtisserie Lune",
+    "accroche": "Gâteaux de saison, viennoiseries du matin et commandes pour vos fêtes.",
+    "message": "Fermeture exceptionnelle le lundi 11 novembre.",
+    "photo": "/images/vitrine.webp"
+  },
+  "gateaux": [
+    {
+      "id": 1,
+      "nom": "Tarte au citron meringuée",
+      "prix": "4,50 €",
+      "photo": "/images/tarte-citron.webp",
+      "description": "Pâte sablée, crème de citron de Menton, meringue italienne dorée au chalumeau.",
+      "disponible": true
+    },
+    {
+      "id": 2,
+      "nom": "Éclair au café",
+      "prix": "3,80 €",
+      "photo": "/images/eclair-cafe.webp",
+      "description": "Pâte à choux, crème pâtissière au café torréfié à Lyon, glaçage fondant.",
+      "disponible": true
+    },
+    {
+      "id": 3,
+      "nom": "Paris-Brest",
+      "prix": "5,20 €",
+      "photo": "/images/paris-brest.webp",
+      "description": "Couronne de pâte à choux, crème mousseline praliné noisette, amandes effilées.",
+      "disponible": true
+    },
+    {
+      "id": 4,
+      "nom": "Macarons (la boîte de 6)",
+      "prix": "9,00 €",
+      "photo": "/images/macarons.webp",
+      "description": "Parfums du moment : framboise, pistache, chocolat, vanille, caramel au beurre salé, citron.",
+      "disponible": false
+    },
+    {
+      "id": 5,
+      "nom": "Croissant au beurre",
+      "prix": "1,30 €",
+      "photo": "/images/croissant.webp",
+      "description": "Beurre AOP Charentes-Poitou, feuilletage maison.",
+      "disponible": true
+    }
+  ],
+  "actualites": [
+    {
+      "id": "galettes-2027",
+      "titre": "Les galettes des rois arrivent en janvier",
+      "date": "2026-12-20",
+      "texte": "Frangipane, pomme-noisette ou chocolat. Commandes ouvertes dès le 2 janvier."
+    },
+    {
+      "id": "nouvelles-horaires",
+      "titre": "Nouveaux horaires d'hiver",
+      "date": "2026-10-01",
+      "texte": "La boutique ouvre désormais à 7 h 30 du mardi au samedi."
+    }
+  ],
+  "infos": {
+    "adresse": "12 rue des Tanneurs, 69001 Lyon",
+    "telephone": "04 78 00 00 00",
+    "email": "bonjour@patisserie-lune.fr",
+    "horaires": [
+      {
+        "jour": "Mardi – vendredi",
+        "heures": "7 h 30 – 19 h 00"
+      },
+      {
+        "jour": "Samedi",
+        "heures": "7 h 30 – 13 h 00 / 15 h 00 – 19 h 00"
+      },
+      {
+        "jour": "Dimanche",
+        "heures": "8 h 00 – 13 h 00"
+      },
+      {
+        "jour": "Lundi",
+        "heures": "Fermé"
+      }
+    ]
+  }
+}

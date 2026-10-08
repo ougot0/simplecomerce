@@ -1,0 +1,24 @@
+{
+  "name": "simplecommerce/portail",
+  "description": "Simple Commerce — portail d'édition de contenu multi-sites (version PHP pour hébergement mutualisé)",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": ">=8.1",
+    "ext-curl": "*",
+    "ext-gd": "*",
+    "ext-pdo": "*",
+    "ext-sodium": "*",
+    "ext-mbstring": "*",
+    "phpseclib/phpseclib": "^3.0",
+    "symfony/yaml": "^6.4"
+  },
+  "autoload": {
+    "psr-4": { "SimpleCommerce\\": "src/" }
+  },
+  "config": {
+    "platform": { "php": "8.1.0" },
+    "optimize-autoloader": true,
+    "sort-packages": true
+  }
+}

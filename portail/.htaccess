@@ -1,0 +1,11 @@
+# Si l'hébergement pointe par erreur sur ce dossier au lieu de public/, on redirige tout vers public/
+# et on bloque l'accès au code, à la configuration et aux données.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(src|templates|storage|vendor|demo|tests|config\.php|composer\.(json|lock)) - [F,L]
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+<Files "config.php">
+    Require all denied
+</Files>
