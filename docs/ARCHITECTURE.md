@@ -1,8 +1,24 @@
 # Portail d'édition — Architecture et modèle de données
 
-> Statut : **proposition, en attente de validation.** Rien n'est encore construit.
+> Statut : **construit** (socle + tous les connecteurs). Nom : **Simple Commerce**.
 
-Nom de travail : **Atelier** (le portail). Les clients y « passent à l'atelier » pour mettre à jour leur vitrine. Le nom se change en une ligne.
+## Décisions prises après validation
+
+- **Enregistrer = en ligne**, avec en plus « Garder en brouillon » (table `drafts`) et une page Brouillons.
+- **Les clients créent leur compte eux-mêmes** et relient leur site via un assistant ; ils en deviennent propriétaires.
+  Ils peuvent inviter un collègue (rôle « modifier le contenu » ou « tout gérer »).
+- **Photos** : envoyées directement là où vit le site (dépôt, Shopify, WordPress, serveur). Supabase Storage sert seulement
+  de salle d'attente (bucket privé `staging`) entre l'envoi et l'enregistrement, ce qui permet un seul commit photo + texte.
+- **Connecteurs** : Shopify, WordPress/WooCommerce, Webflow, GitHub, GitLab, Bitbucket, SFTP, FTP/FTPS, « API sur mesure ».
+  Formats de contenu : JSON, YAML, Markdown (fichier unique ou dossier). Rubriques **détectées automatiquement**
+  (ou décrites dans `simplecommerce.json`), puisque ce sont désormais les clients qui relient leurs sites.
+- **Accès à la base** : le serveur utilise la clé service et vérifie les droits avant chaque opération (`lib/access.ts`) ;
+  la RLS reste activée partout comme seconde barrière : un accès direct ne voit que ses sites, jamais les identifiants,
+  et ne peut rien écrire (vérifié sur Postgres). Le navigateur n'a aucune clé Supabase.
+- **Protection SSRF** : les adresses saisies par les clients (WordPress, SFTP, API) ne peuvent pas viser un réseau privé.
+- **Mode démonstration** (`npm run demo`) : même code, stockage dans `.data/`, deux faux sites clients.
+
+Le reste du document est la proposition initiale ; il reste juste sauf sur les points ci-dessus.
 
 ---
 
