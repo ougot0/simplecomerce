@@ -64,6 +64,15 @@ function sameAs($section, $current, $expected) { return $expected === null || pi
 if ($parts === ['ping']) reply(200, ['ok' => true, 'name' => $_SERVER['HTTP_HOST']]);
 if ($parts === ['schema']) reply(200, $SCHEMA);
 
+// Fermeture temporaire : le site doit lire content.json → _statut et afficher le message si « ferme » vaut true.
+if ($parts === ['status']) {
+  if ($method === 'GET') { $c = json_decode(@file_get_contents(CONTENT_FILE) ?: '{}', true); reply(200, $c['_statut'] ?? ['ferme' => false, 'message' => '', 'reouverture' => null]); }
+  if ($method === 'PUT') reply(200, withContent(function (&$c) use ($body) {
+    $c['_statut'] = ['ferme' => !empty($body['ferme']), 'message' => (string)($body['message'] ?? ''), 'reouverture' => $body['reouverture'] ?? null];
+    return $c['_statut'];
+  }));
+}
+
 if ($parts === ['media'] && $method === 'POST') {
   $f = $_FILES['file'] ?? null;
   if (!$f || $f['size'] > 6 * 1024 * 1024 || !in_array(mime_content_type($f['tmp_name']), ['image/webp', 'image/jpeg', 'image/png'], true)) reply(400, ['error' => 'file']);

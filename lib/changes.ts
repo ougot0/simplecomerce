@@ -1,5 +1,5 @@
 import "server-only";
-import { AdapterError, ConflictError, userMessageFor, type ChangeContext, type Data, type WriteResult } from "./adapters/types";
+import { AdapterError, ConflictError, userMessageFor, type ChangeContext, type Data, type SiteStatus, type WriteResult } from "./adapters/types";
 import { entryTitle, type Section } from "./content/schema";
 import { collectMediaTokens } from "./content/values";
 import type { Viewer } from "./access";
@@ -129,6 +129,49 @@ export function inverseOperation(change: Change, section: Section): Operation | 
   if (!change.before && change.after && change.entryId) return { type: "delete", section, id: change.entryId, expected: change.after };
   if (change.before && !change.after) return { type: "create", section, data: change.before };
   return null;
+}
+
+export const CLOSURE_SECTION = "_fermeture";
+
+/** Ferme ou rouvre le site, avec une ligne dans l'historique. */
+export async function setSiteClosure(viewer: Viewer, site: Site, status: SiteStatus): Promise<{ ok: true } | { ok: false; error: string }> {
+  const store = getStore();
+  const change = await store.insertChange({
+    siteId: site.id,
+    actorId: viewer.user.id,
+    onBehalfOf: viewer.effective.id !== viewer.user.id ? viewer.effective.id : null,
+    action: "update",
+    sectionKey: CLOSURE_SECTION,
+    entryId: null,
+    entryLabel: status.closed ? "Site fermé temporairement" : "Site rouvert",
+    before: null,
+    after: null,
+    beforeOrder: null,
+    afterOrder: null,
+    remoteRef: null,
+    status: "pending",
+    errorMessage: null,
+    revertsChangeId: null,
+    revertedByChangeId: null,
+  });
+  try {
+    const result = await withAdapter(site, async (adapter) => {
+      if (!adapter.setStatus) throw new AdapterError("unsupported", "Ce type de site ne peut pas être fermé depuis Simple Commerce.");
+      return adapter.setStatus(status, {
+        authorName: viewer.user.fullName || viewer.user.email,
+        summary: status.closed ? "Site fermé temporairement" : "Site rouvert",
+        changeId: change.id,
+        assets: [],
+      });
+    });
+    await store.updateChange(change.id, { status: "applied", before: result.before, after: result.after, remoteRef: result.ref ?? null });
+    return { ok: true };
+  } catch (err) {
+    const message = userMessageFor(err);
+    log.error("fermeture du site échouée", { site: site.slug, err: err instanceof AdapterError ? err.detail ?? err.message : String(err) });
+    await store.updateChange(change.id, { status: "failed", errorMessage: message });
+    return { ok: false, error: message };
+  }
 }
 
 export async function revert(viewer: Viewer, site: Site, change: Change, section: Section): Promise<PublishResult> {

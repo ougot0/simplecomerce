@@ -7,6 +7,7 @@ import { ConnectorFields, ReportView } from "@/components/connector-fields";
 import { submitKeepingValues } from "@/components/no-reset";
 import { updateConnectionAction, type ConnectState } from "@/app/sites/actions";
 import {
+  closureAction,
   deleteSiteAction,
   inviteAction,
   rediscoverAction,
@@ -205,6 +206,49 @@ export function SchemaJsonForm({ site, schema }: { site: string; schema: string 
         </button>
         <span className="help">Chaque enregistrement crée une nouvelle version.</span>
       </div>
+    </form>
+  );
+}
+
+export function ClosureForm({ site, closed, message, reopenOn, delayText }: { site: string; closed: boolean; message: string; reopenOn: string | null; delayText: string }) {
+  const [state, action, pending] = useActionState<SettingsState, FormData>(closureAction, {});
+  return (
+    <form onSubmit={submitKeepingValues(action)} className="form">
+      <input type="hidden" name="site" value={site} />
+      <Messages state={state} />
+      {closed ? (
+        <>
+          <div className="notice notice-warn">
+            <p>
+              <strong>Votre site est fermé.</strong> Vos visiteurs voient : « {message} »{reopenOn && ` — réouverture le ${new Date(reopenOn).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`}.
+            </p>
+          </div>
+          <div className="actions">
+            <button className="btn btn-primary" type="submit" name="intent" value="open" disabled={pending}>
+              {pending ? "Réouverture…" : "Rouvrir le site"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="field">
+            <label htmlFor="closure-message">Message pour vos visiteurs</label>
+            <textarea id="closure-message" name="message" maxLength={300} rows={3} defaultValue={message || "Nous sommes en congés. Merci de votre patience, à très bientôt !"} />
+          </div>
+          <div className="field">
+            <label htmlFor="closure-date">
+              Date de réouverture <span className="optional">(facultatif)</span>
+            </label>
+            <input id="closure-date" name="reopenOn" type="date" style={{ maxWidth: 220 }} defaultValue={reopenOn ?? ""} />
+          </div>
+          <div className="actions">
+            <button className="btn btn-danger" type="submit" name="intent" value="close" disabled={pending}>
+              {pending ? "Fermeture…" : "Fermer le site temporairement"}
+            </button>
+          </div>
+          <p className="help">Vos produits et vos textes ne sont pas effacés. {delayText}</p>
+        </>
+      )}
     </form>
   );
 }

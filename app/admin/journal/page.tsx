@@ -26,6 +26,8 @@ const KINDS: Record<string, string> = {
   impersonation_ended: "Fin d'assistance",
   draft_discarded: "Brouillon jeté",
   password_changed: "Mot de passe changé",
+  site_closed: "Site fermé temporairement",
+  site_reopened: "Site rouvert",
 };
 
 export default async function JournalPage() {

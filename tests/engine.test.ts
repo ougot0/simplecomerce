@@ -114,3 +114,17 @@ describe("moteur de fichiers", () => {
     await expect(a.listEntries(evil)).rejects.toThrow();
   });
 });
+
+describe("fermeture temporaire", () => {
+  it("écrit le fichier de statut et le relit", async () => {
+    const { a, schema } = await adapter();
+    expect(schema.sections.some((s) => s.key.startsWith("simplecommerce"))).toBe(false);
+    expect((await a.getStatus()).closed).toBe(false);
+    const r = await a.setStatus({ closed: true, message: "En congés", reopenOn: "2026-11-02" }, ctx());
+    expect(r.after).toEqual({ ferme: true, message: "En congés", reouverture: "2026-11-02" });
+    expect(JSON.parse(await readFile(path.join(dir, "simplecommerce-statut.json"), "utf8")).ferme).toBe(true);
+    expect(await a.getStatus()).toEqual({ closed: true, message: "En congés", reopenOn: "2026-11-02" });
+    // Le fichier de statut n'apparaît pas comme rubrique à la détection suivante.
+    expect((await a.discover()).schema.sections.some((s) => s.key.includes("statut"))).toBe(false);
+  });
+});

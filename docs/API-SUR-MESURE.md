@@ -14,6 +14,8 @@ toutes protégées par l'en-tête `Authorization: Bearer <clé secrète>` et app
 | DELETE | `/sections/{clé}/entries/{id}` | corps `{ expected, author }` ; 409 en cas de conflit |
 | PUT | `/sections/{clé}/order` | corps `{ ids: [...] }` |
 | PUT | `/sections/{clé}` | bloc : corps `{ data, expected, author }` → `{ data }` |
+| GET | `/status` | `{ "ferme": false, "message": "", "reouverture": null }` (404 = jamais fermé) |
+| PUT | `/status` | corps `{ ferme, message, reouverture, author }` : fermeture temporaire du site |
 | POST | `/media` | formulaire `file` (WebP déjà vérifié) + `alt` → `{ "url": "/uploads/x.webp" }` |
 
 `data` ne contient que les champs du schéma ; le site garde ses autres colonnes intactes.

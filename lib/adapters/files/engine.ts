@@ -16,8 +16,15 @@ import {
   type Data,
   type Entry,
   type SiteAdapter,
+  type SiteStatus,
   type WriteResult,
+  OPEN_STATUS,
+  statusFromFile,
+  statusToFile,
 } from "../types";
+
+/** Fichier lu par le site pour savoir s'il est fermé temporairement. */
+export const STATUS_FILE = "simplecommerce-statut.json";
 
 /**
  * Adaptateur générique pour tous les sites dont le contenu est dans des fichiers.
@@ -424,6 +431,28 @@ export class FileSiteAdapter implements SiteAdapter {
         writes.push({ path, content: Buffer.from(this.serializeFolderItem(src.format, src.bodyField, item, snap.parsed), "utf8") });
       }
       return { writes, result: { before: null, after: null, beforeOrder, afterOrder: orderedIds } };
+    });
+  }
+
+  async getStatus(): Promise<SiteStatus> {
+    await this.init();
+    const raw = await this.backend.read(this.path(STATUS_FILE));
+    if (!raw) return OPEN_STATUS;
+    try {
+      return statusFromFile(JSON.parse(raw.content.toString("utf8")));
+    } catch {
+      return OPEN_STATUS;
+    }
+  }
+
+  async setStatus(status: SiteStatus, ctx: ChangeContext): Promise<WriteResult> {
+    return this.run(ctx, async (reader) => {
+      const path = this.path(STATUS_FILE);
+      const snap = await reader.file(path, "json");
+      const before = snap.parsed ? statusToFile(statusFromFile(snap.parsed.data)) : statusToFile(OPEN_STATUS);
+      const after = statusToFile(status);
+      const text = snap.parsed ? serializeFile(snap.parsed, after) : newFile("json", after);
+      return { writes: [{ path, content: Buffer.from(text, "utf8") }], result: { before, after } };
     });
   }
 

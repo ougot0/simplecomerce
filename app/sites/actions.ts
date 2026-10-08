@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { audit, requireSiteAccess, requireViewer } from "@/lib/access";
@@ -121,5 +122,6 @@ export async function updateConnectionAction(_prev: ConnectState, form: FormData
   const changedSecrets = Object.keys(secrets).filter((k) => secrets[k] !== previous?.[k]);
   if (changedSecrets.length) await storeSecrets(site.id, secrets, viewer.user.id);
   await audit(viewer, "connection_updated", { fields: changedSecrets, ok: report.ok }, site.id);
+  revalidatePath(`/s/${site.slug}`, "layout");
   return { report, saved: true };
 }

@@ -46,6 +46,29 @@ export interface WriteResult {
   afterOrder?: string[];
 }
 
+export interface SiteStatus {
+  closed: boolean;
+  message: string;
+  /** Date de réouverture annoncée (AAAA-MM-JJ), facultative. */
+  reopenOn: string | null;
+}
+
+export const OPEN_STATUS: SiteStatus = { closed: false, message: "", reopenOn: null };
+
+/** Format du fichier lu par le site : clés en français, faciles à utiliser dans un gabarit. */
+export function statusToFile(s: SiteStatus): Data {
+  return { ferme: s.closed, message: s.message, reouverture: s.reopenOn };
+}
+
+export function statusFromFile(d: unknown): SiteStatus {
+  const o = d && typeof d === "object" ? (d as Data) : {};
+  return {
+    closed: o.ferme === true,
+    message: typeof o.message === "string" ? o.message : "",
+    reopenOn: typeof o.reouverture === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.reouverture) ? o.reouverture : null,
+  };
+}
+
 export interface AdapterCapabilities {
   reorder: boolean;
   create: boolean;
@@ -68,6 +91,13 @@ export interface SiteAdapter {
 
   getSingleton(section: Section): Promise<Data>;
   updateSingleton(section: Section, data: Data, expected: Data | null, ctx: ChangeContext): Promise<WriteResult>;
+
+  /**
+   * Fermeture temporaire du site (congés, travaux). Absent si le type de site ne le permet pas :
+   * l'interface explique alors comment le faire depuis la plateforme elle-même.
+   */
+  getStatus?(): Promise<SiteStatus>;
+  setStatus?(status: SiteStatus, ctx: ChangeContext): Promise<WriteResult>;
 
   /** Valeurs de départ d'un nouvel élément (ex. une ligne de prix pour un produit Shopify). */
   template?(section: Section): Data;

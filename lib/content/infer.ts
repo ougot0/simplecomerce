@@ -198,7 +198,7 @@ export function inferSchema(files: SourceFile[]): { schema: ContentSchema; skipp
   for (const file of files) {
     const format = formatFromPath(file.path);
     const baseName = file.path.split("/").pop()!.replace(/\.[^.]+$/, "");
-    if (baseName.startsWith("_") || baseName === "simplecommerce" || /package(-lock)?|tsconfig|manifest/i.test(baseName)) {
+    if (baseName.startsWith("_") || baseName.startsWith("simplecommerce") || /package(-lock)?|tsconfig|manifest/i.test(baseName)) {
       skipped.push(file.path);
       continue;
     }

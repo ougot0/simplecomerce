@@ -66,10 +66,33 @@ Types de champs : `text`, `textarea`, `richtext`, `markdown`, `price`, `number`,
 `url`, `email`, `phone`, `list`, `group`, `repeater` (lignes répétées : horaires, déclinaisons…).
 L'administrateur peut aussi éditer ce schéma directement dans *Réglages → Schéma de contenu*.
 
-## 5. Prompt type à donner à Claude Code dans un dépôt existant
+## 5. Fermeture temporaire (congés, travaux)
+
+Depuis *Réglages → Fermer le site temporairement*, le client écrit un message et une date de réouverture.
+Le portail écrit alors `simplecommerce-statut.json` dans le dossier de contenu :
+
+```json
+{ "ferme": true, "message": "Nous sommes en congés.", "reouverture": "2026-11-02" }
+```
+
+Le site doit lire ce fichier et, si `ferme` vaut `true`, afficher le message à la place de son contenu.
+Exemple Next.js (layout racine) :
+
+```tsx
+import statut from "@/content/simplecommerce-statut.json"; // créez-le avec { "ferme": false } au départ
+if (statut.ferme) return <html lang="fr"><body><main><h1>Fermé temporairement</h1><p>{statut.message}</p></main></body></html>;
+```
+
+Site statique chez un hébergeur : un petit script en tête de page qui fait `fetch("/simplecommerce-statut.json")`
+et remplace le contenu si `ferme` est vrai. Pour Shopify, WordPress et Webflow, le portail explique où activer
+la fermeture dans leur propre administration (ces plateformes ne permettent pas de le faire par leur API).
+
+## 6. Prompt type à donner à Claude Code dans un dépôt existant
 
 > Sépare le contenu modifiable de ce site du code. Déplace dans `content/` (un fichier JSON par rubrique : produits, actualités,
 > horaires, coordonnées, textes de la page d'accueil…) tous les textes, prix, listes et chemins de photos écrits en dur.
 > Chaque élément de liste reçoit un champ `id` stable. Les composants importent ces fichiers au build. Le texte enrichi est
 > limité à p/strong/em/a/ul/li. Ne change pas le rendu visuel. Puis crée `content/simplecommerce.json` décrivant les champs
 > modifiables (voir docs/PREPARER-UN-SITE.md de Simple Commerce), avec des `maxLength` adaptés à la mise en page.
+> Enfin, crée `content/simplecommerce-statut.json` avec `{ "ferme": false }` et fais en sorte que le site affiche
+> le message de fermeture quand `ferme` vaut `true`.

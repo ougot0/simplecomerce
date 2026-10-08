@@ -79,7 +79,7 @@ export default async function HistoryPage({ params, searchParams }: { params: Pr
                     {VERB[c.action]} — {c.entryLabel}
                   </span>
                   <div className="muted small">
-                    {section?.label ?? c.sectionKey} · {names.get(c.actorId) ?? "?"}
+                    {section?.label ?? (c.sectionKey === "_fermeture" ? "Fermeture du site" : c.sectionKey)} · {names.get(c.actorId) ?? "?"}
                     {c.onBehalfOf && ` (assistance pour ${names.get(c.onBehalfOf) ?? "le client"})`} · {formatWhen(c.createdAt)}
                   </div>
                   <Diff change={c} section={section} />

@@ -1,12 +1,21 @@
 import type { Metadata } from "next";
 import { CONNECTORS, connectorLabel } from "@/lib/adapters/catalog";
-import { loadSite } from "@/lib/site-context";
+import { loadSite, publishDelayText } from "@/lib/site-context";
+import { withAdapter } from "@/lib/sites";
+import type { SiteStatus } from "@/lib/adapters/types";
 import { getStore } from "@/lib/store";
 import { formatWhen } from "@/lib/ui/format";
-import { ConnectionForm, DeleteSiteForm, InviteForm, SchemaJsonForm, SectionsForm, SmallAction } from "./forms";
+import { ClosureForm, ConnectionForm, DeleteSiteForm, InviteForm, SchemaJsonForm, SectionsForm, SmallAction } from "./forms";
 import { removeMemberAction as removeMember, revokeInvitationAction as revokeInvitation } from "./actions";
 
 export const metadata: Metadata = { title: "Réglages" };
+
+/** Plateformes qui gèrent elles-mêmes la fermeture : on explique où cliquer. */
+const CLOSE_ELSEWHERE: Record<string, string> = {
+  shopify: "Pour Shopify : dans l'administration de votre boutique, Boutique en ligne → Préférences → « Protection par mot de passe ». Cochez « Limiter l'accès aux visiteurs disposant du mot de passe » et écrivez votre message.",
+  wordpress: "Pour WordPress : installez une extension de maintenance (par exemple « LightStart » ou « Maintenance »), activez-la et écrivez votre message. Désactivez-la pour rouvrir.",
+  webflow: "Pour Webflow : dans les réglages du site, onglet « General », activez la protection par mot de passe. Désactivez-la pour rouvrir.",
+};
 
 export default async function SettingsPage({ params }: { params: Promise<{ site: string }> }) {
   const { site: slug } = await params;
@@ -14,6 +23,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ site:
   const store = getStore();
   const [members, invitations, creds] = await Promise.all([store.listMembers(site.id), store.listInvitations(site.id), store.getCredentials(site.id)]);
   const def = CONNECTORS.find((c) => c.id === site.connector)!;
+  const closure = await withAdapter(site, async (a) => (a.getStatus ? a.getStatus() : null)).catch(() => undefined as SiteStatus | null | undefined);
   // Valeurs non secrètes à réafficher dans le formulaire (l'adresse du dépôt est reconstituée).
   const config: Record<string, unknown> = { ...site.connectorConfig };
   if (site.connector === "github" && config.owner) config.repository = `https://github.com/${config.owner}/${config.repo}`;
@@ -61,6 +71,20 @@ export default async function SettingsPage({ params }: { params: Promise<{ site:
         </ul>
         <h3 style={{ margin: "28px 0 12px" }}>Inviter un collègue</h3>
         <InviteForm site={site.slug} />
+      </section>
+
+      <section className="section-block">
+        <h2>Fermer le site temporairement</h2>
+        <p className="muted">Pour des congés ou des travaux : votre site affiche un message à la place de son contenu, puis vous le rouvrez en un clic.</p>
+        {closure ? (
+          <ClosureForm site={site.slug} closed={closure.closed} message={closure.message} reopenOn={closure.reopenOn} delayText={publishDelayText(site.connector)} />
+        ) : closure === undefined ? (
+          <div className="notice notice-error">Impossible de lire l&apos;état du site pour le moment. Vérifiez la connexion ci-dessous.</div>
+        ) : (
+          <div className="notice">
+            <p>{CLOSE_ELSEWHERE[site.connector] ?? "Ce type de site se ferme depuis sa propre administration."}</p>
+          </div>
+        )}
       </section>
 
       <section className="section-block">

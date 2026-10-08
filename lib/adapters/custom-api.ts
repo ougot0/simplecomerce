@@ -11,7 +11,11 @@ import {
   type Data,
   type Entry,
   type SiteAdapter,
+  type SiteStatus,
   type WriteResult,
+  OPEN_STATUS,
+  statusFromFile,
+  statusToFile,
 } from "./types";
 
 /**
@@ -164,6 +168,22 @@ export class CustomApiAdapter implements SiteAdapter {
   async getSingleton(section: Section): Promise<Data> {
     const res = await this.call<{ data: Data }>("GET", this.sectionPath(section));
     return res.data ?? {};
+  }
+
+  async getStatus(): Promise<SiteStatus> {
+    try {
+      return statusFromFile(await this.call("GET", "/status"));
+    } catch (err) {
+      if (err instanceof AdapterError && err.code === "not_found") return OPEN_STATUS;
+      throw err;
+    }
+  }
+
+  async setStatus(status: SiteStatus, ctx: ChangeContext): Promise<WriteResult> {
+    const before = statusToFile(await this.getStatus());
+    const after = statusToFile(status);
+    await this.call("PUT", "/status", { ...after, author: ctx.authorName });
+    return { before, after };
   }
 
   async updateSingleton(section: Section, data: Data, expected: Data | null, ctx: ChangeContext): Promise<WriteResult> {

@@ -5,6 +5,7 @@ import { getStore } from "@/lib/store";
 import { formatWhen, plural } from "@/lib/ui/format";
 import { actorNames } from "@/lib/ui/people";
 import { listOf } from "@/lib/ui/words";
+import { withAdapter } from "@/lib/sites";
 
 export const metadata: Metadata = { title: "Accueil" };
 
@@ -17,6 +18,7 @@ export default async function SiteHome({ params, searchParams }: { params: Promi
   const names = await actorNames(changes.map((c) => c.actorId).concat(changes.map((c) => c.onBehalfOf ?? "")));
   const lastBySection = new Map<string, string>();
   for (const c of [...changes].reverse()) if (c.status === "applied") lastBySection.set(c.sectionKey, c.createdAt);
+  const closure = await withAdapter(site, async (a) => (a.getStatus ? a.getStatus() : null)).catch(() => null);
   const firstName = (viewer.effective.fullName || "").split(" ")[0];
   const base = `/s/${site.slug}`;
 
@@ -33,6 +35,15 @@ export default async function SiteHome({ params, searchParams }: { params: Promi
           </p>
           {!sections.length && <p>Le contenu du site doit d&apos;abord être séparé du code. Votre créateur de site peut s&apos;en charger : le guide « Préparer mon site » lui explique comment.</p>}
           {sections.length > 0 && role !== "editor" && <p>Vous pouvez renommer ou masquer des rubriques dans <Link href={`${base}/reglages`}>Réglages</Link>.</p>}
+        </div>
+      )}
+
+      {closure?.closed && (
+        <div className="notice notice-error">
+          <p>
+            <strong>Votre site est fermé temporairement.</strong> Vos visiteurs voient : « {closure.message} ».{" "}
+            {role !== "editor" ? <Link href={`${base}/reglages`}>Rouvrir le site</Link> : "Le propriétaire du site peut le rouvrir."}
+          </p>
         </div>
       )}
 

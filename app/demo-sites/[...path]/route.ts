@@ -48,6 +48,22 @@ async function brun(base: string) {
   return page(site.nom ?? "Atelier Brun", base, css, body);
 }
 
+/** Le site lit simplecommerce-statut.json : s'il est fermé, il affiche le message à la place du contenu. */
+async function closedPage(siteName: string, title: string): Promise<string | null> {
+  for (const rel of ["simplecommerce-statut.json", "content/simplecommerce-statut.json"]) {
+    try {
+      const s = JSON.parse(await fs.readFile(path.join(ROOT, siteName, rel), "utf8"));
+      if (!s.ferme) return null;
+      const date = s.reouverture ? new Date(s.reouverture).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }) : null;
+      const css = "body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Georgia,serif;background:#2b2118;color:#fbf7f0;padding:24px}main{max-width:36ch}h1{font-weight:400;font-size:clamp(34px,6vw,56px);margin:0 0 16px}p{font-size:20px;line-height:1.5}";
+      return page(title, "", css, `<main><h1>${esc(title)}</h1><p>${esc(s.message)}</p>${date ? `<p>Réouverture le ${esc(date)}.</p>` : ""}</main>`);
+    } catch {
+      // pas de fichier : site ouvert
+    }
+  }
+  return null;
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   if (appMode() !== "demo") return new NextResponse(null, { status: 404 });
   const { path: parts } = await params;
@@ -55,7 +71,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ path: s
   if (!["patisserie-lune", "atelier-brun"].includes(siteName)) return new NextResponse(null, { status: 404 });
   const base = `/demo-sites/${siteName}`;
   if (rest.length === 0) {
-    const html = siteName === "patisserie-lune" ? await lune(base) : await brun(base);
+    const closed = await closedPage(siteName, siteName === "patisserie-lune" ? "Pâtisserie Lune" : "Atelier Brun architectes");
+    const html = closed ?? (siteName === "patisserie-lune" ? await lune(base) : await brun(base));
     return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
   }
   const rel = rest.join("/");

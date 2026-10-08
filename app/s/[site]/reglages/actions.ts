@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { audit } from "@/lib/access";
@@ -11,6 +12,7 @@ import { loadSite } from "@/lib/site-context";
 import { discoverSchema } from "@/lib/sites";
 import { getStore } from "@/lib/store";
 import { userMessageFor } from "@/lib/adapters/types";
+import { setSiteClosure } from "@/lib/changes";
 
 export interface SettingsState {
   error?: string;
@@ -46,6 +48,7 @@ export async function inviteAction(_prev: SettingsState, form: FormData): Promis
     `Bonjour,\n\n${inviter} vous invite à mettre à jour le site « ${site.name} » avec Simple Commerce.\n\nPour accepter, ouvrez ce lien (valable ${INVITE_DAYS} jours) :\n${link}\n\nSi vous ne vous attendiez pas à cette invitation, ignorez simplement ce message.`,
   );
   await audit(viewer, "member_invited", { email: email.data, role, sent }, site.id);
+  revalidatePath(`/s/${site.slug}`, "layout");
   return sent
     ? { info: `Invitation envoyée à ${email.data}.`, link }
     : { info: `Invitation créée. Envoyez ce lien à ${email.data} (par e-mail ou SMS) : il est valable ${INVITE_DAYS} jours et ne sera plus affiché.`, link };
@@ -63,6 +66,7 @@ export async function removeMemberAction(_prev: SettingsState, form: FormData): 
   }
   await store.removeMember(site.id, userId);
   await audit(viewer, "member_removed", { email: target.profile.email }, site.id);
+  revalidatePath(`/s/${site.slug}`, "layout");
   return { info: `${target.profile.fullName || target.profile.email} n'a plus accès au site.` };
 }
 
@@ -73,6 +77,7 @@ export async function revokeInvitationAction(_prev: SettingsState, form: FormDat
   if (!inv) return { error: "Invitation introuvable." };
   await store.deleteInvitation(inv.id);
   await audit(viewer, "invitation_revoked", { email: inv.email }, site.id);
+  revalidatePath(`/s/${site.slug}`, "layout");
   return { info: "Invitation annulée." };
 }
 
@@ -87,6 +92,7 @@ export async function saveSectionsAction(_prev: SettingsState, form: FormData): 
   };
   await getStore().saveSchema(site.id, parseContentSchema(next), viewer.user.id);
   await audit(viewer, "schema_updated", { via: "rubriques" }, site.id);
+  revalidatePath(`/s/${site.slug}`, "layout");
   return { info: "Rubriques enregistrées." };
 }
 
@@ -113,6 +119,7 @@ export async function rediscoverAction(_prev: SettingsState, form: FormData): Pr
     };
     await getStore().saveSchema(site.id, parseContentSchema(merged), viewer.user.id);
     await audit(viewer, "schema_detected", { notes: found.notes }, site.id);
+    revalidatePath(`/s/${site.slug}`, "layout");
     return { info: `Contenu relu : ${merged.sections.length} rubrique(s). ${found.notes.join(" ")}` };
   } catch (err) {
     return { error: userMessageFor(err) };
@@ -132,7 +139,23 @@ export async function saveSchemaJsonAction(_prev: SettingsState, form: FormData)
   }
   await getStore().saveSchema(site.id, schema, viewer.user.id);
   await audit(viewer, "schema_updated", { via: "json" }, site.id);
+  revalidatePath(`/s/${site.slug}`, "layout");
   return { info: "Schéma enregistré (nouvelle version)." };
+}
+
+export async function closureAction(_prev: SettingsState, form: FormData): Promise<SettingsState> {
+  const { viewer, site } = await loadSite(String(form.get("site")), "owner");
+  const close = form.get("intent") === "close";
+  const message = String(form.get("message") ?? "").trim().slice(0, 300);
+  const reopenRaw = String(form.get("reopenOn") ?? "");
+  const reopenOn = /^\d{4}-\d{2}-\d{2}$/.test(reopenRaw) ? reopenRaw : null;
+  if (close && !message) return { error: "Écrivez le message que verront vos visiteurs." };
+  if (close && reopenOn && reopenOn < new Date().toISOString().slice(0, 10)) return { error: "La date de réouverture est déjà passée." };
+  const res = await setSiteClosure(viewer, site, close ? { closed: true, message, reopenOn } : { closed: false, message: "", reopenOn: null });
+  if (!res.ok) return { error: res.error };
+  await audit(viewer, close ? "site_closed" : "site_reopened", close ? { reopenOn } : {}, site.id);
+  revalidatePath(`/s/${site.slug}`, "layout");
+  return { info: close ? "Votre site est fermé temporairement. Vos visiteurs voient votre message." : "Votre site est de nouveau ouvert." };
 }
 
 export async function deleteSiteAction(_prev: SettingsState, form: FormData): Promise<SettingsState> {
