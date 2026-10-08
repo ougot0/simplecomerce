@@ -15,7 +15,9 @@ export function formatWhen(iso: string, now = new Date()): string {
 }
 
 export function plural(n: number, one: string, many?: string): string {
-  return `${n} ${n > 1 ? many ?? `${one}s` : one}`;
+  // gâteau → gâteaux, jeu → jeux, prix → prix
+  const auto = /(eau|eu)$/.test(one) ? `${one}x` : /[sxz]$/.test(one) ? one : `${one}s`;
+  return `${n} ${n > 1 ? many ?? auto : one}`;
 }
 
 /** Adresse affichable d'une image stockée dans le contenu. */

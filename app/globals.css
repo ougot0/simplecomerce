@@ -1085,6 +1085,8 @@ input[type="range"] {
 
   .shell {
     grid-template-columns: minmax(0, 1fr);
+    /* La barre du site garde sa hauteur naturelle, même si la page est courte. */
+    grid-template-rows: auto 1fr;
   }
 
   .sidebar {
@@ -1138,6 +1140,10 @@ input[type="range"] {
   .thumb {
     width: 44px;
     height: 44px;
+  }
+
+  .thumb-empty {
+    font-size: 0;
   }
 }
 
