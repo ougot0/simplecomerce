@@ -349,6 +349,20 @@ final class Repo
         Db::run('DELETE FROM sc_invitations WHERE id = ?', [$id]);
     }
 
+    // ------------------------------------------------------------ réglages du portail
+
+    public static function meta(string $name, ?string $default = null): ?string
+    {
+        $v = Db::value('SELECT value FROM sc_meta WHERE name = ?', [$name]);
+        return $v === null ? $default : (string) $v;
+    }
+
+    public static function setMeta(string $name, string $value): void
+    {
+        Db::run('DELETE FROM sc_meta WHERE name = ?', [$name]);
+        Db::insert('sc_meta', ['name' => $name, 'value' => $value]);
+    }
+
     // ------------------------------------------------------------ journal
 
     public static function log(?string $actor, ?string $onBehalf, ?string $siteId, string $kind, array $details = []): void

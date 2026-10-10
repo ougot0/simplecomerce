@@ -36,7 +36,7 @@ final class AdminController
             'failing' => count(array_filter($sites, fn ($s) => $s['last_check_ok'] === false)),
             'failedChanges' => (int) Db::value("SELECT COUNT(*) FROM sc_changes WHERE status = 'failed' AND created_at >= ?", [$week]),
         ];
-        return Response::page('admin/index', ['viewer' => $v, 'sites' => $sites, 'users' => $users, 'members' => $members, 'count' => $count, 'stats' => $stats, 'wide' => true, 'title' => 'Administration'], 'plain');
+        return Response::page('admin/index', ['signupOpen' => Repo::meta('signup_open', '0') === '1', 'viewer' => $v, 'sites' => $sites, 'users' => $users, 'members' => $members, 'count' => $count, 'stats' => $stats, 'wide' => true, 'title' => 'Administration'], 'plain');
     }
 
     public static function journal(): Response
@@ -79,6 +79,17 @@ final class AdminController
         if (Access::stopAssist()) {
             Access::audit(['user' => $v['user'], 'effective' => $v['user'], 'assist' => null], 'impersonation_ended', ['target' => $target['email']]);
         }
+        return Response::redirect('/admin');
+    }
+
+    /** Ouvrir ou fermer les inscriptions (fermées : seuls l'administrateur et les personnes invitées). */
+    public static function setSignup(): Response
+    {
+        $v = Access::requireAdmin();
+        $open = Req::str('open') === '1';
+        Repo::setMeta('signup_open', $open ? '1' : '0');
+        Access::audit($v, $open ? 'signup_opened' : 'signup_closed');
+        Session::flash($open ? 'Inscriptions ouvertes : tout le monde peut créer un compte et relier son site.' : 'Inscriptions fermées : seuls vous et les personnes invitées peuvent entrer.');
         return Response::redirect('/admin');
     }
 

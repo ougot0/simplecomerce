@@ -26,7 +26,8 @@ final class Net
 
     public static function assertPublicHost(string $host): void
     {
-        if (Config::demo() && getenv('SC_ALLOW_PRIVATE') === '1') {
+        // Réseau interne autorisé : démonstration, ou réglage explicite 'allow_private_hosts' => true dans config.php (tests, intranet).
+        if ((Config::demo() && getenv('SC_ALLOW_PRIVATE') === '1') || Config::get('allow_private_hosts') === true) {
             return;
         }
         $host = trim($host, '[]');

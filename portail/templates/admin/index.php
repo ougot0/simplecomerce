@@ -5,6 +5,12 @@ use SimpleCommerce\Adapters\Catalog;
     <div><h1>Administration</h1><p class="page-intro">Tous les sites et tous les comptes. <a href="/admin/journal">Journal d'activité</a></p></div>
     <a class="btn btn-primary" href="/sites/nouveau"><?= icon('plus') ?> Relier un site</a>
 </div>
+<div class="notice <?= $signupOpen ? 'notice-ok' : 'notice-warn' ?> access-mode">
+    <p><?= icon($signupOpen ? 'users' : 'lock') ?> <strong><?= $signupOpen ? 'Portail ouvert à tous.' : 'Portail privé.' ?></strong>
+    <?= $signupOpen ? "N'importe qui peut créer un compte et relier son site." : "Seuls vous et les personnes que vous invitez peuvent entrer. Idéal pour tester avec de vrais sites avant de l'ouvrir." ?></p>
+    <form method="post" action="/admin/inscriptions" class="inline"<?= $signupOpen ? '' : ' data-confirm="Ouvrir les inscriptions à tout le monde ?"' ?>><?= csrf_field() ?><input type="hidden" name="open" value="<?= $signupOpen ? '0' : '1' ?>">
+        <button class="btn btn-small" type="submit"><?= $signupOpen ? 'Rendre le portail privé' : 'Ouvrir les inscriptions' ?></button></form>
+</div>
 <div class="stats">
     <div class="stat"><span class="stat-num"><?= (int) $stats['sites'] ?></span><span class="muted small">site<?= $stats['sites'] > 1 ? 's' : '' ?> reliés</span></div>
     <div class="stat"><span class="stat-num"><?= (int) $stats['users'] ?></span><span class="muted small">compte<?= $stats['users'] > 1 ? 's' : '' ?></span></div>

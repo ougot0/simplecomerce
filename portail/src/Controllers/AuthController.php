@@ -25,7 +25,7 @@ final class AuthController
             return Response::redirect('/sites');
         }
         $next = Req::safeNext(Req::str('suite', 500) ?: Req::str('next', 500));
-        return Response::page('auth/login', $state + ['next' => $next, 'demo' => Config::demo(), 'values' => [], 'errors' => []], 'auth', $state ? 422 : 200);
+        return Response::page('auth/login', $state + ['next' => $next, 'demo' => Config::demo(), 'signupOpen' => self::signupOpen(), 'values' => [], 'errors' => []], 'auth', $state ? 422 : 200);
     }
 
     public static function login(array $p): Response
@@ -52,9 +52,24 @@ final class AuthController
         return Response::redirect($next);
     }
 
+    /** Inscriptions ouvertes à tous ? (réglage de l'administrateur ; fermées par défaut). */
+    public static function signupOpen(): bool
+    {
+        return Config::demo() || Repo::meta('signup_open', '0') === '1';
+    }
+
+    /** Invitation en attente correspondant à la page de retour (/invitation/…), pour les inscriptions fermées. */
+    private static function invitationFor(string $next): ?array
+    {
+        return preg_match('#^/invitation/([\w-]{20,100})$#', $next, $m) ? self::findInvitation($m[1]) : null;
+    }
+
     public static function signupForm(array $p, array $state = []): Response
     {
         $next = Req::safeNext(Req::str('suite', 500) ?: Req::str('next', 500));
+        if (!self::signupOpen() && !self::invitationFor($next)) {
+            return Response::page('message', ['title' => 'Inscriptions sur invitation', 'text' => "Pour l'instant, on ne peut créer un compte qu'avec une invitation. Demandez-la à la personne qui gère Simple Commerce, ou connectez-vous si vous avez déjà un compte.", 'link' => ['/connexion', 'Se connecter']], 'auth', 403);
+        }
         return Response::page('auth/signup', $state + ['next' => $next, 'values' => ['email' => Req::query('email', 200), 'name' => ''], 'errors' => []], 'auth', $state ? 422 : 200);
     }
 
@@ -76,6 +91,15 @@ final class AuthController
         }
         if (Repo::tooManyAttempts('signup:' . Req::ip(), 10, 3600)) {
             return self::signupForm($p, ['error' => 'Trop de comptes créés depuis cette connexion. Réessayez dans une heure.', 'values' => $values]);
+        }
+        if (!self::signupOpen()) {
+            $inv = self::invitationFor(Req::safeNext(Req::str('next', 500)));
+            if (!$inv) {
+                return self::signupForm($p);
+            }
+            if (mb_strtolower($inv['email']) !== $email) {
+                $errors['email'] = "Utilisez l'adresse qui a reçu l'invitation : " . $inv['email'];
+            }
         }
         if ($errors) {
             return self::signupForm($p, ['errors' => $errors, 'values' => $values]);

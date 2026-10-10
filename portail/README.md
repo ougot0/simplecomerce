@@ -69,6 +69,12 @@ votre compte administrateur. Les clés de chiffrement sont créées automatiquem
 - **Téléchargez une copie de `config.php`** (FTP) et gardez-la en lieu sûr : sans ses clés, les accès enregistrés de vos clients
   ne peuvent plus être relus (il faudrait les ressaisir).
 
+### Portail privé pour commencer
+
+Après l'installation, le portail est **privé** : personne ne peut créer de compte, à part les personnes que vous invitez
+(depuis les réglages d'un site). Vous pouvez donc tester tranquillement avec de vrais sites. Quand vous êtes prêt,
+**Administration → « Ouvrir les inscriptions »** permet à tout le monde de créer un compte et de relier son site.
+
 ### 7. Publication programmée
 
 Onglet **Plus → Tâches planifiées - Cron** → **Ajouter une planification** :

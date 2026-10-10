@@ -3,7 +3,7 @@ $kinds = ['login' => 'Connexion', 'signup' => 'Création de compte', 'site_creat
     'site_reactivated' => 'Site réactivé', 'schema_detected' => 'Contenu détecté', 'schema_updated' => 'Rubriques modifiées', 'connection_updated' => 'Accès modifiés',
     'member_invited' => 'Invitation envoyée', 'invitation_accepted' => 'Invitation acceptée', 'invitation_revoked' => 'Invitation annulée', 'member_removed' => 'Accès retiré',
     'impersonation_started' => "Début d'assistance", 'impersonation_ended' => "Fin d'assistance", 'draft_discarded' => 'Brouillon jeté', 'password_changed' => 'Mot de passe changé',
-    'site_closed' => 'Site fermé temporairement', 'site_reopened' => 'Site rouvert', 'backup_downloaded' => 'Sauvegarde téléchargée', 'scheduled_published' => 'Publication programmée effectuée'];
+    'site_closed' => 'Site fermé temporairement', 'site_reopened' => 'Site rouvert', 'backup_downloaded' => 'Sauvegarde téléchargée', 'scheduled_published' => 'Publication programmée effectuée', 'signup_opened' => 'Inscriptions ouvertes', 'signup_closed' => 'Inscriptions fermées'];
 ?>
 <div class="page-head">
     <div><div class="crumbs"><a href="/admin">Administration</a></div><h1>Journal d'activité</h1>

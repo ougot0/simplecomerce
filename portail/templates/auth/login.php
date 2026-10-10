@@ -32,7 +32,9 @@
         <button class="btn" type="submit" name="intent" value="magic">Recevoir un lien de connexion par e-mail</button>
         <p class="help mt-6">Pas besoin de mot de passe : un clic dans l'e-mail suffit.</p>
     </div>
+    <?php if ($signupOpen): ?>
     <p>Pas encore de compte ? <a href="/inscription<?= $next !== '/sites' ? '?next=' . e(rawurlencode($next)) : '' ?>">Créer un compte</a></p>
+    <?php endif ?>
     <?php if ($demo): ?>
     <div class="notice small">
         <p><strong>Comptes de démonstration</strong> — cliquez pour remplir</p>

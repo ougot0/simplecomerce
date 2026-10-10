@@ -78,6 +78,7 @@ final class App
             ['POST', '/admin/assister', [AdminController::class, 'startAssist']],
             ['POST', '/admin/fin-assistance', [AdminController::class, 'stopAssist']],
             ['POST', '/admin/suspendre', [AdminController::class, 'setStatus']],
+            ['POST', '/admin/inscriptions', [AdminController::class, 'setSignup']],
         ];
     }
 

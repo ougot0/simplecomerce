@@ -1703,3 +1703,6 @@ section[id] { scroll-margin-top: 70px; }
 .repeater-row .row-actions { gap: 0; padding-bottom: 4px; }
 .repeater-row .row-actions .btn { padding: 0 8px; }
 @media (max-width: 860px) { .repeater-row { grid-template-columns: minmax(0, 1fr); } }
+.access-mode { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.access-mode p { margin: 0; flex: 1 1 360px; }
+.access-mode .icon { vertical-align: -3px; }
