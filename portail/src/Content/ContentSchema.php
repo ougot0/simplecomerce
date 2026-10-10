@@ -98,8 +98,8 @@ final class ContentSchema
         if (($src['type'] ?? '') === 'file') {
             $out = ['type' => 'file', 'file' => self::relPath($src['file'] ?? '', "$at.file")];
             if (isset($src['format'])) {
-                if (!in_array($src['format'], ['json', 'yaml'], true)) {
-                    throw new \InvalidArgumentException("$at.format : json ou yaml.");
+                if (!in_array($src['format'], ['json', 'yaml', 'js'], true)) {
+                    throw new \InvalidArgumentException("$at.format : json, yaml ou js.");
                 }
                 $out['format'] = $src['format'];
             }
@@ -167,7 +167,8 @@ final class ContentSchema
                 throw new \InvalidArgumentException("$at.priceFormat.store : number, cents ou string.");
             }
             $out['priceFormat'] = array_filter(['store' => $pf['store'], 'decimal' => in_array($pf['decimal'] ?? null, [',', '.'], true) ? $pf['decimal'] : null,
-                'prefix' => isset($pf['prefix']) ? mb_substr((string) $pf['prefix'], 0, 10) : null, 'suffix' => isset($pf['suffix']) ? mb_substr((string) $pf['suffix'], 0, 10) : null], fn ($v) => $v !== null);
+                'prefix' => isset($pf['prefix']) ? mb_substr((string) $pf['prefix'], 0, 10) : null, 'suffix' => isset($pf['suffix']) ? mb_substr((string) $pf['suffix'], 0, 10) : null,
+                'fixed' => !empty($pf['fixed']) ? true : null], fn ($v) => $v !== null);
         }
         if (isset($f['fields']) && is_array($f['fields'])) {
             $out['fields'] = array_map(fn ($sub, $i) => self::field($sub, "$at.fields.$i"), array_values($f['fields']), array_keys(array_values($f['fields'])));

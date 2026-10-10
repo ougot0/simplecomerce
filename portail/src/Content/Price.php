@@ -33,7 +33,8 @@ final class Price
         if ($fmt['store'] === 'number') {
             return floor($r) == $r ? (int) $r : $r;
         }
-        $text = number_format($r, (floor($r) == $r && empty($fmt['decimal'])) ? 0 : 2, '.', '');
+        // Les prix ronds restent ronds (« 49 € »), sauf si le site écrit toujours les centimes (« 5,00 € »).
+        $text = number_format($r, (floor($r) == $r && empty($fmt['fixed'])) ? 0 : 2, '.', '');
         if (($fmt['decimal'] ?? '.') === ',') {
             $text = str_replace('.', ',', $text);
         }
@@ -56,7 +57,13 @@ final class Price
             return ['store' => $cents ? 'cents' : 'number'];
         }
         if (is_string($first) && preg_match('/^(\D*?)\s*([\d\s.,]+?)\s*(\D*)$/u', $first, $m)) {
-            $out = ['store' => 'string', 'decimal' => str_contains($first, ',') ? ',' : '.'];
+            $out = ['store' => 'string', 'decimal' => str_contains($first, '.') && !str_contains($first, ',') ? '.' : ','];
+            foreach ($samples as $x) {
+                if (is_string($x) && preg_match('/\d[.,]00\b/', $x)) {
+                    $out['fixed'] = true;
+                    break;
+                }
+            }
             if ($m[1] !== '') {
                 $out['prefix'] = $m[1];
             }

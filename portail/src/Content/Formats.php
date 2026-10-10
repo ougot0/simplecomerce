@@ -6,7 +6,8 @@ namespace SimpleCommerce\Content;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Lecture / écriture des fichiers de contenu (JSON, YAML, Markdown avec en-tête),
+ * Lecture / écriture des fichiers de contenu (JSON, YAML, Markdown avec en-tête, et fichiers JavaScript
+ * de la forme « window.CONTENU = { … JSON … }; » pour les sites sans serveur qui chargent leurs données par une balise script),
  * en gardant le style du fichier : indentation JSON, retour à la ligne final, dates YAML non entre guillemets.
  */
 final class Formats
@@ -18,6 +19,7 @@ final class Formats
             str_ends_with($p, '.json') => 'json',
             str_ends_with($p, '.yml'), str_ends_with($p, '.yaml') => 'yaml',
             str_ends_with($p, '.md'), str_ends_with($p, '.mdx'), str_ends_with($p, '.markdown') => 'markdown',
+            str_ends_with($p, '.js') && !str_ends_with($p, '.min.js') => 'js',
             default => null,
         };
     }
@@ -35,6 +37,17 @@ final class Formats
             $data = trim($src) === '' ? null : self::jsonDecode($src);
             return ['format' => 'json', 'data' => $data, 'body' => null, 'style' => $style];
         }
+        if ($format === 'js') {
+            // Seul le JSON après « = » est du contenu ; le texte autour (commentaires, déclaration) est conservé tel quel.
+            if (!preg_match('/^(.*?(?:^|\n)[ \t]*(?:window\.[\w$]+|globalThis\.[\w$]+|(?:var|let|const)\s+[\w$]+)\s*=\s*)([\[{].*[\]}])(\s*;?\s*)$/s', $src, $m)) {
+                throw new \RuntimeException('Fichier JavaScript sans données au format attendu (window.NOM = { … };).');
+            }
+            if (preg_match('/^[\[{]\s*\n([ \t]+)/', $m[2], $i)) {
+                $style['indent'] = str_contains($i[1], "\t") ? "\t" : strlen($i[1]);
+            }
+            $style += ['prefix' => $m[1], 'suffix' => $m[3]];
+            return ['format' => 'js', 'data' => self::jsonDecode($m[2]), 'body' => null, 'style' => $style];
+        }
         if ($format === 'yaml') {
             return ['format' => 'yaml', 'data' => self::yamlParse($src), 'body' => null, 'style' => $style];
         }
@@ -51,6 +64,7 @@ final class Formats
         $out = match ($parsed['format']) {
             'json' => self::jsonEncode($data, $style['indent']) . ($style['finalNewline'] ? "\n" : ''),
             'yaml' => self::yamlDump($data),
+            'js' => ($style['prefix'] ?? 'window.CONTENU = ') . self::jsonEncode($data, $style['indent']) . ($style['suffix'] ?? ";\n"),
             default => "---\n" . self::yamlDump($data ?: []) . "---\n\n" . rtrim($body ?? $parsed['body'] ?? '') . "\n",
         };
         return ($style['bom'] ? "\u{FEFF}" : '') . $out;
@@ -58,6 +72,9 @@ final class Formats
 
     public static function create(string $format, mixed $data, ?string $body = null): string
     {
+        if ($format === 'js') {
+            throw new \RuntimeException('Création de fichier JavaScript non prise en charge.');
+        }
         return self::serialize(['format' => $format, 'style' => ['bom' => false, 'finalNewline' => true, 'indent' => 2], 'body' => ''], $data, $body);
     }
 

@@ -150,6 +150,16 @@ test('formats', function () {
     check($p['data']['titre'] === 'Maison' && trim($p['body']) === 'Texte **gras**.', 'Markdown lu');
     check(str_contains(Formats::serialize($p, $p['data'], $p['body']), 'date: 2024-05-01'), 'date YAML conservée sans guillemets');
 });
+test('fichier JavaScript', function () {
+    $js = "/* Catalogue */\nglobalThis.BOUTIQUE = {\n  \"produits\": [\n    { \"slug\": \"a\", \"price\": \"49 €\" }\n  ]\n};\n";
+    $p = Formats::parse($js, 'js');
+    check($p['data']['produits'][0]['price'] === '49 €', 'données lues dans un fichier JavaScript');
+    check(Formats::serialize($p, $p['data']) === "/* Catalogue */\nglobalThis.BOUTIQUE = {\n  \"produits\": [\n    {\n      \"slug\": \"a\",\n      \"price\": \"49 €\"\n    }\n  ]\n};\n", 'commentaire et déclaration conservés');
+    check(throws(fn () => Formats::parse('function x() { return 1; }', 'js')), 'fichier de code ordinaire ignoré');
+    $f = ['priceFormat' => Price::detect(['49 €', '89 €'])];
+    check(Price::toStored($f, 79.0) === '79 €' && Price::toStored($f, 79.5) === '79,50 €', 'prix ronds gardés ronds');
+    check(Price::toStored(['priceFormat' => Price::detect(['4,50 €', '5,00 €'])], 5.0) === '5,00 €', 'centimes gardés quand le site les écrit');
+});
 
 // ---------------------------------------------------------------- moteur de contenu (site chez un hébergeur)
 test('site hébergeur', function () use ($ctx) {
