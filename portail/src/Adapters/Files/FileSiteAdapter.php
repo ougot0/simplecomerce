@@ -285,7 +285,9 @@ final class FileSiteAdapter implements Adapter
 
     public function template(array $section): array
     {
-        return [];
+        // Un nouvel élément est visible sur le site par défaut (case « disponible », « visible »… déjà cochée).
+        $visible = ContentSchema::visibilityField($section);
+        return $visible ? [$visible => true] : [];
     }
 
     // ------------------------------------------------------------ écriture

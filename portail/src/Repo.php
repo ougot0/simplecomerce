@@ -128,6 +128,7 @@ final class Repo
             }
             Db::run('DELETE FROM sc_sites WHERE id = ?', [$id]);
         });
+        \SimpleCommerce\Adapters\Files\DbBackend::purge($id);
     }
 
     // ------------------------------------------------------------ membres

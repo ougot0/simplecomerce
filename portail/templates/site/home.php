@@ -25,6 +25,14 @@ $verbs = ['create' => 'ajouté', 'delete' => 'supprimé', 'reorder' => 'ordre mo
 </div>
 <?php endif ?>
 
+<?php if ($site['connector'] === 'catalogue'): ?>
+<div class="notice<?= $welcome ? ' notice-ok' : '' ?>">
+    <p><strong>Afficher vos produits sur votre site</strong> — copiez cette ligne et collez-la dans votre site, à l'endroit où vous voulez voir vos produits (bloc « Code » ou « HTML »). Une seule fois suffit : ensuite, tout ce que vous changez ici apparaît sur votre site.</p>
+    <div class="copy-row"><input type="text" readonly value="<?= e(\SimpleCommerce\Controllers\CatalogueController::embedLine($site)) ?>" class="code" aria-label="Ligne à coller dans votre site" data-select><button type="button" class="btn btn-small" data-copy><?= icon('copy') ?> Copier</button></div>
+    <p class="small">Vous ne savez pas où la coller ? Envoyez-la à la personne qui a fait votre site.</p>
+</div>
+<?php endif ?>
+
 <?php if (!empty($closure['closed'])): ?>
 <div class="notice notice-error closed-banner">
     <p><?= icon('lock') ?> <strong>Votre site est fermé temporairement.</strong> Vos visiteurs voient : « <?= e($closure['message']) ?> »<?= $closure['reopenOn'] ? ' — réouverture le ' . e(Text::date($closure['reopenOn'], false, true)) : '' ?>.

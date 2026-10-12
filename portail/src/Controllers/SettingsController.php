@@ -239,6 +239,9 @@ final class SettingsController
         }
         $config = $parsed['config'];
         unset($config['hostPreset']);
+        if (!empty($site['config']['publicKey'])) {
+            $config['publicKey'] = $site['config']['publicKey'];
+        }
         // Une empreinte SFTP déjà mémorisée ne se change pas par erreur : seul un champ rempli la remplace.
         if ($site['connector'] === 'sftp' && empty($config['hostFingerprint']) && !empty($site['config']['hostFingerprint'])) {
             $config['hostFingerprint'] = $site['config']['hostFingerprint'];

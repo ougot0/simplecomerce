@@ -6,6 +6,7 @@ namespace SimpleCommerce\Http;
 use SimpleCommerce\Config;
 use SimpleCommerce\Controllers\AdminController;
 use SimpleCommerce\Controllers\AuthController;
+use SimpleCommerce\Controllers\CatalogueController;
 use SimpleCommerce\Controllers\EditorController;
 use SimpleCommerce\Controllers\InstallController;
 use SimpleCommerce\Controllers\MiscController;
@@ -128,6 +129,18 @@ final class App
         }
         if ($path === '/installation') {
             return Response::redirect('/');
+        }
+        // Catalogues hébergés : pages publiques lues par les sites des clients (sans session ni cookie).
+        if ($method === 'GET' || $method === 'HEAD') {
+            if (preg_match('#^/catalogue/(?<key>[a-f0-9]{24})\.js$#', $path, $m)) {
+                return CatalogueController::script($m);
+            }
+            if (preg_match('#^/catalogue/(?<key>[a-f0-9]{24})\.json$#', $path, $m)) {
+                return CatalogueController::json($m);
+            }
+            if (preg_match('#^/catalogue/(?<key>[a-f0-9]{24})/photos/(?<file>[\w.-]{1,120}\.(?:webp|png|jpe?g))$#', $path, $m)) {
+                return CatalogueController::photo($m);
+            }
         }
         Demo::ensure();
         Session::start();

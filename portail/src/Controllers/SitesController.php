@@ -102,6 +102,9 @@ final class SitesController
             $config['hostFingerprint'] = $t['fingerprint'];
         }
         unset($config['hostPreset']);
+        if ($connector === 'catalogue') {
+            $config['publicKey'] = bin2hex(random_bytes(12));
+        }
 
         $base = substr(Text::slugify($name), 0, 50) ?: 'site';
         $slug = $base;

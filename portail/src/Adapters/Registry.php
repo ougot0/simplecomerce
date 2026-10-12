@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace SimpleCommerce\Adapters;
 
 use SimpleCommerce\Adapters\Files\BitbucketBackend;
+use SimpleCommerce\Adapters\Files\DbBackend;
 use SimpleCommerce\Adapters\Files\FileSiteAdapter;
 use SimpleCommerce\Adapters\Files\FtpBackend;
 use SimpleCommerce\Adapters\Files\GitHubBackend;
@@ -118,6 +119,9 @@ final class Registry
     {
         $s = fn (string $k) => (string) ($config[$k] ?? '');
         switch ($id) {
+            case 'catalogue':
+                return new FileSiteAdapter(new DbBackend($ctx['siteId']), ['contentDir' => '', 'publicUrl' => $ctx['publicUrl'], 'webRoot' => true,
+                    'media' => ['dir' => DbBackend::PHOTOS, 'publicPrefix' => Config::url('/catalogue/' . $s('publicKey') . '/' . DbBackend::PHOTOS)]]);
             case 'github':
                 return new FileSiteAdapter(new GitHubBackend($s('owner'), $s('repo'), $s('branch') ?: 'main', (string) ($secrets['token'] ?? '')), self::fileOptions($config, $ctx, false));
             case 'gitlab':

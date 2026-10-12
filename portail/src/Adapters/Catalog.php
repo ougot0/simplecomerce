@@ -12,6 +12,7 @@ use SimpleCommerce\Config;
 final class Catalog
 {
     public const GROUPS = [
+        'simple' => 'Le plus simple, pour tous les sites',
         'plateforme' => 'Mon site est fait avec une plateforme',
         'code' => 'Mon site a été codé sur mesure',
         'hebergeur' => 'Mon site est chez un hébergeur',
@@ -49,6 +50,10 @@ final class Catalog
             'help' => 'Sert seulement à pré-remplir le formulaire et à vous dire où trouver vos accès.'];
 
         $list = [
+            ['id' => 'catalogue', 'group' => 'simple', 'label' => 'Gérer mes produits ici, puis les afficher sur mon site',
+                'description' => 'Marche avec tous les sites, quel que soit l\'hébergeur ou la façon dont il a été fait. Vous ajoutez vos produits ici, et une ligne à coller une seule fois les affiche sur votre site.',
+                'steps' => ['Indiquez le nom et l\'adresse de votre site, puis cliquez sur « Relier mon site ».', 'Ajoutez vos produits : nom, photos, prix, stock.', 'Copiez la ligne qui vous est donnée et collez-la dans votre site, à l\'endroit où vous voulez voir vos produits (bloc « Code » ou « HTML » de votre créateur de site). Si vous ne savez pas le faire, envoyez-la à la personne qui a fait votre site : une seule fois suffit.'],
+                'fields' => []],
             ['id' => 'shopify', 'group' => 'plateforme', 'label' => 'Ma boutique Shopify', 'description' => 'Produits, prix, stocks, photos et collections.',
                 'steps' => [
                     'Dans Shopify : Paramètres → Applications → « Développer des applications », puis « Créer une application dans le Dev Dashboard » (ou allez directement sur dev.shopify.com, avec le compte qui possède la boutique).',

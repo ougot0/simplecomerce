@@ -228,7 +228,11 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 
 1. **Accompagner l'installation sur l'OVH du propriétaire** (étapes section 8) et le premier vrai site relié ;
    lui demander des captures d'écran en cas de souci.
-2. **« Comme Shopify, pour n'importe quel site »** (demande forte du propriétaire, proposée mais **pas encore construite**) :
+2. **« Comme Shopify, pour n'importe quel site »** — **première version construite le 12/10/2026** : type de site `catalogue`
+   (« Gérer mes produits ici, puis les afficher sur mon site »), contenu gardé dans la table `sc_files` (`DbBackend`, créée à la
+   demande), ligne à coller `<script src="…/catalogue/{publicKey}.js">` (widget `public/assets/catalogue-widget.js`, Shadow DOM,
+   routes publiques sans session dans `App::handle`, `CatalogueController`). Reste à faire : paiement (Stripe), variantes, catégories.
+   Description d'origine :
    un **catalogue hébergé par Simple Commerce** (produits, stocks, prix, ouvert/fermé gardés dans la base du portail)
    + **une ligne à coller une fois** dans le site du client (script public qui affiche les produits, comme le bouton
    d'achat Shopify/Snipcart). Ainsi même un site codé à la main devient modifiable sans préparation. À concevoir :
@@ -258,6 +262,7 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 - 08–09/10/2026 : réécriture PHP/MySQL dans `portail/` (connecteurs, éditeur, options, installation, tests, guide OVH).
 - 10/10/2026 : format JS, prix ronds conservés, portail privé par défaut, test réel WordPress/WooCommerce, archive OVH.
 - 11/10/2026 : création de ce fichier.
+- 12/10/2026 (nuit) : catalogue hébergé + ligne à coller (pour tous les sites, sans préparation). Nouvel élément visible par défaut.
 - 12/10/2026 (soir) : mise en service automatique SQLite + inscription e-mail/mot de passe (décision 9 révisée).
 - 12/10/2026 : vérification complète avant mise en ligne. Testés en réel : installation web (PHP intégré et **Apache** avec
   les `.htaccess`, y compris dossier racine mal réglé), SFTP, FTPS, WordPress+WooCommerce, API sur mesure ; GitHub et
