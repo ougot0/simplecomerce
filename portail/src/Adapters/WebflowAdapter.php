@@ -57,7 +57,7 @@ final class WebflowAdapter extends BaseAdapter
         try {
             $site = $this->api('GET', '/sites/' . $this->site());
             $cols = $this->api('GET', '/sites/' . $this->site() . '/collections')['collections'] ?? [];
-            $checks = [['label' => "Site « {$site['displayName']} » trouvé", 'ok' => true], ['label' => count($cols) . ' collection(s) du CMS accessibles', 'ok' => true]];
+            $checks = [['label' => "Site « {$site['displayName']} » trouvé", 'ok' => true], ['label' => Text::plural(count($cols), 'collection') . (count($cols) > 1 ? ' du CMS accessibles' : ' du CMS accessible'), 'ok' => true]];
         } catch (AdapterError $e) {
             $checks = [['label' => 'Connexion à Webflow', 'ok' => false, 'hint' => $e->userMessage]];
         }

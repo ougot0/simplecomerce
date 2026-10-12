@@ -95,6 +95,9 @@ final class Registry
                         $errors['shopDomain'] = "L'adresse doit se terminer par .myshopify.com (visible dans Shopify → Paramètres → Domaines).";
                     }
                     $config['shopDomain'] = $domain;
+                    if (empty($secrets['accessToken']) && ($config['clientId'] === '' || empty($secrets['clientSecret']))) {
+                        $errors[$config['clientId'] === '' ? 'clientId' : 'clientSecret'] = "Indiquez l'identifiant client et la clé secrète client (ou, pour une ancienne application, le jeton shpat_).";
+                    }
                     break;
                 case 'wordpress':
                     Net::assertPublicUrl($config['siteUrl']);
@@ -129,7 +132,7 @@ final class Registry
                 Net::assertPublicHost($s('host'));
                 return new FileSiteAdapter(new FtpBackend($s('host'), (int) ($config['port'] ?? 0), $s('username'), (string) ($secrets['password'] ?? ''), $s('tls') ?: 'explicit', $s('remoteRoot') ?: '/'), self::fileOptions($config, $ctx, true));
             case 'shopify':
-                return new ShopifyAdapter($s('shopDomain'), (string) ($secrets['accessToken'] ?? ''), $s('apiVersion') ?: '2025-07');
+                return new ShopifyAdapter($s('shopDomain'), (string) ($secrets['accessToken'] ?? ''), $s('apiVersion') ?: ShopifyAdapter::API_VERSION, $s('clientId'), (string) ($secrets['clientSecret'] ?? ''));
             case 'wordpress':
                 Net::assertPublicUrl($s('siteUrl'));
                 return new WordPressAdapter($s('siteUrl'), $s('username'), (string) ($secrets['applicationPassword'] ?? ''), $secrets['wooConsumerKey'] ?? null, $secrets['wooConsumerSecret'] ?? null);

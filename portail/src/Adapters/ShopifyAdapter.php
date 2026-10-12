@@ -7,20 +7,57 @@ use SimpleCommerce\Content\Values;
 use SimpleCommerce\Support\Http;
 
 /**
- * Shopify — API Admin GraphQL. Jeton d'une application personnalisée de la boutique,
- * portées : read/write_products, read/write_inventory, read_locations.
+ * Shopify — API Admin GraphQL. Deux façons de s'identifier :
+ * - application créée dans le Dev Dashboard (depuis 2026) : identifiant client + clé secrète client,
+ *   échangés contre un jeton valable 24 h (« client credentials grant ») ;
+ * - ancienne application personnalisée (créée avant 2026) : jeton shpat_… permanent.
+ * Portées : read/write_products, read/write_inventory, read_locations, read/write_publications.
  */
 final class ShopifyAdapter extends BaseAdapter
 {
     public const DOMAIN_RE = '/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/';
     private const FIELDS = 'id title descriptionHtml status media(first: 30) { nodes { id ... on MediaImage { image { url } } } } variants(first: 100) { nodes { id title price compareAtPrice inventoryQuantity inventoryItem { id tracked } } }';
+    /** Version de l'API utilisée (Shopify garde chaque version un an : à relever chaque année). */
+    public const API_VERSION = '2026-07';
     private ?string $location = null;
+    private bool $exchanged = false;
 
-    public function __construct(private string $domain, private string $token, private string $apiVersion = '2025-07')
+    public function __construct(private string $domain, private string $token, private string $apiVersion = self::API_VERSION, private string $clientId = '', private string $clientSecret = '')
     {
         if (!preg_match(self::DOMAIN_RE, $domain)) {
             throw new AdapterError('invalid', "L'adresse de la boutique doit être de la forme ma-boutique.myshopify.com.");
         }
+        // Une version plus ancienne que celle-ci n'accepte pas les mêmes demandes (stock) : on ne descend jamais en dessous.
+        if (!preg_match('/^\d{4}-\d{2}$/', $this->apiVersion) || strcmp($this->apiVersion, self::API_VERSION) < 0) {
+            $this->apiVersion = self::API_VERSION;
+        }
+    }
+
+    /** Jeton d'accès : celui enregistré, ou un jeton de 24 h obtenu avec l'identifiant et la clé secrète client. */
+    private function token(): string
+    {
+        // L'identifiant et la clé secrète client passent avant un ancien jeton shpat_ resté enregistré.
+        if ($this->token !== '' && ($this->clientId === '' || $this->clientSecret === '' || $this->exchanged)) {
+            return $this->token;
+        }
+        if ($this->clientId === '' || $this->clientSecret === '') {
+            throw new AdapterError('auth', "Indiquez l'identifiant client et la clé secrète client de l'application Shopify.");
+        }
+        $r = Http::request('POST', "https://{$this->domain}/admin/oauth/access_token", ['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json'],
+            http_build_query(['grant_type' => 'client_credentials', 'client_id' => $this->clientId, 'client_secret' => $this->clientSecret]));
+        $body = json_decode($r['body'], true);
+        if ($r['status'] >= 300 || empty($body['access_token'])) {
+            $detail = 'HTTP ' . $r['status'] . ' ' . substr($r['body'], 0, 300);
+            if (str_contains($r['body'], 'shop_not_permitted')) {
+                throw new AdapterError('auth', "Shopify refuse : l'application doit être créée depuis le compte qui possède la boutique (même organisation Shopify), puis installée sur la boutique.", $detail);
+            }
+            if ($r['status'] === 404) {
+                throw new AdapterError('not_found', "Boutique introuvable : vérifiez l'adresse en .myshopify.com.", $detail);
+            }
+            throw new AdapterError('auth', "Shopify refuse l'identifiant client ou la clé secrète. Vérifiez-les, et que l'application est bien installée sur la boutique.", $detail);
+        }
+        $this->exchanged = true;
+        return $this->token = (string) $body['access_token'];
     }
 
     public static function sections(): array
@@ -53,7 +90,7 @@ final class ShopifyAdapter extends BaseAdapter
     private function gql(string $query, array $variables = [], int $attempt = 0): array
     {
         $r = Http::request('POST', "https://{$this->domain}/admin/api/{$this->apiVersion}/graphql.json",
-            ['Content-Type' => 'application/json', 'X-Shopify-Access-Token' => $this->token],
+            ['Content-Type' => 'application/json', 'X-Shopify-Access-Token' => $this->token()],
             json_encode(['query' => $query, 'variables' => (object) $variables]));
         if ($r['status'] >= 300) {
             throw Http::error('Shopify', $r['status'], $r['body']);
@@ -67,7 +104,7 @@ final class ShopifyAdapter extends BaseAdapter
             }
             $msg = implode('; ', array_column($body['errors'], 'message'));
             if (in_array('ACCESS_DENIED', $codes, true)) {
-                throw new AdapterError('auth', "Le jeton Shopify n'a pas les autorisations nécessaires.", $msg);
+                throw new AdapterError('auth', "L'application Shopify n'a pas les autorisations nécessaires (voir la liste des droits à cocher).", $msg);
             }
             throw new AdapterError('remote', 'Shopify a refusé la demande.', $msg);
         }
@@ -88,9 +125,13 @@ final class ShopifyAdapter extends BaseAdapter
             $scopes = array_column($d['currentAppInstallation']['accessScopes'], 'handle');
             $checks = [['label' => "Boutique « {$d['shop']['name']} » trouvée", 'ok' => true]];
             $checks[] = in_array('write_products', $scopes, true) ? ['label' => 'Modification des produits autorisée', 'ok' => true]
-                : ['label' => 'Modification des produits', 'ok' => false, 'hint' => "Ajoutez l'autorisation « write_products » à l'application personnalisée."];
+                : ['label' => 'Modification des produits', 'ok' => false, 'hint' => "Ajoutez l'autorisation « write_products » à l'application Shopify."];
             $checks[] = in_array('write_inventory', $scopes, true) && in_array('read_locations', $scopes, true) ? ['label' => 'Gestion du stock autorisée', 'ok' => true]
                 : ['label' => 'Gestion du stock', 'ok' => false, 'hint' => 'Pour modifier le stock, ajoutez « write_inventory » et « read_locations ».'];
+            // Sans ce droit, un nouveau produit est bien créé mais pas mis en vente sur la boutique en ligne : simple avertissement.
+            if (!in_array('write_publications', $scopes, true)) {
+                $checks[] = ['label' => 'Mise en vente des nouveaux produits', 'ok' => true, 'hint' => "Ajoutez « read_publications » et « write_publications » pour que les produits ajoutés ici apparaissent tout de suite sur la boutique. Sinon, il faudra les rendre disponibles dans Shopify."];
+            }
         } catch (AdapterError $e) {
             $checks = [['label' => 'Connexion à la boutique', 'ok' => false, 'hint' => $e->userMessage]];
         }
@@ -256,8 +297,26 @@ final class ShopifyAdapter extends BaseAdapter
             $this->userErrors($d['productVariantsBulkUpdate']['userErrors']);
         }
         if ($stock) {
-            $d = $this->gql('mutation($input: InventorySetQuantitiesInput!) { inventorySetQuantities(input: $input) { userErrors { field message } } }', ['input' => ['name' => 'available', 'reason' => 'correction', 'ignoreCompareQuantity' => true, 'quantities' => $stock]]);
+            // changeFromQuantity à null : on fixe la quantité sans comparer ; clé d'idempotence obligatoire depuis la version 2026-04.
+            $stock = array_map(fn ($q) => $q + ['changeFromQuantity' => null], $stock);
+            $d = $this->gql('mutation($input: InventorySetQuantitiesInput!) { inventorySetQuantities(input: $input) @idempotent(key: "' . bin2hex(random_bytes(16)) . '") { userErrors { field message } } }', ['input' => ['name' => 'available', 'reason' => 'correction', 'quantities' => $stock]]);
             $this->userErrors($d['inventorySetQuantities']['userErrors']);
+        }
+    }
+
+    /** Un produit créé par l'API n'est publié sur aucun canal : on le met sur la boutique en ligne. */
+    private function publishOnline(string $productId): void
+    {
+        try {
+            $pubs = $this->gql('{ publications(first: 25) { nodes { id name } } }')['publications']['nodes'] ?? [];
+            $online = array_values(array_filter($pubs, fn ($p) => preg_match('/online store|boutique en ligne/i', (string) ($p['name'] ?? ''))));
+            $targets = $online ?: array_slice($pubs, 0, 1);
+            if ($targets) {
+                $this->gql('mutation($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
+                    ['id' => $productId, 'input' => array_map(fn ($p) => ['publicationId' => $p['id']], $targets)]);
+            }
+        } catch (AdapterError) {
+            // Droit « write_publications » absent : le produit existe, il reste à le rendre disponible dans Shopify.
         }
     }
 
@@ -274,6 +333,9 @@ final class ShopifyAdapter extends BaseAdapter
         $this->userErrors($d['productCreate']['userErrors']);
         $p = $d['productCreate']['product'];
         $this->applyVariants($p, array_slice($data['declinaisons'] ?? [], 0, 1));
+        if (!empty($data['enVente'])) {
+            $this->publishOnline($p['id']);
+        }
         $id = self::num($p['id']);
         $fresh = $this->product($id);
         return ['id' => $id, 'before' => null, 'after' => Values::pick($section, $fresh ? $this->toData($fresh) : $data), 'ref' => $p['id']];

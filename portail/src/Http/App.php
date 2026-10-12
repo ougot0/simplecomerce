@@ -84,6 +84,14 @@ final class App
 
     public static function run(): void
     {
+        // Portail installé en https mais page ouverte en http : on bascule, sinon la connexion échouerait (cookie sécurisé).
+        // Le petit cookie évite une boucle si l'hébergeur ne signale pas le https (la page s'affiche alors normalement).
+        if (Config::installed() && str_starts_with(Config::url(), 'https://') && !Req::isHttps() && PHP_SAPI !== 'cli-server' && !isset($_COOKIE['sc_https_try'])) {
+            setcookie('sc_https_try', '1', ['expires' => time() + 120, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+            $host = preg_replace('/[^\w.\-:]/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')) ?: (string) parse_url(Config::url(), PHP_URL_HOST);
+            header('Location: https://' . $host . ($_SERVER['REQUEST_URI'] ?? '/'), true, 301);
+            return;
+        }
         self::securityHeaders();
         try {
             $response = self::handle();

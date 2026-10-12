@@ -6,6 +6,7 @@ namespace SimpleCommerce\Adapters;
 use SimpleCommerce\Content\ContentSchema;
 use SimpleCommerce\Content\Values;
 use SimpleCommerce\Support\Http;
+use SimpleCommerce\Support\Text;
 
 /**
  * « API sur mesure » : pour les sites qui ont leur propre serveur et base de données (PHP, Laravel, Symfony, Node, Django…).
@@ -54,7 +55,7 @@ final class CustomApiAdapter extends BaseAdapter
             $checks = [['label' => isset($ping['name']) ? "Site « {$ping['name']} » joint" : 'Site joint', 'ok' => ($ping['ok'] ?? true) !== false]];
             try {
                 $schema = ContentSchema::parse($this->call('GET', '/schema'));
-                $checks[] = ['label' => count($schema['sections']) . ' rubrique(s) décrite(s) par le site', 'ok' => true];
+                $checks[] = ['label' => Text::plural(count($schema['sections']), 'rubrique') . (count($schema['sections']) > 1 ? ' décrites par le site' : ' décrite par le site'), 'ok' => true];
             } catch (\InvalidArgumentException $e) {
                 $checks[] = ['label' => 'Description des rubriques', 'ok' => false, 'hint' => 'Le site renvoie une description des rubriques invalide : ' . $e->getMessage()];
             }

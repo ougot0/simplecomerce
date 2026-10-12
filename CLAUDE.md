@@ -25,7 +25,7 @@ voit tout, configure les sites, peut « agir pour » un client et consulte un jo
 
 ## 2. Où est le code
 
-Dépôt GitHub : `ougot0/simplecomerce` (une seule « m », c'est le vrai nom). Branche de travail : `claude/magical-hopper-xjxczz`.
+Dépôt GitHub : `ougot0/simplecomerce` (une seule « m », c'est le vrai nom). Branche de travail : `claude/brave-feynman-zya4u2` (avant : `claude/magical-hopper-xjxczz`).
 **Il y a deux versions du portail dans le dépôt** :
 
 | Dossier | Version | Statut |
@@ -212,7 +212,7 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
   (WordPress récupéré par `git clone https://github.com/WordPress/WordPress --branch 6.8.3`).
 - Git : commits en français, descriptifs, terminés par les lignes d'attribution demandées par l'environnement.
   Pas d'identifiant de modèle dans les fichiers ou commits. **Pas de pull request sans demande explicite.**
-  Pousser sur `claude/magical-hopper-xjxczz`.
+  Pousser sur la branche indiquée par l'environnement de la session (dernière : `claude/brave-feynman-zya4u2`).
 
 ## 10. Ce qui reste à faire
 
@@ -225,7 +225,10 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
    route publique lecture seule + CORS, cache, gabarit d'affichage sobre et personnalisable, gestion des stocks,
    éventuellement paiement Stripe. Aujourd'hui, un site « fait main » dont les produits sont dans le code doit être
    **préparé une fois** (contenu sorti dans un fichier de données) — c'est ce qui a été fait pour l'exemple Kumao.
-3. Tester **Shopify** et **Webflow** avec de vrais comptes.
+3. Tester **Shopify** et **Webflow** avec de vrais comptes (vérifiés le 12/10/2026 contre des imitations fidèles de leurs API
+   seulement). Shopify : depuis le 01/01/2026 plus de jeton `shpat_` pour les nouvelles applications → le portail accepte
+   **Client ID + Client secret** (application du Dev Dashboard, jeton 24 h obtenu à chaque connexion) ; API `2026-07`
+   (`ShopifyAdapter::API_VERSION`, à relever chaque année : `inventorySetQuantities` exige `@idempotent` depuis 2026-04).
 4. Mettre à jour le **prototype cliquable** (artifact) avec le design et les options de la version PHP, si le propriétaire le veut.
 5. Acheter et brancher le **nom de domaine** de Simple Commerce.
 6. Pistes : connecteurs Wix, Squarespace, PrestaShop (listés « pas encore disponibles ») ; envoi d'e-mails par SMTP
@@ -245,3 +248,8 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 - 08–09/10/2026 : réécriture PHP/MySQL dans `portail/` (connecteurs, éditeur, options, installation, tests, guide OVH).
 - 10/10/2026 : format JS, prix ronds conservés, portail privé par défaut, test réel WordPress/WooCommerce, archive OVH.
 - 11/10/2026 : création de ce fichier.
+- 12/10/2026 : vérification complète avant mise en ligne. Testés en réel : installation web (PHP intégré et **Apache** avec
+  les `.htaccess`, y compris dossier racine mal réglé), SFTP, FTPS, WordPress+WooCommerce, API sur mesure ; GitHub et
+  Shopify contre des imitations de leurs API. Corrections : Shopify (Client ID/secret, API 2026-07, mise en vente des
+  nouveaux produits), droits des dossiers photos (0755), mode passif FTP, passage automatique en https, port MySQL
+  `serveur:port`, accords (« 0 site relié »…), textes Webflow/Bitbucket. Guide de test : `docs/TESTER-LE-PORTAIL.md`.

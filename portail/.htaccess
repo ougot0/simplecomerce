@@ -2,7 +2,7 @@
 # et on bloque l'accès au code, à la configuration et aux données.
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^(src|templates|storage|vendor|demo|tests|config\.php|composer\.(json|lock)) - [F,L]
+    RewriteRule ^(src|templates|storage|vendor|demo|tests|bin|config\.php|composer\.(json|lock)|README\.md|\.ovhconfig) - [F,L]
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

@@ -36,8 +36,7 @@ final class InstallController
 
     private static function guessUrl(): string
     {
-        $https = ($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
-        return ($https ? 'https' : 'http') . '://' . preg_replace('/[^\w.\-:]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+        return (Req::isHttps() ? 'https' : 'http') . '://' . preg_replace('/[^\w.\-:]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost'));
     }
 
     public static function form(array $state = []): Response
@@ -90,6 +89,11 @@ final class InstallController
             return self::form(['values' => $v, 'errors' => $errors]);
         }
         $db = ['driver' => 'mysql', 'host' => $v['db_host'], 'name' => $v['db_name'], 'user' => $v['db_user'], 'password' => Req::raw('db_password')];
+        // « serveur:port » (bases Web Cloud Databases d'OVH, par exemple) : le port est rangé à part.
+        if (preg_match('/^(.+):(\d{2,5})$/', $v['db_host'], $hp)) {
+            $db['host'] = $hp[1];
+            $db['port'] = (int) $hp[2];
+        }
         try {
             Db::use($db);
             Schema::install();

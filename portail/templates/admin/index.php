@@ -12,10 +12,10 @@ use SimpleCommerce\Adapters\Catalog;
         <button class="btn btn-small" type="submit"><?= $signupOpen ? 'Rendre le portail privé' : 'Ouvrir les inscriptions' ?></button></form>
 </div>
 <div class="stats">
-    <div class="stat"><span class="stat-num"><?= (int) $stats['sites'] ?></span><span class="muted small">site<?= $stats['sites'] > 1 ? 's' : '' ?> reliés</span></div>
+    <div class="stat"><span class="stat-num"><?= (int) $stats['sites'] ?></span><span class="muted small"><?= $stats['sites'] > 1 ? 'sites reliés' : 'site relié' ?></span></div>
     <div class="stat"><span class="stat-num"><?= (int) $stats['users'] ?></span><span class="muted small">compte<?= $stats['users'] > 1 ? 's' : '' ?></span></div>
-    <div class="stat"><span class="stat-num"><?= (int) $stats['week'] ?></span><span class="muted small">modification<?= $stats['week'] > 1 ? 's' : '' ?> publiées en 7 jours</span></div>
-    <div class="stat<?= $stats['failing'] || $stats['failedChanges'] ? ' stat-alert' : '' ?>"><span class="stat-num"><?= (int) $stats['failing'] ?></span><span class="muted small">connexion<?= $stats['failing'] > 1 ? 's' : '' ?> en échec<?= $stats['failedChanges'] ? ' · ' . (int) $stats['failedChanges'] . ' publication(s) échouée(s) cette semaine' : '' ?></span></div>
+    <div class="stat"><span class="stat-num"><?= (int) $stats['week'] ?></span><span class="muted small"><?= $stats['week'] > 1 ? 'modifications publiées' : 'modification publiée' ?> en 7 jours</span></div>
+    <div class="stat<?= $stats['failing'] || $stats['failedChanges'] ? ' stat-alert' : '' ?>"><span class="stat-num"><?= (int) $stats['failing'] ?></span><span class="muted small">connexion<?= $stats['failing'] > 1 ? 's' : '' ?> en échec<?= $stats['failedChanges'] ? ' · ' . (int) $stats['failedChanges'] . ($stats['failedChanges'] > 1 ? ' publications échouées' : ' publication échouée') . ' cette semaine' : '' ?></span></div>
 </div>
 
 <section class="section-block">
@@ -24,6 +24,9 @@ use SimpleCommerce\Adapters\Catalog;
     <div class="ledger-wrap"><table class="ledger" data-filter-list>
         <thead><tr><th>Site</th><th class="hide-small">Type</th><th class="hide-small">Clients</th><th class="hide-small">Connexion</th><th class="shrink"><span class="visually-hidden">Actions</span></th></tr></thead>
         <tbody>
+        <?php if (!$sites): ?>
+        <tr><td colspan="5" class="muted">Aucun site pour l'instant. Cliquez sur « Relier un site » pour commencer.</td></tr>
+        <?php endif ?>
         <?php foreach ($sites as $s): ?>
         <tr data-filter-item data-text="<?= e(mb_strtolower($s['name'] . ' ' . implode(' ', $members[$s['id']] ?? []))) ?>">
             <td class="title-cell"><a href="/s/<?= e($s['slug']) ?>"><?= e($s['name']) ?></a><?= $s['status'] === 'suspended' ? ' ' . tag('off', 'Suspendu') : '' ?><div class="muted small"><?= e($s['public_url']) ?></div></td>

@@ -18,6 +18,9 @@ final class Session
         session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Lax']);
         ini_set('session.use_strict_mode', '1');
         ini_set('session.gc_maxlifetime', '43200');
+        // Nettoyage des vieilles sessions par PHP lui-même : le dossier storage/sessions n'est pas vidé par l'hébergeur.
+        ini_set('session.gc_probability', '1');
+        ini_set('session.gc_divisor', '100');
         if (is_dir(SC_STORAGE . '/sessions') || @mkdir(SC_STORAGE . '/sessions', 0750, true)) {
             session_save_path(SC_STORAGE . '/sessions');
         }

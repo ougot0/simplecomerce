@@ -50,11 +50,20 @@ final class Catalog
 
         $list = [
             ['id' => 'shopify', 'group' => 'plateforme', 'label' => 'Ma boutique Shopify', 'description' => 'Produits, prix, stocks, photos et collections.',
-                'steps' => ['Dans Shopify : Paramètres → Applications et canaux de vente → Développer des applications.', 'Créez une application (nom : Simple Commerce), puis « Configurer les étendues de l\'API Admin ».', 'Cochez : write_products, read_products, write_inventory, read_inventory, read_locations.', 'Installez l\'application et copiez le « Jeton d\'accès à l\'API Admin » (il commence par shpat_). Il n\'est affiché qu\'une fois.'],
+                'steps' => [
+                    'Dans Shopify : Paramètres → Applications → « Développer des applications », puis « Créer une application dans le Dev Dashboard » (ou allez directement sur dev.shopify.com, avec le compte qui possède la boutique).',
+                    'Cliquez sur « Create app » → « Start from Dev Dashboard », nommez-la Simple Commerce.',
+                    'Dans « Versions », cochez les droits (Scopes) : read_products, write_products, read_inventory, write_inventory, read_locations, read_publications, write_publications. Cliquez sur « Release ».',
+                    'Cliquez sur « Install app » et choisissez votre boutique.',
+                    'Dans « Settings » (Réglages) de l\'application, copiez le « Client ID » et le « Client secret » dans le formulaire.',
+                    'Vous avez une ancienne application créée avant 2026 avec un jeton qui commence par shpat_ ? Collez-le dans les réglages avancés, à la place.',
+                ],
                 'fields' => [
-                    ['name' => 'shopDomain', 'label' => 'Adresse Shopify de la boutique', 'type' => 'text', 'required' => true, 'placeholder' => 'ma-boutique.myshopify.com'],
-                    ['name' => 'accessToken', 'label' => "Jeton d'accès Admin API", 'type' => 'password', 'required' => true, 'secret' => true, 'placeholder' => 'shpat_…'],
-                    ['name' => 'apiVersion', 'label' => "Version de l'API", 'type' => 'text', 'default' => '2025-07', 'advanced' => true],
+                    ['name' => 'shopDomain', 'label' => 'Adresse Shopify de la boutique', 'type' => 'text', 'required' => true, 'placeholder' => 'ma-boutique.myshopify.com', 'help' => 'Visible dans Shopify → Paramètres → Domaines.'],
+                    ['name' => 'clientId', 'label' => 'Identifiant client (Client ID)', 'type' => 'text'],
+                    ['name' => 'clientSecret', 'label' => 'Clé secrète client (Client secret)', 'type' => 'password', 'secret' => true],
+                    ['name' => 'accessToken', 'label' => "Jeton d'une ancienne application (shpat_…)", 'type' => 'password', 'secret' => true, 'advanced' => true, 'placeholder' => 'shpat_…', 'help' => 'Seulement pour une application personnalisée créée avant 2026. Laissez vide sinon.'],
+                    ['name' => 'apiVersion', 'label' => "Version de l'API", 'type' => 'text', 'default' => ShopifyAdapter::API_VERSION, 'advanced' => true],
                 ]],
             ['id' => 'wordpress', 'group' => 'plateforme', 'label' => 'Mon site WordPress / WooCommerce', 'description' => 'Articles, produits WooCommerce et photos, chez n\'importe quel hébergeur.',
                 'steps' => ['Dans WordPress : Comptes (Utilisateurs) → Profil.', 'Tout en bas, « Mots de passe d\'application » : donnez un nom (Simple Commerce) et cliquez sur « Ajouter ».', 'Copiez le mot de passe affiché (4 groupes de lettres). Ce n\'est pas votre mot de passe habituel.', 'Le site doit être en https.'],
@@ -66,7 +75,7 @@ final class Catalog
                     ['name' => 'wooConsumerSecret', 'label' => 'Clé secrète WooCommerce', 'type' => 'password', 'secret' => true, 'advanced' => true, 'placeholder' => 'cs_…'],
                 ]],
             ['id' => 'webflow', 'group' => 'plateforme', 'label' => 'Mon site Webflow', 'description' => 'Collections du CMS (produits, actualités, équipe…).',
-                'steps' => ['Dans Webflow : paramètres du site → Apps & integrations → API access.', 'Générez un jeton avec les droits CMS et Assets (lecture et écriture).', 'Copiez le jeton.'],
+                'steps' => ['Dans Webflow : réglages du site (Site settings) → « Apps & integrations » → « API access » → « Generate API token ».', 'Donnez ces droits : Sites (lecture), CMS (lecture et écriture), Assets (lecture et écriture).', 'Copiez le jeton (il n\'est affiché qu\'une fois).', 'Seules les collections du CMS sont modifiables (pas les produits de Webflow E-commerce ni les pages).'],
                 'fields' => [
                     ['name' => 'token', 'label' => "Jeton d'accès du site", 'type' => 'password', 'required' => true, 'secret' => true],
                     ['name' => 'siteId', 'label' => 'Identifiant du site', 'type' => 'text', 'advanced' => true, 'help' => 'Uniquement si le jeton donne accès à plusieurs sites.'],
@@ -86,11 +95,11 @@ final class Catalog
                     $branch, $contentDir, $mediaDir, $mediaPrefix,
                 ]],
             ['id' => 'bitbucket', 'group' => 'code', 'label' => 'Mon site est sur Bitbucket', 'description' => 'Même principe que GitHub, pour Bitbucket Cloud.',
-                'steps' => ['Dans le dépôt Bitbucket : Repository settings → Access tokens → Create.', 'Droits : Repositories → Read et Write.', 'Copiez le jeton. (Avec un mot de passe d\'application, renseignez aussi votre nom d\'utilisateur.)'],
+                'steps' => ['Dans le dépôt Bitbucket : Repository settings → Access tokens → Create.', 'Droits : Repositories → Read et Write.', 'Copiez le jeton.', 'Vous préférez un jeton de votre compte Atlassian (« API token », droits read:repository et write:repository) ? Renseignez aussi votre adresse e-mail Atlassian dans les réglages avancés.'],
                 'fields' => [
                     ['name' => 'repository', 'label' => 'Adresse du dépôt', 'type' => 'text', 'required' => true, 'placeholder' => 'https://bitbucket.org/mon-espace/mon-site'],
                     ['name' => 'token', 'label' => "Jeton d'accès", 'type' => 'password', 'required' => true, 'secret' => true],
-                    ['name' => 'username', 'label' => "Nom d'utilisateur", 'type' => 'text', 'advanced' => true, 'help' => "Seulement avec un mot de passe d'application."],
+                    ['name' => 'username', 'label' => 'Adresse e-mail Atlassian', 'type' => 'text', 'advanced' => true, 'help' => "Seulement avec un jeton de compte Atlassian (ou un ancien mot de passe d'application : votre nom d'utilisateur Bitbucket). Laissez vide avec un jeton de dépôt."],
                     $branch, $contentDir, $mediaDir, $mediaPrefix,
                 ]],
             ['id' => 'sftp', 'group' => 'hebergeur', 'label' => 'Mon site est chez un hébergeur (SFTP)', 'description' => 'OVHcloud, o2switch, Hostinger, IONOS, Infomaniak, LWS, PlanetHoster, serveur dédié… Connexion sécurisée, recommandée.',

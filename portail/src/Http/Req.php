@@ -58,6 +58,15 @@ final class Req
         return preg_match('#^/(?![/\\\\])[\w\-./?=&%]*$#', $next) ? $next : $fallback;
     }
 
+    /** La page est-elle demandée en https ? (directement, ou derrière le relais de l'hébergeur) */
+    public static function isHttps(): bool
+    {
+        return in_array(strtolower((string) ($_SERVER['HTTPS'] ?? '')), ['on', '1'], true)
+            || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+            || strtolower((string) ($_SERVER['REQUEST_SCHEME'] ?? '')) === 'https'
+            || (string) ($_SERVER['SERVER_PORT'] ?? '') === '443';
+    }
+
     public static function ip(): string
     {
         return (string) ($_SERVER['REMOTE_ADDR'] ?? '?');

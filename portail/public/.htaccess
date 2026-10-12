@@ -4,9 +4,7 @@ DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # Forcer https (décommentez quand le certificat SSL est actif sur le domaine)
-    # RewriteCond %{HTTPS} off
-    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    # Le passage en https est fait par le portail lui-même dès que son adresse (config.php) commence par https://.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [QSA,L]
 </IfModule>

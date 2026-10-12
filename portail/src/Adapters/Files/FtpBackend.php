@@ -46,6 +46,8 @@ final class FtpBackend implements FileBackend
                 ? 'Identifiant ou mot de passe refusé par le serveur.'
                 : 'Connexion refusée : identifiant ou mot de passe incorrect, ou le serveur n\'accepte pas la connexion sécurisée (FTPS). Essayez SFTP si votre hébergeur le propose.');
         }
+        // Certains serveurs derrière un routeur annoncent une adresse interne pour le mode passif : on garde celle du serveur.
+        @ftp_set_option($conn, FTP_USEPASVADDRESS, false);
         ftp_pasv($conn, true);
         return $this->conn = $conn;
     }
@@ -138,8 +140,9 @@ final class FtpBackend implements FileBackend
         $cur = '';
         foreach (array_filter(explode('/', $dir)) as $part) {
             $cur .= '/' . $part;
-            if (@ftp_chdir($conn, $cur) === false) {
-                @ftp_mkdir($conn, $cur);
+            if (@ftp_chdir($conn, $cur) === false && @ftp_mkdir($conn, $cur) !== false) {
+                // Dossier lisible par le serveur web (photos), quel que soit le masque de l'hébergeur.
+                @ftp_chmod($conn, 0755, $cur);
             }
         }
         @ftp_chdir($conn, '/');

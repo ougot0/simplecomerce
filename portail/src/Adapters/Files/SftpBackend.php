@@ -149,7 +149,7 @@ final class SftpBackend implements FileBackend
             }
             $dir = dirname($full);
             if (!$sftp->is_dir($dir)) {
-                $sftp->mkdir($dir, -1, true);
+                $sftp->mkdir($dir, 0755, true);
             }
             $tmp = $dir . '/.' . basename($full) . '.sc-' . bin2hex(random_bytes(4));
             if (!$sftp->put($tmp, $w['content'])) {

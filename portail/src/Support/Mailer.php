@@ -32,7 +32,9 @@ final class Mailer
             'Content-Type' => 'text/plain; charset=UTF-8',
             'Content-Transfer-Encoding' => '8bit',
         ];
-        $ok = @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $text, $headers);
+        // Adresse de retour (-f) : améliore la délivrabilité chez les hébergeurs mutualisés comme OVH.
+        $params = filter_var($from, FILTER_VALIDATE_EMAIL) && preg_match('/^[\w.+@-]+$/', $from) ? '-f' . $from : '';
+        $ok = @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $text, $headers, $params);
         if (!$ok) {
             Log::warn('envoi d\'e-mail impossible', ['to' => $to]);
         }
