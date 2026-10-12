@@ -1941,3 +1941,20 @@ section[id] { scroll-margin-top: 70px; }
     display: none; /* le bouton « Créer mon compte » est juste en dessous */
   }
 }
+
+/* Logo en image (page d'accueil publique, modifiable depuis le portail) */
+.wordmark-img::before {
+  display: none;
+}
+
+.wordmark-img .logo {
+  width: 26px;
+  height: 26px;
+  margin-right: 10px;
+  object-fit: contain;
+}
+
+.pub-list p {
+  margin: 0;
+  color: inherit;
+}

@@ -226,6 +226,8 @@ final class HtmlCards
             }
             $flush();
         }
+        // Deux grands blocs côte à côte (titres h1/h2) sont des parties de page, pas une liste : leurs textes restent dans « Textes de la page ».
+        $runs = array_values(array_filter($runs, fn ($r) => count($r) > 2 || !preg_match('/^h[12]$/', $els[$r[0]['fields']['title']]['tag'])));
         // On garde les fiches les plus « petites » : un groupe dont une fiche contient un autre groupe est écarté.
         $all = [];
         foreach ($runs as $r) {

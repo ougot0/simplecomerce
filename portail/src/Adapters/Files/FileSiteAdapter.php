@@ -32,6 +32,8 @@ final class FileSiteAdapter implements Adapter
     private bool $resolved = false;
     /** Site fait main sans dossier de contenu : fichiers JavaScript/JSON où des produits ont été trouvés. */
     private ?array $scanFiles = null;
+    /** Page d'accueil d'un site (index.html, ou accueil.html / home.html). */
+    private const HOME_PAGE = '#(^|/)(index|accueil|home)\.(html?|php)$#i';
     private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$#i';
     /** @var array<string, ?string> versions lues pendant une opération */
     private array $versions = [];
@@ -219,12 +221,12 @@ final class FileSiteAdapter implements Adapter
                 }
             }
             $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => !self::isPageTexts($s)
-                || preg_match('#(^|/)index\.(html?|php)$#i', $s['source']['file']) || isset($linked[$s['source']['file']])));
+                || preg_match(self::HOME_PAGE, $s['source']['file']) || isset($linked[$s['source']['file']])));
             if ($logo = $this->logoSection($files)) {
                 $r['schema']['sections'][] = $logo;
             }
             // Ordre : ouvert/fermé, puis les listes (produits…), puis les textes des pages (accueil d'abord).
-            $rank = fn ($s) => self::isOpenSwitch($s) || ($s['source']['type'] ?? '') === 'logo' ? 0 : (self::isPageTexts($s) ? (preg_match('#(^|/)index\.html?$#', $s['source']['file']) ? 2 : 3) : 1);
+            $rank = fn ($s) => self::isOpenSwitch($s) || ($s['source']['type'] ?? '') === 'logo' ? 0 : (self::isPageTexts($s) ? (preg_match(self::HOME_PAGE, $s['source']['file']) ? 2 : 3) : 1);
             usort($r['schema']['sections'], fn ($a, $b) => $rank($a) <=> $rank($b));
             foreach ($r['schema']['sections'] as &$s) {
                 if (self::isOpenSwitch($s)) {
@@ -513,7 +515,7 @@ final class FileSiteAdapter implements Adapter
     private function htmlPages(): array
     {
         $pages = array_values(array_filter($this->backend->list($this->options['contentDir'], 3), fn ($f) => Formats::fromPath($f) === 'html' && !preg_match(self::SKIP_SCAN, $f)));
-        usort($pages, fn ($a, $b) => [!preg_match('#(^|/)index\.html?$#', $a), substr_count($a, '/'), $a] <=> [!preg_match('#(^|/)index\.html?$#', $b), substr_count($b, '/'), $b]);
+        usort($pages, fn ($a, $b) => [!preg_match(self::HOME_PAGE, $a), substr_count($a, '/'), $a] <=> [!preg_match(self::HOME_PAGE, $b), substr_count($b, '/'), $b]);
         return array_slice($pages, 0, 200);
     }
 
@@ -521,7 +523,7 @@ final class FileSiteAdapter implements Adapter
     private function logoSection(array $files): ?array
     {
         $pages = array_filter($files, fn ($f) => Formats::fromPath($f['path']) === 'html');
-        usort($pages, fn ($a, $b) => !preg_match('#(^|/)index\.html?$#', $a['path']) <=> !preg_match('#(^|/)index\.html?$#', $b['path']));
+        usort($pages, fn ($a, $b) => !preg_match(self::HOME_PAGE, $a['path']) <=> !preg_match(self::HOME_PAGE, $b['path']));
         foreach ($pages as $f) {
             $l = HtmlCards::logo($f['text']);
             if ($l['img'] === null && $l['icon'] === null) {

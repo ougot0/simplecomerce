@@ -23,8 +23,17 @@ final class AuthController
             return Response::redirect('/inscription'); // tout premier passage : création du compte administrateur
         }
         // Page de présentation publique, la seule que les moteurs de recherche peuvent afficher.
-        return Response::page('public/home', ['title' => 'Modifiez votre site vous-même', 'indexable' => true, 'signupOpen' => self::signupOpen(),
-            'description' => "Simple Commerce : changez vous-même les produits, les prix, les photos et les textes de votre site, sans développeur. Compatible avec tous les hébergeurs, Shopify, WordPress et les sites faits main."], 'public');
+        // C'est une vraie page (public/accueil.html), créée une fois à partir du modèle : on peut donc la relier
+        // au portail comme n'importe quel site et la modifier (textes, étapes, logo). Les mises à jour ne l'écrasent pas.
+        $page = SC_ROOT . '/public/accueil.html';
+        if (!is_file($page)) {
+            $model = (string) file_get_contents(SC_ROOT . '/templates/public/accueil.html');
+            $html = str_replace('{{ORIGINE}}', Req::origin(), $model);
+            if (Config::demo() || @file_put_contents($page, $html) === false) {
+                return Response::html($html); // dossier non modifiable (ou démonstration) : on affiche le modèle
+            }
+        }
+        return Response::html((string) file_get_contents($page));
     }
 
     /** Moteurs de recherche : seule la page de présentation est à visiter. */
