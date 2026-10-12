@@ -68,6 +68,15 @@ final class SftpBackend implements FileBackend
         if (!$ok) {
             throw new AdapterError('auth', 'Identifiant ou mot de passe refusé par le serveur.');
         }
+        // « /www » saisi alors que le serveur attend le chemin complet (OVH : /home/identifiant/www) :
+        // on essaie le même dossier à partir du dossier personnel du compte.
+        if (!$sftp->is_dir($this->remoteRoot) && $this->remoteRoot !== '/') {
+            $relative = ltrim($this->remoteRoot, '/');
+            $real = $sftp->is_dir($relative) ? $sftp->realpath($relative) : false;
+            if (is_string($real) && $real !== '') {
+                $this->remoteRoot = '/' . trim($real, '/');
+            }
+        }
         return $this->sftp = $sftp;
     }
 
