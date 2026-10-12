@@ -192,7 +192,12 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
    changer `'url'` dans `config.php`.
 8. Mise à jour : renvoyer `src/`, `templates/`, `public/`, `vendor/`, `bin/` ; ne jamais écraser `config.php` ni `storage/`.
 
-**Nom de domaine acheté (12/10/2026) : `simplecommercess.com`** (deux « s » à la fin), multisite → `simplecommerce/public`.
+**Nom de domaine acheté (12/10/2026) : `simplecommercess.com`** (deux « s » à la fin), SSL Let's Encrypt actif.
+**Attention, disposition réelle chez lui** : le contenu de l'archive a été envoyé DANS `/home/coumaoq/simplecommerce/public/`
+(un étage trop bas). Plutôt que de déplacer, le multisite pointe sur **`simplecommerce/public/public`** (sûr : `src/`,
+`config.php`… restent hors du web). Donc chez lui : racine du portail = `simplecommerce/public/`, tâche planifiée =
+`simplecommerce/public/bin/cron.php`, mises à jour à renvoyer dans `simplecommerce/public/`. Autres sites sur le même
+hébergement (ne pas y toucher) : `www`, `ougot`, `aminteriorss`.
 
 **Statut au 12/10/2026 : installation en cours sur l'OVH du propriétaire (envoi par WinSCP)** (il a reçu l'archive et les étapes ; il ne
 nous donne pas ses mots de passe — ne pas les lui demander dans la conversation).
