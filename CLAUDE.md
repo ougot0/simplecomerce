@@ -258,6 +258,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 12/10/2026 (nuit, 4) : **sites vitrines** (test : copie du site d'un ami, architecte d'intérieur, dossier `aminteriorss` chez OVH,
+  https://aminteriorss.com) : `HtmlCards` reconnaît aussi les fiches sans prix (titre + texte/photo : projets, services, méthode),
+  les photos en `style="background-image:url(…)"`, les prix « À partir de 70 € » / « Sur devis » (classe `price…`), les listes à
+  puces (champ `points`, un point par ligne), et les fiches dont la classe diffère après la première (« price-card featured »).
+  Un champ inchangé n'est plus réécrit (badges et mise en forme conservés). **Textes de chaque page** (titres, paragraphes,
+  légendes, photos y compris de fond) modifiables un par un (`HtmlCards::texts`, rubrique « Textes de la page … », hors menu,
+  liens, boutons, formulaires et fiches). Ordre des rubriques : ouvert/fermé, listes, textes de l'accueil, autres pages.
 - 08/10/2026 : version Next.js complète (vitest, docs, démo) ; style beige/noir/blanc ; prototype cliquable v3.
 - 08–09/10/2026 : réécriture PHP/MySQL dans `portail/` (connecteurs, éditeur, options, installation, tests, guide OVH).
 - 10/10/2026 : format JS, prix ronds conservés, portail privé par défaut, test réel WordPress/WooCommerce, archive OVH.

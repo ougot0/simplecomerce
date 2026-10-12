@@ -13,7 +13,7 @@ final class Infer
 {
     private const LABELS = [
         'title' => 'Titre', 'titre' => 'Titre', 'name' => 'Nom', 'nom' => 'Nom', 'label' => 'Libellé',
-        'description' => 'Description', 'desc' => 'Description', 'summary' => 'Résumé', 'resume' => 'Résumé', 'excerpt' => 'Résumé',
+        'description' => 'Description', 'desc' => 'Description', 'points' => 'Points de la liste (un par ligne)', 'summary' => 'Résumé', 'resume' => 'Résumé', 'excerpt' => 'Résumé',
         'content' => 'Texte', 'body' => 'Texte', 'text' => 'Texte', 'texte' => 'Texte', 'contenu' => 'Texte',
         'price' => 'Prix', 'prix' => 'Prix', 'tarif' => 'Tarif', 'compareatprice' => 'Prix barré', 'oldprice' => 'Ancien prix', 'prixbarre' => 'Prix barré',
         'image' => 'Photo', 'photo' => 'Photo', 'img' => 'Photo', 'picture' => 'Photo', 'cover' => 'Photo principale', 'thumbnail' => 'Vignette',
@@ -259,6 +259,7 @@ final class Infer
                 $parsedFile = Formats::parse($file['text'], $format);
                 $data = $parsedFile['data'];
                 $labels = $parsedFile['style']['labels'] ?? [];
+                $fieldLabels = $parsedFile['style']['fieldLabels'] ?? [];
             } catch (\Throwable) {
                 $skipped[] = $file['path'];
                 continue;
@@ -283,12 +284,28 @@ final class Infer
                     $section = self::collection(self::unique($k, $used), $labels[$k] ?? self::humanize($k), $v, ['type' => 'file', 'file' => $file['path'], 'format' => $format, 'path' => $k]);
                     if ($format === 'html') {
                         // Fiches d'une page : elles se lisent dans l'ordre de la page, sans identifiant.
-                        $section['itemLabel'] = 'produit';
+                        $section['itemLabel'] = array_filter($section['fields'], fn ($f) => $f['type'] === 'price') ? 'produit' : 'élément';
                     }
                     $sections[] = $section;
-                } elseif (self::isAssoc($v) && (count($data) > 1 || $format === 'js') && array_filter((array) $v, 'is_string')) {
-                    $sections[] = ['key' => self::unique($k, $used), 'label' => self::humanize($k), 'kind' => 'singleton',
-                        'source' => ['type' => 'file', 'file' => $file['path'], 'format' => $format, 'path' => $k], 'fields' => self::fields([(array) $v])];
+                } elseif (self::isAssoc($v) && (count($data) > 1 || in_array($format, ['js', 'html'], true)) && array_filter((array) $v, 'is_string')) {
+                    $fields = self::fields([(array) $v]);
+                    foreach ($fields as &$fl) {
+                        if (isset($fieldLabels[$k][$fl['key']])) {
+                            $fl['label'] = $fieldLabels[$k][$fl['key']];
+                            if (str_starts_with($fl['key'], 'photo')) {
+                                $fl['type'] = 'image';
+                                $fl['aspect'] = 'libre';
+                            } elseif (str_starts_with($fl['key'], 'titre')) {
+                                $fl['type'] = 'text';
+                            } elseif (in_array($fl['type'], ['url', 'date', 'email', 'phone', 'select', 'image', 'price'], true)) {
+                                $fl['type'] = 'textarea';
+                            }
+                            unset($fl['hidden'], $fl['options'], $fl['priceFormat']);
+                        }
+                    }
+                    unset($fl);
+                    $sections[] = ['key' => self::unique($format === 'html' ? preg_replace('/\.[^.]+$/', '', basename($file['path'])) . '-' . $k : $k, $used), 'label' => $labels[$k] ?? self::humanize($k), 'kind' => 'singleton',
+                        'source' => ['type' => 'file', 'file' => $file['path'], 'format' => $format, 'path' => $k], 'fields' => $fields];
                 } else {
                     $rest[$k] = $v;
                 }

@@ -60,8 +60,19 @@ final class Formats
             foreach ($groups as $key => $g) {
                 $data[$key] = array_map(fn ($c) => HtmlCards::values($src, $c), $g['cards']);
             }
+            $zones = [];
+            foreach ($groups as $g) {
+                $zones[] = [$g['cards'][0]['start'], $g['cards'][count($g['cards']) - 1]['end']];
+            }
+            $texts = HtmlCards::texts($src, $zones);
+            $labels = array_map(fn ($g) => $g['label'], $groups);
+            if ($texts) {
+                $data['textes'] = array_map(fn ($t) => HtmlCards::textValue($src, $t), $texts);
+                $title = HtmlCards::pageTitle($src);
+                $labels['textes'] = 'Textes de la page' . ($title !== '' ? ' « ' . mb_strimwidth(preg_replace('/\s*[|—–-]\s*[^|—–-]+$/u', '', $title) ?: $title, 0, 40, '…') . ' »' : '');
+            }
             return ['format' => 'html', 'data' => $data, 'body' => null, 'style' => $style + ['source' => $src, 'groups' => $groups,
-                'labels' => array_map(fn ($g) => $g['label'], $groups), 'orig' => $data]];
+                'labels' => $labels, 'texts' => $texts, 'fieldLabels' => ['textes' => array_map(fn ($t) => $t['label'], $texts)], 'orig' => $data]];
         }
         if ($format === 'yaml') {
             return ['format' => 'yaml', 'data' => self::yamlParse($src), 'body' => null, 'style' => $style];
@@ -124,6 +135,13 @@ final class Formats
     {
         $src = $style['source'];
         $changes = [];
+        // Textes de la page : chaque texte modifié est remplacé sur place.
+        foreach ((array) ($data['textes'] ?? []) as $k => $v) {
+            if (isset($style['texts'][$k]) && (string) $v !== (string) ($style['orig']['textes'][$k] ?? '')) {
+                [$from, $to, $text] = HtmlCards::textEdit($src, $style['texts'][$k], (string) $v);
+                $changes[$from] = [$to, $text];
+            }
+        }
         foreach ($style['groups'] as $key => $g) {
             $new = array_values((array) ($data[$key] ?? []));
             $old = $style['orig'][$key];

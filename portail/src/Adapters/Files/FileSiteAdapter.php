@@ -96,7 +96,7 @@ final class FileSiteAdapter implements Adapter
                 continue;
             }
             $r = Infer::schema([['path' => $f, 'text' => $raw['content']]]);
-            if (array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s) || self::isOpenSwitch($s))) {
+            if (array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s) || self::isOpenSwitch($s) || self::isPageTexts($s))) {
                 $found[] = $f;
             }
         }
@@ -106,7 +106,14 @@ final class FileSiteAdapter implements Adapter
     /** Une rubrique « produits » : une liste dont les éléments ont un nom et un prix ou une photo. */
     public static function isProductSection(array $s): bool
     {
-        return $s['kind'] === 'collection' && !empty($s['titleField']) && (!empty($s['subtitleField']) || !empty($s['imageField']));
+        // Une liste dont les éléments ont un nom, et au moins un prix, une photo ou un texte (produits, projets, questions…).
+        return $s['kind'] === 'collection' && !empty($s['titleField']) && count(array_filter($s['fields'], fn ($f) => empty($f['hidden']))) >= 2;
+    }
+
+    /** Textes d'une page HTML (titres, paragraphes, photos). */
+    public static function isPageTexts(array $s): bool
+    {
+        return $s['kind'] === 'singleton' && ($s['source']['format'] ?? '') === 'html' && ($s['source']['path'] ?? '') === 'textes';
     }
 
     /** Réglage « ouvert / fermé » écrit dans un fichier du site (ex. OUVERTURE = { ouvert: true, message: "…" }). */
@@ -156,8 +163,8 @@ final class FileSiteAdapter implements Adapter
                 $files = $this->contentFiles();
                 $where = $this->options['contentDir'] !== '' ? "dossier « {$this->options['contentDir']} »" : 'content.json, data.json… à la racine';
                 $checks[] = $files
-                    ? ['label' => $this->scanFiles !== null ? 'Produits trouvés dans les fichiers du site' : 'Fichiers de contenu trouvés (' . count($files) . ')', 'ok' => true]
-                    : ['label' => 'Produits du site', 'ok' => false, 'hint' => "Nous n'avons pas trouvé de produits dans les fichiers de ce site : il les écrit sans doute directement dans ses pages. Revenez en arrière et choisissez « Gérer mes produits ici, puis les afficher sur mon site » : ça marche avec tous les sites."];
+                    ? ['label' => $this->scanFiles !== null ? 'Contenu modifiable trouvé dans les fichiers du site' : 'Fichiers de contenu trouvés (' . count($files) . ')', 'ok' => true]
+                    : ['label' => 'Contenu du site', 'ok' => false, 'hint' => "Nous n'avons trouvé aucune page ni aucun fichier de contenu dans ce dossier. Vérifiez le « Dossier du site sur le serveur » : c'est celui qui contient la page d'accueil (index.html)."];
             } catch (AdapterError $e) {
                 $checks[] = ['label' => 'Lecture du dossier de contenu', 'ok' => false, 'hint' => $e->userMessage];
             }
@@ -194,8 +201,11 @@ final class FileSiteAdapter implements Adapter
         $r = Infer::schema($files);
         if ($this->scanFiles !== null) {
             // Site fait main : on ne garde que les listes de produits et les réglages simples (ouverture…) des mêmes fichiers.
-            $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s)
+            $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s) || self::isPageTexts($s)
                 || ($s['kind'] === 'singleton' && !empty($s['source']['path']) && array_filter($s['fields'], fn ($f) => $f['type'] === 'boolean'))));
+            // Ordre : ouvert/fermé, puis les listes (produits…), puis les textes des pages (accueil d'abord).
+            $rank = fn ($s) => self::isOpenSwitch($s) ? 0 : (self::isPageTexts($s) ? (preg_match('#(^|/)index\.html?$#', $s['source']['file']) ? 2 : 3) : 1);
+            usort($r['schema']['sections'], fn ($a, $b) => $rank($a) <=> $rank($b));
             foreach ($r['schema']['sections'] as &$s) {
                 if (self::isOpenSwitch($s)) {
                     $s['label'] = 'Ouverture du site';

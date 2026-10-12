@@ -120,7 +120,7 @@ final class HtmlCards
     /** Champs d'une fiche : identifiants des éléments titre, prix, description, image. */
     private static function cardFields(string $html, array $els, int $card): ?array
     {
-        $title = $price = $desc = $img = null;
+        $title = $price = $desc = $img = $list = null;
         foreach (self::descendants($els, $card) as $d) {
             $e = $els[$d];
             if (in_array($e['tag'], ['button', 'option', 'select', 'script', 'style', 'label', 'a'], true) || self::insideTag($els, $d, $card, ['button', 'select', 'a', 'label'])) {
@@ -128,15 +128,45 @@ final class HtmlCards
             }
             if ($title === null && preg_match('/^h[1-6]$/', $e['tag']) && self::isLeaf($els, $e) && self::text($html, $e) !== '') {
                 $title = $d;
-            } elseif ($price === null && self::isLeaf($els, $e) && preg_match(self::PRICE, self::text($html, $e))) {
+            } elseif ($price === null && self::isLeaf($els, $e) && $e['tag'] !== 'li' && (preg_match(self::PRICE, self::text($html, $e))
+                || (preg_match('/price|prix|tarif|amount|montant/i', (string) self::attr($e['attrs'], 'class')) && self::text($html, $e) !== ''))) {
+                // Prix : texte comme « 45 € » ou « À partir de 70 € », ou bloc nommé « price… » (« Sur devis »).
                 $price = $d;
             } elseif ($desc === null && $e['tag'] === 'p' && self::isLeaf($els, $e) && mb_strlen(self::text($html, $e)) >= 15) {
                 $desc = $d;
-            } elseif ($img === null && $e['tag'] === 'img' && self::attr($e['attrs'], 'src')) {
+            } elseif ($list === null && in_array($e['tag'], ['ul', 'ol'], true) && self::isList($els, $e)) {
+                // Liste à puces (« ce qui est compris ») : un point par ligne.
+                $list = $d;
+            } elseif ($img === null && (($e['tag'] === 'img' && self::attr($e['attrs'], 'src')) || self::bgUrl($e['attrs']) !== null)) {
+                // Photo : balise <img>, ou bloc dont le fond est une image (style="background-image:url(…)").
                 $img = $d;
             }
         }
-        return $title !== null && $price !== null ? ['title' => $title, 'price' => $price, 'desc' => $desc, 'img' => $img] : null;
+        return $title !== null && ($price !== null || $img !== null || $desc !== null || $list !== null) ? ['title' => $title, 'price' => $price, 'desc' => $desc, 'img' => $img, 'list' => $list] : null;
+    }
+
+    /** Liste simple : uniquement des <li> sans sous-élément. */
+    private static function isList(array $els, array $el): bool
+    {
+        if (!$el['children']) {
+            return false;
+        }
+        foreach ($el['children'] as $c) {
+            if ($els[$c]['tag'] !== 'li' || !self::isLeaf($els, $els[$c])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Adresse de l'image de fond écrite dans l'attribut style (la dernière url() : la première est souvent un dégradé). */
+    private static function bgUrl(string $attrs): ?string
+    {
+        $style = self::attr($attrs, 'style');
+        if ($style === null || !preg_match_all('/url\(\s*([\'"]?)([^\'")]+)\1\s*\)/i', $style, $m)) {
+            return null;
+        }
+        return trim(end($m[2]));
     }
 
     private static function insideTag(array $els, int $id, int $stop, array $tags): bool
@@ -151,7 +181,9 @@ final class HtmlCards
 
     private static function signature(array $el): string
     {
-        return $el['tag'] . '.' . (self::attr($el['attrs'], 'class') ?? '');
+        // Seule la première classe compte : « price-card featured » est une fiche comme les autres.
+        $class = preg_split('/\s+/', trim((string) self::attr($el['attrs'], 'class')))[0] ?? '';
+        return $el['tag'] . '.' . $class;
     }
 
     /**
@@ -237,16 +269,119 @@ final class HtmlCards
         return 'Produits';
     }
 
+    /**
+     * Textes de la page (titres, paragraphes, photos) qui ne font pas partie d'une liste de fiches :
+     * le client peut les modifier un par un. Le menu, les boutons, les liens et les formulaires sont laissés de côté.
+     * @param array<int, array{0: int, 1: int}> $exclude zones déjà couvertes par des fiches
+     * @return array<string, array{el: array, kind: string, label: string}>
+     */
+    public static function texts(string $html, array $exclude = []): array
+    {
+        $els = self::elements($html);
+        $out = [];
+        $count = ['titre' => 0, 'texte' => 0, 'photo' => 0];
+        foreach ($els as $id => $e) {
+            if (count($out) >= 60) {
+                break;
+            }
+            $isHeading = (bool) preg_match('/^h[1-4]$/', $e['tag']);
+            $bg = $e['tag'] !== 'img' ? self::bgUrl($e['attrs']) : null;
+            if (!$isHeading && !in_array($e['tag'], ['p', 'img', 'figcaption'], true) && $bg === null) {
+                continue;
+            }
+            foreach ($exclude as [$a, $b]) {
+                if ($e['start'] >= $a && $e['end'] <= $b) {
+                    continue 2;
+                }
+            }
+            if (self::insideTag($els, $id, -1, ['nav', 'a', 'button', 'form', 'select', 'label', 'noscript', 'template', 'svg'])) {
+                continue;
+            }
+            if ($e['tag'] === 'img' || $bg !== null) {
+                $src = $bg ?? self::attr($e['attrs'], 'src');
+                if (!$src || str_starts_with($src, 'data:') || preg_match('/\.svg(\?|$)|logo|icon|favicon/i', $src)) {
+                    continue;
+                }
+                $alt = (string) ($bg !== null ? self::attr($e['attrs'], 'aria-label') : self::attr($e['attrs'], 'alt'));
+                $key = 'photo' . (++$count['photo']);
+                $out[$key] = ['el' => $e, 'kind' => $bg !== null ? 'bg' : 'img', 'label' => 'Photo' . ($alt !== '' ? ' : ' . mb_strimwidth($alt, 0, 50, '…') : ' ' . $count['photo'])];
+                continue;
+            }
+            if (!self::isLeaf($els, $e)) {
+                continue;
+            }
+            $t = self::text($html, $e);
+            if (mb_strlen($t) < 3) {
+                continue;
+            }
+            $kind = $isHeading ? 'titre' : 'texte';
+            $key = $kind . (++$count[$kind]);
+            $out[$key] = ['el' => $e, 'kind' => $kind, 'label' => ($isHeading ? 'Titre' : 'Texte') . ' : « ' . mb_strimwidth($t, 0, 50, '…') . ' »'];
+        }
+        return $out;
+    }
+
+    public static function textValue(string $html, array $t): string
+    {
+        return match ($t['kind']) {
+            'img' => (string) self::attr($t['el']['attrs'], 'src'),
+            'bg' => (string) self::bgUrl($t['el']['attrs']),
+            default => self::text($html, $t['el']),
+        };
+    }
+
+    /** Remplacement d'un texte (ou de la photo) de la page : [début, fin, nouveau texte]. */
+    public static function textEdit(string $html, array $t, string $value): array
+    {
+        $el = $t['el'];
+        if ($t['kind'] === 'img') {
+            $attrs = preg_replace_callback('/(\ssrc\s*=\s*)("[^"]*"|\'[^\']*\'|[^\s>]+)/i', fn ($m) => $m[1] . '"' . htmlspecialchars($value, ENT_QUOTES) . '"', $el['attrs'], 1);
+            return [$el['start'], $el['openEnd'], '<img' . $attrs . '>'];
+        }
+        if ($t['kind'] === 'bg') {
+            $from = $el['start'] + 1 + strlen($el['tag']);
+            $attrs = $el['attrs'];
+            $old = (string) self::bgUrl($attrs);
+            $pos = strrpos($attrs, $old);
+            return [$from, $from + strlen($attrs), substr($attrs, 0, $pos) . htmlspecialchars($value, ENT_QUOTES) . substr($attrs, $pos + strlen($old))];
+        }
+        $inner = substr($html, $el['openEnd'], $el['closeStart'] - $el['openEnd']);
+        $text = str_replace('&apos;', "'", htmlspecialchars($value, ENT_QUOTES | ENT_HTML5, 'UTF-8', false));
+        if (str_contains($inner, '&nbsp;')) {
+            $text = str_replace("\u{00A0}", '&nbsp;', $text);
+        }
+        return [$el['openEnd'], $el['closeStart'], nl2br($text, false)];
+    }
+
+    /** Titre de la page (balise title), pour nommer la rubrique de ses textes. */
+    public static function pageTitle(string $html): string
+    {
+        return preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $m) ? trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
+    }
+
+    /** @return string[] textes des points d'une liste */
+    private static function listItems(string $html, array $list): array
+    {
+        preg_match_all('/<li\b[^>]*>(.*?)<\/li>/is', substr($html, $list['openEnd'], $list['closeStart'] - $list['openEnd']), $m);
+        return array_values(array_filter(array_map(fn ($t) => trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($t), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), $m[1]), fn ($t) => $t !== ''));
+    }
+
     /** Valeurs d'une fiche. */
     public static function values(string $html, array $card): array
     {
         $f = $card['fields'];
-        $out = ['nom' => self::text($html, $f['title']), 'prix' => str_replace(["\u{00A0}", "\u{202F}"], ' ', self::text($html, $f['price']))];
+        $out = ['nom' => self::text($html, $f['title'])];
+        if ($f['price']) {
+            $out['prix'] = str_replace(["\u{00A0}", "\u{202F}"], ' ', self::text($html, $f['price']));
+        }
         if ($f['desc']) {
             $out['description'] = self::text($html, $f['desc']);
         }
+        if (!empty($f['list'])) {
+            $out['points'] = implode("\n", self::listItems($html, $f['list']));
+        }
         if ($f['img']) {
-            $out['photo'] = (string) self::attr($f['img']['attrs'], 'src');
+            $out['photo'] = (string) ($f['img']['tag'] === 'img' ? self::attr($f['img']['attrs'], 'src') : self::bgUrl($f['img']['attrs']));
         }
         return $out;
     }
@@ -258,8 +393,8 @@ final class HtmlCards
         $chunk = substr($html, $base, $card['end'] - $base);
         $edits = [];
         $put = function (?array $el, ?string $value) use (&$edits, $base, $html) {
-            if ($el === null || $value === null) {
-                return;
+            if ($el === null || $value === null || $value === self::text($html, $el)) {
+                return; // inchangé : on ne touche pas au code d'origine (mise en forme, badges…)
             }
             $inner = substr($html, $el['openEnd'], $el['closeStart'] - $el['openEnd']);
             $text = htmlspecialchars($value, ENT_QUOTES | ENT_HTML5, 'UTF-8', false);
@@ -274,7 +409,27 @@ final class HtmlCards
         $put($f['title'], array_key_exists('nom', $values) ? (string) $values['nom'] : null);
         $put($f['price'], array_key_exists('prix', $values) ? (string) $values['prix'] : null);
         $put($f['desc'], array_key_exists('description', $values) ? (string) $values['description'] : null);
-        if ($f['img'] && array_key_exists('photo', $values)) {
+        if (!empty($f['list']) && array_key_exists('points', $values)) {
+            $lines = array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $values['points'])), fn ($l) => $l !== ''));
+            if ($lines !== self::listItems($html, $f['list'])) {
+                $inner = substr($html, $f['list']['openEnd'], $f['list']['closeStart'] - $f['list']['openEnd']);
+                $liOpen = preg_match('/<li\b[^>]*>/i', $inner, $m) ? $m[0] : '<li>';
+                // Même disposition que l'original : tout sur une ligne, ou un point par ligne avec le même retrait.
+                $sep = preg_match('/<\/li>(\s*\n[ \t]*)<li/i', $inner, $m2) ? $m2[1] : '';
+                $lead = preg_match('/^\s*/', $inner, $m3) ? $m3[0] : '';
+                $tail = preg_match('/\s*$/', $inner, $m4) ? $m4[0] : '';
+                $items = array_map(fn ($l) => $liOpen . str_replace('&apos;', "'", htmlspecialchars($l, ENT_QUOTES | ENT_HTML5, 'UTF-8', false)) . '</li>', $lines);
+                $edits[] = [$f['list']['openEnd'] - $base, $f['list']['closeStart'] - $base, $lead . implode($sep, $items) . $tail];
+            }
+        }
+        if ($f['img'] && $f['img']['tag'] !== 'img') {
+            if (array_key_exists('photo', $values) && ($old = self::bgUrl($f['img']['attrs'])) !== null) {
+                $attrs = $f['img']['attrs'];
+                $pos = strrpos($attrs, $old);
+                $new = substr($attrs, 0, $pos) . htmlspecialchars((string) $values['photo'], ENT_QUOTES) . substr($attrs, $pos + strlen($old));
+                $edits[] = [$f['img']['start'] - $base + 1 + strlen($f['img']['tag']), $f['img']['openEnd'] - $base - 1, $new];
+            }
+        } elseif ($f['img'] && array_key_exists('photo', $values)) {
             $attrs = $f['img']['attrs'];
             $newAttrs = preg_replace_callback('/(\ssrc\s*=\s*)("[^"]*"|\'[^\']*\'|[^\s>]+)/i', fn ($m) => $m[1] . '"' . htmlspecialchars((string) $values['photo'], ENT_QUOTES) . '"', $attrs, 1);
             $tagStart = $f['img']['start'] - $base;
@@ -283,7 +438,7 @@ final class HtmlCards
             $edits[] = [$f['img']['start'] - $base, $f['img']['openEnd'] - $base, '<img' . $f['img']['attrs'] . '>'];
         }
         // Le texte alternatif de la photo suit le nom du produit.
-        if ($f['img'] && isset($values['nom'])) {
+        if ($f['img'] && $f['img']['tag'] === 'img' && isset($values['nom'])) {
             foreach ($edits as &$e) {
                 if ($e[0] === $f['img']['start'] - $base) {
                     $e[2] = preg_replace_callback('/(\salt\s*=\s*)("[^"]*"|\'[^\']*\')/i', fn ($m) => $m[1] . '"' . htmlspecialchars((string) $values['nom'], ENT_QUOTES) . '"', $e[2], 1);
