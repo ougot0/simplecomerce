@@ -74,7 +74,7 @@ use SimpleCommerce\Config;
         <h3>Où trouver ces informations</h3>
         <ol class="steps mt-12"><?php foreach ($def['steps'] as $s): ?><li><?= e($s) ?></li><?php endforeach ?></ol>
         <?php if (in_array($def['id'], ['sftp', 'ftp'], true)): ?>
-        <p class="muted small mt-14">Le contenu modifiable doit être rangé dans un fichier (par exemple content.json) que le site lit. Votre créateur de site peut le faire en une heure : voir l'<a href="/aide#preparer">aide</a>.</p>
+        <p class="muted small mt-14">Rien à préparer sur votre site : ses produits, ses textes, ses photos et son logo sont retrouvés automatiquement.</p>
         <?php endif ?>
     </aside>
 </div>

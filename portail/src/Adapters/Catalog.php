@@ -108,7 +108,7 @@ final class Catalog
                     $branch, $contentDir, $mediaDir, $mediaPrefix,
                 ]],
             ['id' => 'sftp', 'group' => 'hebergeur', 'label' => 'Mon site est chez un hébergeur (SFTP)', 'description' => 'OVHcloud, o2switch, Hostinger, IONOS, Infomaniak, LWS, PlanetHoster, serveur dédié… Connexion sécurisée, recommandée.',
-                'steps' => ['Choisissez votre hébergeur ci-contre : le formulaire se pré-remplit et vous indique où trouver vos accès.', 'Notez le serveur, l\'identifiant et le mot de passe SFTP (ou SSH).', 'Le contenu du site doit être rangé dans un fichier comme content.json : voir « Préparer un site ».'],
+                'steps' => ['Choisissez votre hébergeur ci-contre : le formulaire se pré-remplit et vous indique où trouver vos accès.', 'Notez le serveur, l\'identifiant et le mot de passe SFTP (ou SSH).', '« Dossier du site » : le dossier où se trouve la page d\'accueil (index.html) de votre site. Chez OVH, c\'est « /www » pour le site principal, ou le nom du dossier choisi pour un autre site (multisite).', 'Cliquez sur « Tester la connexion » : Simple Commerce retrouve tout seul vos produits, vos textes, vos photos et votre logo. Rien à préparer.'],
                 'fields' => [
                     $hostSelect,
                     ['name' => 'host', 'label' => 'Serveur', 'type' => 'text', 'required' => true, 'placeholder' => 'ssh.clusterXXX.hosting.ovh.net'],
