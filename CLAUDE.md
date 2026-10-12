@@ -192,7 +192,9 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
    changer `'url'` dans `config.php`.
 8. Mise à jour : renvoyer `src/`, `templates/`, `public/`, `vendor/`, `bin/` ; ne jamais écraser `config.php` ni `storage/`.
 
-**Statut au 11/10/2026 : pas encore installé sur l'OVH du propriétaire** (il a reçu l'archive et les étapes ; il ne
+**Nom de domaine acheté (12/10/2026) : `simplecommercess.com`** (deux « s » à la fin), multisite → `simplecommerce/public`.
+
+**Statut au 12/10/2026 : installation en cours sur l'OVH du propriétaire (envoi par WinSCP)** (il a reçu l'archive et les étapes ; il ne
 nous donne pas ses mots de passe — ne pas les lui demander dans la conversation).
 
 ## 9. Travailler sur le projet
@@ -230,7 +232,7 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
    **Client ID + Client secret** (application du Dev Dashboard, jeton 24 h obtenu à chaque connexion) ; API `2026-07`
    (`ShopifyAdapter::API_VERSION`, à relever chaque année : `inventorySetQuantities` exige `@idempotent` depuis 2026-04).
 4. Mettre à jour le **prototype cliquable** (artifact) avec le design et les options de la version PHP, si le propriétaire le veut.
-5. Acheter et brancher le **nom de domaine** de Simple Commerce.
+5. Brancher le **nom de domaine** `simplecommercess.com` (acheté le 12/10/2026) dans le multisite OVH.
 6. Pistes : connecteurs Wix, Squarespace, PrestaShop (listés « pas encore disponibles ») ; envoi d'e-mails par SMTP
    si `mail()` d'OVH arrive en indésirables ; décider du sort de la version Next.js (la garder ou la supprimer — au propriétaire).
 
