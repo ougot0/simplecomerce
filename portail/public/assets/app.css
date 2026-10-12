@@ -798,11 +798,10 @@ a.line-title:hover {
 .wordmark::before {
   content: "";
   margin-right: 10px;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: var(--beige-strong);
-  box-shadow: inset -8px -8px 0 var(--beige);
+  width: 26px;
+  height: 26px;
+  flex: none;
+  background: url("logo-96.png") center / contain no-repeat;
 }
 
 .wordmark span {

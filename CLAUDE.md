@@ -91,6 +91,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
   Variables CSS dans `:root` en tête de `public/assets/app.css`.
 - **Pastilles d'état** : « En ligne » noir, « Brouillon »/« Programmé » beige, « Masqué » gris bordé, « Échec » rouge.
 - **Police : Figtree** (400/500/600/700), servie depuis le portail (pas de Google Fonts : RGPD + CSP `font-src 'self'`).
+- **Logo** : `public/assets/logo-*.png` (carré noir arrondi, « SC » crème + flèche de souris), fourni par le propriétaire.
 - **Icônes** : SVG au trait (`icon()` dans `helpers.php`), **jamais d'emoji** dans l'interface.
 - **À éviter absolument** (direction artistique initiale, pour ne pas ressembler à un site généré par IA) :
   dégradés violets, polices Inter / Geist / Space Grotesk, petit label en MAJUSCULES au-dessus d'un grand titre centré,
@@ -258,6 +259,9 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 12/10/2026 (nuit, 7) : **logo officiel de Simple Commerce** fourni par le propriétaire (carré noir arrondi, « SC » crème et
+  flèche de souris) : `public/assets/logo-512.png`, `logo-96.png`, `favicon-32.png`, `apple-touch-icon.png` (recadrés, fond
+  transparent). Affiché devant « Simple Commerce » (`.wordmark::before`), icône d'onglet, icône téléphone, `og:image` de l'accueil.
 - 12/10/2026 (nuit, 6) : **logo du site modifiable** (rubrique « Logo du site », en tête de liste, sites reliés par fichiers sans
   fichier de contenu) : `HtmlCards::logo` trouve l'image du logo (classe/id/src contenant logo, brand, monogram… sur l'image ou un
   parent proche), le texte à côté (« Studio ») et l'icône de l'onglet (`<link rel=…icon>`) ; source de rubrique `{type: logo}` ;
