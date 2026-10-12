@@ -123,7 +123,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 9. **(Révisé le 12/10/2026) Plus de page d'installation** : le propriétaire l'a trouvée incompréhensible (« trop
    d'informations, le mec ne sait pas où les trouver »). Au premier passage, `InstallController::autoInstall()` met le
    site en service seul : base **SQLite** `storage/simplecommerce.sqlite` (sans WAL : disques réseau), clés générées,
-   `config.php` écrit, inscriptions **ouvertes** (`signup_open=1`). L'accueil `/` affiche **Créer un compte** (e-mail +
+   `config.php` écrit, inscriptions **ouvertes** (`signup_open=1`). L'accueil `/` affiche **Créer un compte** au tout premier passage, ensuite une page de présentation publique (avec « Créer un compte ») (e-mail +
    mot de passe + « Rester connecté », plus de champ nom). **Le premier compte créé devient administrateur** et arrive sur
    `/admin`. Le formulaire MySQL ne reste qu'en secours si SQLite manque. Bouton admin « Rendre le portail privé » inchangé.
 10. **Mode démonstration** (`SC_DEMO=1`) avec 2 faux sites (Pâtisserie Lune en `content.json`, Atelier Brun en
@@ -258,6 +258,12 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 12/10/2026 (nuit, 5) : « Rester connecté » sans limite (jeton 400 jours renouvelé à chaque visite). **Page de présentation
+  publique** sur `/` (visiteur non connecté ; `templates/public/home.php`, mise en page `public`, styles `.pub-*`) : seule page
+  indexable (`indexable` → `index, follow` + description + canonical via `Req::origin()`), toutes les autres restent `noindex`.
+  `/robots.txt` (n'autorise que `/` et `/assets/`) et `/sitemap.xml`. Tout premier passage (aucun compte) : toujours `/inscription`.
+  Le propriétaire a cherché « simplecommercess » sur Google : d'autres sociétés s'appellent « Simple Commerce » (Canada,
+  simplecommerce.com) ; lui conseiller la Search Console (vérification par enregistrement DNS TXT dans la zone OVH).
 - 12/10/2026 (nuit, 4) : **sites vitrines** (test : copie du site d'un ami, architecte d'intérieur, dossier `aminteriorss` chez OVH,
   https://aminteriorss.com) : `HtmlCards` reconnaît aussi les fiches sans prix (titre + texte/photo : projets, services, méthode),
   les photos en `style="background-image:url(…)"`, les prix « À partir de 70 € » / « Sur devis » (classe `price…`), les listes à

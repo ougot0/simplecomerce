@@ -8,10 +8,16 @@ $v = @filemtime(SC_ROOT . '/public/assets/app.css') . @filemtime(SC_ROOT . '/pub
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<?php if (!empty($indexable)): ?>
+<meta name="robots" content="index, follow">
+<meta name="description" content="<?= e($description ?? '') ?>">
+<link rel="canonical" href="<?= e(\SimpleCommerce\Http\Req::origin() . '/') ?>">
+<?php else: ?>
 <meta name="robots" content="noindex, nofollow">
+<?php endif ?>
 <meta name="theme-color" content="#f4efe6">
 <meta name="csrf" content="<?= e(session_status() === PHP_SESSION_ACTIVE ? Session::csrf() : '') ?>">
-<title><?= e(($title ?? '') !== '' ? $title . ' — Simple Commerce' : 'Simple Commerce') ?></title>
+<title><?= e(($title ?? '') !== '' ? (!empty($indexable) ? 'Simple Commerce — ' . $title : $title . ' — Simple Commerce') : 'Simple Commerce') ?></title>
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/app.css?v=<?= e(substr(md5($v), 0, 8)) ?>">
 <script src="/assets/app.js?v=<?= e(substr(md5($v), 0, 8)) ?>" defer></script>

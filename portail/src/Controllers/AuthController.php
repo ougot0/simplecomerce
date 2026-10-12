@@ -19,7 +19,24 @@ final class AuthController
         if (Access::viewer()) {
             return Response::redirect('/sites');
         }
-        return Response::redirect(self::signupOpen() ? '/inscription' : '/connexion');
+        if (!Config::demo() && !Repo::users()) {
+            return Response::redirect('/inscription'); // tout premier passage : création du compte administrateur
+        }
+        // Page de présentation publique, la seule que les moteurs de recherche peuvent afficher.
+        return Response::page('public/home', ['title' => 'Modifiez votre site vous-même', 'indexable' => true, 'signupOpen' => self::signupOpen(),
+            'description' => "Simple Commerce : changez vous-même les produits, les prix, les photos et les textes de votre site, sans développeur. Compatible avec tous les hébergeurs, Shopify, WordPress et les sites faits main."], 'public');
+    }
+
+    /** Moteurs de recherche : seule la page de présentation est à visiter. */
+    public static function robots(): Response
+    {
+        return new Response("User-agent: *\nAllow: /\$\nAllow: /assets/\nDisallow: /\n\nSitemap: " . Req::origin() . '/sitemap.xml' . "\n", 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    public static function sitemap(): Response
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' . htmlspecialchars(Req::origin() . '/') . '</loc></url></urlset>' . "\n";
+        return new Response($xml, 200, ['Content-Type' => 'application/xml; charset=utf-8']);
     }
 
     public static function loginForm(array $p, array $state = []): Response

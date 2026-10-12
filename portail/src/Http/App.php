@@ -32,6 +32,8 @@ final class App
         $s = '/s/' . self::SLUG;
         return [
             ['GET', '/', [AuthController::class, 'home']],
+            ['GET', '/robots.txt', [AuthController::class, 'robots']],
+            ['GET', '/sitemap.xml', [AuthController::class, 'sitemap']],
             ['GET', '/connexion', [AuthController::class, 'loginForm']],
             ['POST', '/connexion', [AuthController::class, 'login']],
             ['GET', '/inscription', [AuthController::class, 'signupForm']],

@@ -59,6 +59,13 @@ final class Req
     }
 
     /** La page est-elle demandée en https ? (directement, ou derrière le relais de l'hébergeur) */
+    /** Adresse du portail telle que le visiteur l'a tapée (https://domaine), pour les moteurs de recherche. */
+    public static function origin(): string
+    {
+        $host = preg_replace('/[^a-z0-9.:-]/i', '', (string) ($_SERVER['HTTP_HOST'] ?? ''));
+        return $host !== '' ? (self::isHttps() ? 'https://' : 'http://') . $host : rtrim(\SimpleCommerce\Config::url(), '/');
+    }
+
     public static function isHttps(): bool
     {
         return in_array(strtolower((string) ($_SERVER['HTTPS'] ?? '')), ['on', '1'], true)
