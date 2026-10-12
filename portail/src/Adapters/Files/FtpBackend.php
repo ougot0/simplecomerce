@@ -105,15 +105,15 @@ final class FtpBackend implements FileBackend
         $walk = function (string $rel, int $depth) use (&$walk, &$out, $conn, $maxDepth) {
             $items = @ftp_mlsd($conn, $this->abs($rel));
             if (!is_array($items)) {
-                // Serveurs sans MLSD : on se contente de la liste des noms.
-                $names = @ftp_nlist($conn, $this->abs($rel)) ?: [];
-                foreach ($names as $n) {
-                    $name = basename($n);
-                    if ($name[0] !== '.') {
-                        $out[] = $rel === '' ? $name : "$rel/$name";
+                // Serveurs sans MLSD : liste classique (« drwxr-xr-x … nom »), dont on tire fichiers et dossiers.
+                $items = [];
+                foreach (@ftp_rawlist($conn, $this->abs($rel)) ?: [] as $line) {
+                    if (preg_match('/^([dl-])[rwxsStT-]{9}\S*\s+\d+\s+\S+\s+\S+\s+\d+\s+\w{3}\s+\d+\s+[\d:]+\s+(.+)$/', $line, $m)) {
+                        $items[] = ['name' => $m[2], 'type' => $m[1] === 'd' ? 'dir' : ($m[1] === '-' ? 'file' : 'link')];
+                    } elseif (preg_match('/^\S+\s+\S+\s+(<DIR>|\d+)\s+(.+)$/', $line, $m)) {
+                        $items[] = ['name' => $m[2], 'type' => $m[1] === '<DIR>' ? 'dir' : 'file'];
                     }
                 }
-                return;
             }
             foreach ($items as $item) {
                 $name = $item['name'];

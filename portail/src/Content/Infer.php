@@ -33,6 +33,8 @@ final class Infer
         'temoignages' => 'Témoignages', 'faq' => 'Questions fréquentes', 'accroche' => 'Accroche', 'annee' => 'Année', 'lieu' => 'Lieu',
         'surface' => 'Surface', 'categories' => 'Catégories', 'collections' => 'Collections', 'site' => 'Informations générales',
         'accueil' => 'Accueil', 'apropos' => 'À propos', 'heures' => 'Heures', 'reseaux' => 'Réseaux sociaux', 'produits' => 'Produits', 'produit' => 'Produit',
+        'products' => 'Produits', 'product' => 'Produit', 'items' => 'Articles', 'articles' => 'Articles', 'catalogue' => 'Catalogue', 'catalog' => 'Catalogue',
+        'boutique' => 'Boutique', 'shop' => 'Boutique', 'store' => 'Boutique', 'solde' => 'En solde', 'nouveaute' => 'Nouveauté', 'ouverte' => 'Ouverte',
     ];
     private const ID_KEYS = ['id', '_id', 'uuid', 'slug', 'sku', 'ref', 'reference'];
     private const TITLE_KEYS = ['name', 'nom', 'title', 'titre', 'label', 'libelle'];
@@ -114,6 +116,12 @@ final class Infer
             }
             if ($all(fn ($s) => preg_match('#^(https?://|/)\S*$#', $s))) {
                 return $base + ['type' => 'url'];
+            }
+            // Peu de valeurs différentes, courtes et répétées (catégorie, collection…) : une liste de choix.
+            $distinct = array_values(array_unique(array_filter($present, fn ($s) => $s !== '')));
+            if (count($present) >= 4 && count($distinct) >= 2 && count($distinct) <= 8 && count($distinct) < count($present)
+                && !array_filter($distinct, fn ($s) => mb_strlen($s) > 30) && preg_match('/(categ|collection|type|rubrique|famille|section|genre|kind|group)/i', $key)) {
+                return $base + ['type' => 'select', 'options' => array_map(fn ($v) => ['value' => $v, 'label' => mb_strtoupper(mb_substr($v, 0, 1)) . mb_substr($v, 1)], $distinct)];
             }
             if (array_filter($present, fn ($s) => preg_match('#</?(p|strong|em|br|a|ul|li|b|i)\b#i', $s))) {
                 return $base + ['type' => 'richtext'];

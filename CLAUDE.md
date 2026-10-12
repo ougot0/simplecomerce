@@ -262,6 +262,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 - 08–09/10/2026 : réécriture PHP/MySQL dans `portail/` (connecteurs, éditeur, options, installation, tests, guide OVH).
 - 10/10/2026 : format JS, prix ronds conservés, portail privé par défaut, test réel WordPress/WooCommerce, archive OVH.
 - 11/10/2026 : création de ce fichier.
+- 12/10/2026 (nuit, 2) : **sites faits main reliés sans préparation** : si aucun dossier/fichier de contenu, `FileSiteAdapter`
+  cherche dans les .js/.json du site une liste de produits (`findProductFiles`, `isProductSection`) ; `JsLiteral` lit les
+  `const NOM = [ … ]` (clés sans guillemets, virgules finales, commentaires) et ne réécrit que les éléments modifiés
+  (format interne `jsvars` de `Formats`). Catégories peu nombreuses → liste de choix. FTP sans MLSD : liste via LIST.
+  Testé par FTP sur une copie du site d'origine : 20 produits trouvés, prix au format du site, ajout avec photo.
+  ⚠ Le site d'exemple encaisse via des identifiants de prix Stripe (stripe-config.js) : changer un prix dans le portail
+  ne change pas le montant Stripe.
 - 12/10/2026 (nuit) : catalogue hébergé + ligne à coller (pour tous les sites, sans préparation). Nouvel élément visible par défaut.
 - 12/10/2026 (soir) : mise en service automatique SQLite + inscription e-mail/mot de passe (décision 9 révisée).
 - 12/10/2026 : vérification complète avant mise en ligne. Testés en réel : installation web (PHP intégré et **Apache** avec

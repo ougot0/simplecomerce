@@ -29,6 +29,9 @@ final class FileSiteAdapter implements Adapter
     private const ATTEMPTS = 3;
 
     private bool $resolved = false;
+    /** Site fait main sans dossier de contenu : fichiers JavaScript/JSON où des produits ont été trouvés. */
+    private ?array $scanFiles = null;
+    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$#i';
     /** @var array<string, ?string> versions lues pendant une opération */
     private array $versions = [];
     /** @var array<string, ?array> fichiers lus pendant une opération */
@@ -66,12 +69,44 @@ final class FileSiteAdapter implements Adapter
                 }
             }
             $this->options['contentDir'] = $found;
+            if ($found === '' && !array_filter($files, fn ($f) => !str_contains($f, '/') && preg_match(self::ROOT_FILE, $f))) {
+                $this->scanFiles = $this->findProductFiles($files);
+            }
         }
         if ($needMedia) {
             $has = fn ($p) => (bool) array_filter($files, fn ($f) => str_starts_with($f, "$p/"));
             $base = $this->options['webRoot'] ? '' : ($has('public') ? 'public' : ($has('static') ? 'static' : ''));
             $this->options['media'] = ['dir' => $base ? "$base/images/simplecommerce" : 'images/simplecommerce', 'publicPrefix' => '/images/simplecommerce'];
         }
+    }
+
+    /**
+     * Cherche, dans les fichiers JavaScript et JSON du site, ceux qui contiennent une liste de produits
+     * (des éléments avec un nom et un prix ou une photo). Aucune préparation du site n'est nécessaire.
+     * @param string[] $files
+     * @return string[]
+     */
+    private function findProductFiles(array $files): array
+    {
+        $found = [];
+        $candidates = array_values(array_filter($files, fn ($f) => in_array(Formats::fromPath($f), ['js', 'json'], true) && !preg_match(self::SKIP_SCAN, $f)));
+        foreach (array_slice($candidates, 0, 60) as $f) {
+            $raw = $this->backend->read($f);
+            if (!$raw || strlen($raw['content']) > 400_000) {
+                continue;
+            }
+            $r = Infer::schema([['path' => $f, 'text' => $raw['content']]]);
+            if (array_filter($r['schema']['sections'], [self::class, 'isProductSection'])) {
+                $found[] = $f;
+            }
+        }
+        return $found;
+    }
+
+    /** Une rubrique « produits » : une liste dont les éléments ont un nom et un prix ou une photo. */
+    public static function isProductSection(array $s): bool
+    {
+        return $s['kind'] === 'collection' && !empty($s['titleField']) && (!empty($s['subtitleField']) || !empty($s['imageField']));
     }
 
     private function path(string $rel): string
@@ -82,6 +117,9 @@ final class FileSiteAdapter implements Adapter
     /** @return string[] */
     private function contentFiles(): array
     {
+        if ($this->scanFiles !== null) {
+            return $this->scanFiles;
+        }
         if ($this->options['contentDir'] !== '') {
             return array_values(array_filter($this->backend->list($this->options['contentDir'], 3), fn ($f) => Formats::fromPath($f)));
         }
@@ -112,8 +150,8 @@ final class FileSiteAdapter implements Adapter
                 $files = $this->contentFiles();
                 $where = $this->options['contentDir'] !== '' ? "dossier « {$this->options['contentDir']} »" : 'content.json, data.json… à la racine';
                 $checks[] = $files
-                    ? ['label' => 'Fichiers de contenu trouvés (' . count($files) . ')', 'ok' => true]
-                    : ['label' => 'Fichiers de contenu', 'ok' => false, 'hint' => "Aucun fichier de contenu trouvé ($where). Le contenu du site doit d'abord être rangé dans un fichier comme content.json : voir le guide « Préparer un site »."];
+                    ? ['label' => $this->scanFiles !== null ? 'Produits trouvés dans les fichiers du site' : 'Fichiers de contenu trouvés (' . count($files) . ')', 'ok' => true]
+                    : ['label' => 'Produits du site', 'ok' => false, 'hint' => "Nous n'avons pas trouvé de produits dans les fichiers de ce site : il les écrit sans doute directement dans ses pages. Revenez en arrière et choisissez « Gérer mes produits ici, puis les afficher sur mon site » : ça marche avec tous les sites."];
             } catch (AdapterError $e) {
                 $checks[] = ['label' => 'Lecture du dossier de contenu', 'ok' => false, 'hint' => $e->userMessage];
             }
@@ -148,6 +186,12 @@ final class FileSiteAdapter implements Adapter
             $files[] = ['path' => str_starts_with($full, $prefix) ? substr($full, strlen($prefix)) : $full, 'text' => $raw['content']];
         }
         $r = Infer::schema($files);
+        if ($this->scanFiles !== null) {
+            // Site fait main : on ne garde que les listes de produits et les réglages simples (ouverture…) des mêmes fichiers.
+            $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s)
+                || ($s['kind'] === 'singleton' && !empty($s['source']['path']) && array_filter($s['fields'], fn ($f) => $f['type'] === 'boolean'))));
+            $notes = ['Produits trouvés dans : ' . implode(', ', $this->scanFiles) . '.'];
+        }
         if ($r['skipped']) {
             $notes[] = 'Fichiers ignorés : ' . implode(', ', array_slice($r['skipped'], 0, 10)) . (count($r['skipped']) > 10 ? '…' : '');
         }
@@ -287,7 +331,14 @@ final class FileSiteAdapter implements Adapter
     {
         // Un nouvel élément est visible sur le site par défaut (case « disponible », « visible »… déjà cochée).
         $visible = ContentSchema::visibilityField($section);
-        return $visible ? [$visible => true] : [];
+        $out = $visible ? [$visible => true] : [];
+        // Liste de choix (catégorie…) : premier choix proposé, pour que le nouvel élément s'affiche quelque part.
+        foreach ($section['fields'] as $f) {
+            if ($f['type'] === 'select' && !empty($f['options']) && empty($f['hidden'])) {
+                $out[$f['key']] = $f['options'][0]['value'];
+            }
+        }
+        return $out;
     }
 
     // ------------------------------------------------------------ écriture
