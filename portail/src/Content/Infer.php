@@ -73,6 +73,10 @@ final class Infer
     {
         $present = array_values(array_filter($values, fn ($v) => $v !== null));
         $base = ['key' => $key, 'label' => self::humanize($key)];
+        // Notes laissées par le créateur du site (« _comment », « note »…) : conservées, mais jamais montrées au client.
+        if (preg_match('/^([_$].*|comments?|notes?|readme|doc|docs|todo|version|schema)$/i', $key)) {
+            return $base + ['type' => 'text', 'hidden' => true];
+        }
         if (in_array(strtolower($key), self::ID_KEYS, true)) {
             return $base + ['type' => 'text', 'hidden' => true];
         }
@@ -289,7 +293,7 @@ final class Infer
                     $rest[$k] = $v;
                 }
             }
-            if ($rest && !in_array($format, ['js', 'html'], true)) {
+            if ($rest && !in_array($format, ['js', 'html'], true) && array_filter(self::fields([$rest]), fn ($f) => empty($f['hidden']))) {
                 $sections[] = ['key' => self::unique($base, $used), 'label' => self::humanize($base), 'kind' => 'singleton',
                     'source' => ['type' => 'file', 'file' => $file['path'], 'format' => $format], 'fields' => self::fields([$rest])];
             }
