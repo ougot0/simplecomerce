@@ -1,0 +1,458 @@
+================================================================================
+              SIMPLE COMMERCE — GUIDE COMPLET POUR UN DÉVELOPPEUR
+================================================================================
+
+À lire en entier avant de toucher au code. Pour le concept en version courte,
+voir docs/FICHE-TECHNIQUE.txt. Les décisions prises avec le propriétaire du
+projet, et leur historique, sont dans CLAUDE.md à la racine du projet.
+
+Mise à jour : 12 octobre 2026.
+
+
+================================================================================
+1. LE BUT DU PROJET
+================================================================================
+
+Simple Commerce est un portail web (https://simplecommercess.com) qui permet à
+des commerçants et artisans NON TECHNIQUES de modifier eux-mêmes le contenu de
+LEUR PROPRE SITE, là où il est hébergé, sans le reconstruire ailleurs :
+produits, prix, stocks, photos, textes, horaires, projets, tarifs,
+ouverture / fermeture de la boutique.
+
+Un seul portail, plusieurs sites. Chaque client ne voit que les siens. Un
+administrateur voit tout, peut « agir pour » un client et consulte un journal.
+
+Objectif à terme, exprimé par le propriétaire : que N'IMPORTE QUEL site soit
+modifiable « comme Shopify », quelle que soit la façon dont il a été construit,
+sans préparation et sans développeur. Les clients ne sont pas forcément chez
+OVH : le portail doit relier des sites hébergés n'importe où.
+
+Contraintes de départ qui expliquent la plupart des choix techniques :
+- Le portail tourne sur un hébergement OVH MUTUALISÉ : PHP + MySQL seulement,
+  pas de Node.js, pas de terminal garanti, pas de Composer.
+- Le propriétaire n'est pas développeur : l'installation se fait par FTP, sans
+  aucune étape technique (le portail s'installe seul).
+- Les utilisateurs finaux ne sont pas techniques : aucun jargon dans l'interface.
+
+
+================================================================================
+2. LES DEUX VERSIONS DANS LE PROJET
+================================================================================
+
+portail/        Version PHP 8.1+. C'EST LA VERSION UTILISÉE ET À FAIRE ÉVOLUER.
+                C'est elle qui est en ligne.
+
+racine          Première version en Next.js 16 + Supabase + Vercel (app/, lib/,
+(app/, lib/,    components/, supabase/). Complète mais mise de côté parce qu'OVH
+components/…)   mutualisé ne fait pas tourner Node.js. Ne plus y ajouter de
+                fonctions. Ne pas la supprimer sans l'accord du propriétaire.
+
+Tout ce qui suit concerne portail/.
+
+
+================================================================================
+3. LANCER LE PROJET EN LOCAL
+================================================================================
+
+Démonstration (2 faux sites, 3 comptes, base SQLite) :
+
+    cd portail
+    SC_DEMO=1 SC_ALLOW_PRIVATE=1 php -S 127.0.0.1:8080 -t public public/index.php
+
+    http://127.0.0.1:8080
+    Comptes de démo :
+      marie@patisserie-lune.fr   / tarte-citron-2026   (cliente)
+      paul@atelier-brun.fr       / maison-bois-2026    (client)
+      alex@simplecommerce.demo   / atelier-demo-2026   (administrateur)
+
+    Effacer portail/storage/ remet la démo à zéro.
+
+Sans SC_DEMO, le premier passage installe le portail tout seul (voir 9).
+
+Tests :
+    php portail/tests/run.php        61 vérifications, sans dépendance
+    php -l <fichier>                 sur chaque fichier modifié
+
+Tests navigateur : Playwright (playwright-core) avec Chromium.
+
+
+================================================================================
+4. ORGANISATION DU CODE (portail/)
+================================================================================
+
+public/                 SEUL dossier exposé sur Internet (racine du site web)
+  index.php             Point d'entrée unique (et routeur du serveur PHP de dev)
+  .htaccess             Tout est renvoyé vers index.php
+  .ovhconfig            Version de PHP chez OVH (8.3)
+  assets/               app.css, app.js, catalogue-widget.js, icon.svg, fonts/
+
+src/                    Code PHP, autoload PSR-4 « SimpleCommerce\ » → src/
+  bootstrap.php         Constantes SC_ROOT / SC_STORAGE, autoload, helpers,
+                        lecture de config.php, erreurs → exceptions
+  helpers.php           Fonctions de gabarit : e(), csrf_field(), icon(), tag()…
+  Config.php            Lit config.php ; mode démo si SC_DEMO=1
+  Db.php, Schema.php    PDO (SQLite ou MySQL) ; création des tables sc_*
+  Repo.php              TOUTES les lectures / écritures en base.
+                        Aucun contrôle de droits ici.
+
+  Http/
+    App.php             Table des routes, en-têtes de sécurité, CSRF, https auto
+    Req.php             Lecture de la requête (avec filtrage), Req::origin()
+    Response.php        Réponses (page, json, redirect, file)
+    View.php            Gabarits : templates/<nom>.php dans templates/layout/
+    Halt.php            Arrêts contrôlés (404, redirection)
+
+  Controllers/
+    AuthController      Accueil public, inscription, connexion, lien e-mail,
+                        robots.txt, sitemap.xml
+    SitesController     Liste des sites et assistant « Relier un site »
+    SiteController      Accueil d'un site, rubriques, historique, brouillons
+    EditorController    Formulaires de modification, enregistrement, photos
+    SettingsController  Réglages d'un site : équipe, fermeture, rubriques,
+                        connexion, schéma (admin), retirer le site
+    AdminController     Administration : stats, journal, assistance, suspension
+    CatalogueController Pages PUBLIQUES du catalogue hébergé (sans session)
+    MiscController      Aide, photos en attente, cron web, sites de démo
+    InstallController   Installation automatique au premier passage
+
+  Services/
+    Access              Droits, isolation entre clients, mode assistance
+    Auth                Comptes, mots de passe, « Rester connecté »
+    Sites               Ouvre le bon connecteur avec les secrets déchiffrés ;
+                        détection et relecture des rubriques
+    Changes             Publier, annuler, fermer : chaque action passe ici et
+                        est inscrite dans l'historique
+    Media               Photos (validation, réencodage WebP, EXIF, GPS retirés)
+    Scheduler           Publication des brouillons programmés
+    Notifier            Avis par e-mail aux autres membres
+    Demo                Données de démonstration
+
+  Content/              MOTEUR DE CONTENU (le cœur du projet, voir 6)
+    ContentSchema       Validation et description des « rubriques »
+    Infer               Détection automatique des rubriques dans des fichiers
+    Formats             Lecture / réécriture JSON, YAML, Markdown, JS, HTML
+    JsLiteral           Lecture des « const PRODUITS = [ … ] » en JavaScript
+    HtmlCards           Fiches répétées et textes des pages HTML
+    Values, FormInput   Validation des valeurs, formulaire → valeurs typées
+    Price, Paths        Prix au format du site, chemins sûrs
+
+  Adapters/             CONNECTEURS (voir 7)
+    Adapter.php         Interface commune
+    ShopifyAdapter, WordPressAdapter (+ WooCommerce), WebflowAdapter,
+    CustomApiAdapter, Registry (choix du connecteur), Catalog, Status
+    Files/              FileSiteAdapter + « backends » de fichiers :
+                        Sftp, Ftp (FTP/FTPS), GitHub, GitLab, Bitbucket,
+                        Db (catalogue hébergé), Local (démo)
+
+  Support/
+    Vault               Chiffrement des accès des sites
+    Session             Session PHP sécurisée, jeton CSRF, messages
+    Net                 Anti-SSRF (refus des adresses privées / locales)
+    Http                Appels cURL sortants (sans suivre les redirections)
+    Html                Nettoyage du texte enrichi (liste blanche)
+    Text, Log, Mailer   Accords et dates, journal (secrets masqués), e-mails
+
+templates/              Gabarits PHP
+  layout/               site (menu noir), plain, auth, bare, public, head
+  public/home.php       Page de présentation publique (seule indexée)
+  auth/, sites/, site/, admin/, partials/
+
+bin/cron.php            Tâche planifiée : publications programmées
+storage/                Sessions, photos en attente, journal, base SQLite.
+                        Interdit d'accès web, ignoré par git.
+demo/sites/             Modèles des 2 faux sites de démonstration
+vendor/                 Dépendances Composer COMMITÉES (phpseclib 3,
+                        symfony/yaml 6.4) car OVH n'a pas Composer.
+tests/run.php           Lanceur de tests
+config.php              Créé à l'installation. JAMAIS commité.
+
+
+================================================================================
+5. LE PARCOURS D'UNE REQUÊTE
+================================================================================
+
+1. public/index.php charge src/bootstrap.php puis App::handle().
+2. App installe le portail si config.php n'existe pas encore, passe en https
+   si possible, applique les en-têtes de sécurité (CSP stricte), vérifie le
+   jeton CSRF sur tout POST, puis trouve la route.
+3. Les routes d'un site sont sous /s/{slug}/… Le contrôleur appelle
+   Access::site($slug) : si l'utilisateur n'est pas membre, réponse 404.
+4. Pour lire ou écrire le contenu, le contrôleur passe par Services\Sites
+   (qui ouvre le connecteur avec les accès déchiffrés) et Services\Changes
+   (qui écrit, garde l'avant / après pour l'annulation et notifie).
+5. La page est rendue par View::render(gabarit, variables, mise en page).
+
+Principales routes :
+  /                        Présentation publique (ou /inscription au 1er passage)
+  /inscription /connexion  Comptes ; /lien/{jeton} = connexion par e-mail
+  /compte                  Mon compte
+  /invitation/{jeton}      Accepter une invitation
+  /sites, /sites/nouveau   Mes sites, relier un site
+  /s/{slug}                Accueil d'un site
+  /s/{slug}/r/{rubrique}   Liste ou formulaire d'une rubrique
+  /s/{slug}/enregistrer    Publier / brouillon / programmer (POST)
+  /s/{slug}/historique     Historique et annulation
+  /s/{slug}/reglages       Équipe, fermeture, rubriques, connexion
+  /admin, /admin/journal   Administration
+  /catalogue/{clé}.js      Script public du catalogue hébergé (sans session)
+  /cron                    Déclenchement web des publications programmées
+  /robots.txt /sitemap.xml Moteurs de recherche
+
+
+================================================================================
+6. LE MOTEUR DE CONTENU
+================================================================================
+
+Notion centrale : la RUBRIQUE (« section »). Un site est décrit par un
+« schéma » = une liste de rubriques, stocké en base (table sc_schemas,
+versionné). Chaque rubrique a :
+  - key, label            identifiant et nom affiché
+  - kind                  « collection » (liste d'éléments : produits, projets…)
+                          ou « singleton » (un seul bloc : textes d'une page,
+                          horaires, ouverture…)
+  - fields                les champs : text, textarea, richtext, price, number,
+                          boolean, select, image, gallery, url, date…
+  - titleField, imageField, idField…   pour l'affichage des listes
+  - source                où se trouve le contenu : fichier + chemin dans le
+                          fichier + format (json, yaml, markdown, js, jsvars,
+                          html), ou dossier (un fichier par élément)
+
+D'où vient le schéma ?
+  a) Le site fournit un fichier simplecommerce.json : il est utilisé tel quel.
+  b) Sinon DÉTECTION AUTOMATIQUE (Content\Infer) sur les fichiers de contenu.
+  c) Site fait main, sans fichier de contenu : FileSiteAdapter parcourt les
+     .js, .json et .html du site (findProductFiles) et garde :
+       - les listes de produits écrites en JavaScript (JsLiteral)
+       - les fiches répétées des pages HTML (HtmlCards::find) : blocs frères
+         de même classe avec un titre h1-h6 et un prix, un texte ou une photo
+         (photo en <img> ou en background-image), étiquette, liste à puces
+       - les textes de chaque page (HtmlCards::texts) : titres, paragraphes,
+         légendes, photos, hors menu, liens, boutons, formulaires et fiches
+       - un réglage ouvert / fermé (booléen nommé open / ouvert / ferme…)
+     Les pages qu'aucune autre page ne relie (projet supprimé) sont écartées.
+  L'administrateur peut ensuite renommer ou masquer des rubriques.
+
+Écriture CONSERVATRICE (règle absolue) :
+  - On ne réécrit JAMAIS tout un fichier du client. Formats::parse garde le
+    texte d'origine et son style (indentation, guillemets, virgules finales,
+    ordre, champs inconnus) ; Formats::serialize ne remplace que les éléments
+    modifiés. En HTML, seuls le texte, la photo ou la liste concernés changent.
+  - Conflit optimiste : le formulaire garde l'empreinte du contenu affiché ;
+    si le site a changé entre-temps, l'écriture est refusée.
+  - Écriture atomique (fichier temporaire puis renommage), chmod 0644.
+  - Les photos sont envoyées dans la MÊME écriture que le contenu : la valeur
+    « sc-media:<uuid> » est remplacée par le chemin final sur le site.
+
+Prix (Content\Price) : réécrits dans le format du site (nombre, centimes ou
+texte « 4,50 € »). Un prix rond reste rond (« 49 € »).
+
+Ajout d'une fiche HTML : copie de la dernière fiche ; les liens de paiement
+Stripe / PayPal de la copie sont remplacés par « # ». Si les fiches mènent à
+leur propre page (projet-x.html), la page du nouvel élément est créée en
+copiant celle de la fiche d'origine (FileSiteAdapter::addDetailPage,
+HtmlCards::copyPage). Supprimer garde le fichier de page (rien n'est perdu).
+Après un ajout ou une suppression dans une page HTML, le schéma est relu
+(Sites::rediscover).
+
+
+================================================================================
+7. LES CONNECTEURS
+================================================================================
+
+Interface commune (Adapters\Adapter) :
+  test, discover, listEntries, getEntry, createEntry, updateEntry,
+  deleteEntry, reorder, getSingleton, updateSingleton, template,
+  getStatus, setStatus, capabilities, close
+
+Connecteurs (choisis par Adapters\Registry selon sc_sites.connector) :
+  sftp, ftp      Fichiers chez n'importe quel hébergeur. Préréglages par
+                 hébergeur (OVH, o2switch, Hostinger, IONOS, Infomaniak, LWS,
+                 PlanetHoster). SFTP : empreinte du serveur mémorisée puis
+                 vérifiée. FTP : mode passif, liste via LIST si MLSD manque.
+  github, gitlab, bitbucket   Fichiers dans un dépôt de code (chaque
+                 modification = un enregistrement signé « via Simple Commerce »)
+  shopify        API Admin GraphQL 2026-07, Client ID + Client secret
+                 (jeton de 24 h obtenu à chaque connexion)
+  wordpress      API REST WordPress + WooCommerce (mot de passe d'application)
+  webflow        API Webflow (collections du CMS)
+  custom-api     Interface sur mesure pour les sites avec base de données
+                 (contrat : docs/API-SUR-MESURE.md, exemple :
+                 examples/simplecommerce-endpoint.php)
+  catalogue      Catalogue hébergé dans la base du portail (table sc_files,
+                 DbBackend) + ligne à coller sur le site du client :
+                 <script src="https://…/catalogue/{clé}.js"></script>
+                 Le widget (public/assets/catalogue-widget.js) s'affiche dans
+                 un Shadow DOM pour ne pas casser le style du site.
+  demo           Dossier local (démonstration uniquement)
+
+FileSiteAdapter : un seul adaptateur pour tous les connecteurs « fichiers »,
+au-dessus d'un FileBackend (read, list, commit, test, close).
+
+Fermeture temporaire : fichier simplecommerce-statut.json
+{ferme, message, reouverture} dans le dossier de contenu ; GET / PUT /status
+pour l'interface sur mesure ; pour Shopify, WordPress et Webflow, le portail
+explique où cliquer dans leur administration.
+
+
+================================================================================
+8. BASE DE DONNÉES (préfixe sc_)
+================================================================================
+
+sc_meta           Réglages globaux (ex. signup_open)
+sc_users          Comptes (mot de passe haché, is_admin)
+sc_sites          Sites reliés (slug, connecteur, config non secrète, statut)
+sc_members        Qui a accès à quel site, avec quel rôle (owner / editor)
+sc_credentials    Accès des sites, CHIFFRÉS (Vault), + empreintes affichables
+sc_schemas        Schéma de chaque site, versionné
+sc_changes        Historique : avant / après de chaque modification, annulation
+sc_drafts         Brouillons et publications programmées
+sc_media          Photos envoyées (bibliothèque « Mes photos »)
+sc_invitations    Invitations (jeton haché, 14 jours, liées à l'e-mail)
+sc_events         Journal d'activité (administration)
+sc_impersonations Sessions d'assistance « agir pour un client »
+sc_tokens         Jetons hachés : « rester connecté », lien de connexion…
+sc_attempts       Limitation des tentatives de connexion
+sc_files          Contenu des catalogues hébergés (créée à la demande)
+
+NE JAMAIS renommer une table ou une colonne sans migration : des bases sont
+déjà en service.
+
+
+================================================================================
+9. INSTALLATION ET MISE EN LIGNE (OVH MUTUALISÉ)
+================================================================================
+
+Installation automatique (InstallController::autoInstall) : au premier
+passage, si config.php n'existe pas, le portail crée une base SQLite
+(storage/simplecommerce.sqlite, sans mode WAL à cause des disques réseau),
+génère ses clés, écrit config.php et ouvre les inscriptions.
+LE PREMIER COMPTE CRÉÉ DEVIENT ADMINISTRATEUR. MySQL reste possible en secours.
+
+Fabriquer l'archive à envoyer :
+    git archive HEAD portail | tar -x -C <dossier>
+    puis retirer tests/ et zipper.
+
+Chez OVH :
+  - Envoyer les fichiers par FTP / SFTP (WinSCP, FileZilla).
+  - Multisite : le dossier racine du domaine doit pointer sur le dossier
+    public/ du portail (pour que src/, storage/ et config.php restent hors du
+    web). Cocher SSL.
+  - Tâches planifiées : bin/cron.php, PHP 8.3, toutes les heures.
+
+Installation actuelle : domaine simplecommercess.com. Les fichiers ont été
+envoyés dans simplecommerce/public/ (un étage plus bas que prévu), donc le
+multisite pointe sur simplecommerce/public/public et la tâche planifiée est
+simplecommerce/public/bin/cron.php.
+
+Mise à jour : renvoyer les fichiers par-dessus (src/, templates/, public/,
+vendor/, bin/). NE JAMAIS écraser config.php ni storage/.
+PERDRE config.php = PERDRE tous les accès enregistrés (clé de chiffrement).
+
+
+================================================================================
+10. SÉCURITÉ — RÈGLES NON NÉGOCIABLES
+================================================================================
+
+- Accès des sites chiffrés (Vault : sodium XChaCha20-Poly1305, préfixe « v1: »,
+  l'identifiant du site sert de donnée associée). Jamais renvoyés au
+  navigateur (seule une empreinte « …a3F9 » est affichée), jamais dans les
+  journaux (Log::redact), jamais dans le code ni le dépôt.
+  Ne pas changer ce format sans migration.
+- Isolation : chaque page et action passe par Access::site() /
+  Access::section(). Site non autorisé = 404 (et non 403).
+- Appels sortants uniquement côté serveur, sans suivre les redirections,
+  https obligatoire, adresses privées refusées (Net::assertPublicHost/Url).
+  Exceptions : SC_ALLOW_PRIVATE=1 en démo, ou 'allow_private_hosts' => true
+  dans config.php (tests, désactivé par défaut).
+- Photos : vrai type vérifié (finfo + getimagesize), pas de SVG, poids et
+  pixels limités, réencodées en WebP, EXIF / GPS retirés, 8 Mo maximum.
+- CSRF sur tous les POST (aussi en en-tête X-CSRF-Token). Cookies HttpOnly,
+  SameSite=Lax, Secure en https. CSP stricte : script-src 'self', aucun
+  script ni style en ligne, aucun domaine tiers.
+- Connexion : 8 tentatives / 15 min par e-mail, 30 par adresse IP.
+- « Rester connecté » : jeton haché en base, 400 jours, renouvelé à chaque
+  visite (donc sans limite tant que la personne revient).
+- Texte enrichi nettoyé par liste blanche (p, br, strong, em, a, ul, ol, li).
+- Seule la page d'accueil publique est indexable ; tout le reste est
+  « noindex » et interdit dans robots.txt.
+
+
+================================================================================
+11. CE QU'IL NE FAUT SURTOUT PAS FAIRE
+================================================================================
+
+- Commiter config.php, storage/ ou de vrais identifiants.
+- Exposer autre chose que public/ sur Internet.
+- Ajouter Node.js, une étape de « build », un CDN ou Google Fonts.
+- Mettre « php_value » dans un .htaccess (erreur 500 sur OVH mutualisé).
+- Supprimer vendor/ ou le rendre incompatible avec PHP 8.1.
+- Réécrire tout un fichier de contenu d'un client.
+- Affaiblir l'isolation, le CSRF, l'anti-SSRF, la validation des photos ou
+  le masquage des secrets.
+- Supprimer la version Next.js sans l'accord du propriétaire.
+
+
+================================================================================
+12. INTERFACE ET TON
+================================================================================
+
+- Couleurs : fond #f4efe6, cartes #ffffff, beiges #ebe3d5 / #d9ccb6, lignes
+  #e4dccf, encre #141210, textes #4b453e / #8b8377. Menu latéral noir, boutons
+  principaux noirs en pilule. Rouge sombre #a12d1f réservé aux erreurs et
+  suppressions. Variables CSS en tête de public/assets/app.css.
+- Police Figtree (400 à 700), servie localement.
+- Icônes SVG au trait (icon() dans helpers.php), jamais d'emoji.
+- À éviter : dégradés violets, polices Inter / Geist / Space Grotesk, petit
+  label en majuscules au-dessus d'un grand titre centré, animations inutiles,
+  faux témoignages.
+- Ton : français simple, vouvoiement, phrases courtes. Jamais de jargon pour
+  un client (« JSON », « API », « commit », « token », « dépôt »…). Les
+  boutons disent ce qu'ils font : « Publier sur mon site », « Enregistrer sans
+  publier », « Relier mon site », « Tester la connexion ». Accords gérés par
+  Text::plural et Text::addLabel.
+- Le JavaScript est une amélioration : les formulaires marchent sans lui
+  (champs « data[clé][ligne][sous-clé] » reconstruits par FormInput::coerce),
+  sauf pour l'envoi de photos, l'ajout ou le déplacement de lignes, le texte
+  enrichi et le test de connexion sans recharger.
+
+
+================================================================================
+13. AJOUTER UN NOUVEAU CONNECTEUR (exemple de démarche)
+================================================================================
+
+1. Créer src/Adapters/MonAdapter.php qui implémente Adapter (s'inspirer de
+   WebflowAdapter ou WordPressAdapter), ou un nouveau FileBackend si le site
+   est un ensemble de fichiers.
+2. L'enregistrer dans Adapters\Registry (création + validation de la config).
+3. Ajouter le choix et son formulaire dans l'assistant « Relier un site »
+   (SitesController + templates/sites/).
+4. Les secrets passent UNIQUEMENT par Sites::storeSecrets (chiffrés).
+5. Tout appel sortant passe par Support\Http (anti-SSRF inclus).
+6. Ajouter des vérifications dans tests/run.php, puis tester contre un vrai
+   compte ou une imitation fidèle de l'API.
+
+
+================================================================================
+14. ÉTAT ET SUITE
+================================================================================
+
+Testé en réel : installation (PHP intégré et Apache), SFTP, FTP, FTPS,
+WordPress 6.8 + WooCommerce 10.2, interface sur mesure, sites faits main
+(listes JavaScript, fiches HTML, sites vitrines avec projets et tarifs).
+Testés seulement contre des imitations de leurs API : GitHub, Shopify, Webflow.
+
+Reste à faire :
+- Paiement Stripe, variantes et catégories pour le catalogue hébergé.
+- Essais Shopify et Webflow avec de vrais comptes (relever chaque année
+  ShopifyAdapter::API_VERSION).
+- Connecteurs Wix, Squarespace, PrestaShop.
+- Envoi des e-mails par SMTP si mail() d'OVH arrive en indésirables.
+
+Documents complémentaires :
+  CLAUDE.md                   Mémoire du projet : décisions et journal
+  portail/README.md           Mise en ligne OVH pas à pas
+  docs/PREPARER-UN-SITE.md    Rendre un site plus facile à modifier
+  docs/API-SUR-MESURE.md      Contrat de l'interface sur mesure
+  docs/TESTER-LE-PORTAIL.md   Guide de test
+
+================================================================================

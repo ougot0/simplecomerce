@@ -1,0 +1,166 @@
+================================================================================
+                         SIMPLE COMMERCE — FICHE TECHNIQUE
+================================================================================
+
+Adresse            https://simplecommercess.com
+Version            Portail PHP (dossier « portail/ » du projet)
+Mise à jour        12 octobre 2026
+
+
+--------------------------------------------------------------------------------
+1. LE CONCEPT EN UNE PHRASE
+--------------------------------------------------------------------------------
+
+Simple Commerce est un espace en ligne où un commerçant ou un artisan modifie
+lui-même son propre site internet (produits, prix, stocks, photos, textes,
+horaires, ouverture / fermeture), sans développeur et sans toucher au code.
+
+
+--------------------------------------------------------------------------------
+2. LE PROBLÈME RÉSOLU
+--------------------------------------------------------------------------------
+
+Beaucoup de petits commerces ont un site fait par quelqu'un d'autre : un ami,
+une agence, un freelance. Pour changer un prix, ajouter un produit ou remplacer
+une photo, ils doivent le rappeler et attendre, ou payer. Souvent, le site finit
+par ne plus être à jour.
+
+Les outils existants (Shopify, Wix, WordPress…) obligent à refaire tout le site
+chez eux. Simple Commerce fait l'inverse : il garde le site tel qu'il est, là où
+il est hébergé, et donne au commerçant un espace simple pour le modifier.
+
+
+--------------------------------------------------------------------------------
+3. À QUI ÇA S'ADRESSE
+--------------------------------------------------------------------------------
+
+- Commerçants, artisans, indépendants : boulangeries, pâtisseries, boutiques,
+  créateurs, architectes d'intérieur, restaurants…
+- Des personnes qui ne sont pas techniques : le portail parle un français
+  simple, sans jargon, et chaque bouton dit ce qu'il fait.
+- Les personnes qui créent des sites pour leurs clients et veulent leur laisser
+  la main sur le contenu.
+
+
+--------------------------------------------------------------------------------
+4. COMMENT ÇA MARCHE POUR LE CLIENT
+--------------------------------------------------------------------------------
+
+1. Il crée un compte (une adresse e-mail et un mot de passe).
+2. Il relie son site, une seule fois, en choisissant comment il a été fait et
+   en donnant les accès fournis par son hébergeur.
+3. Simple Commerce retrouve tout seul ce qui est modifiable : les produits,
+   les prix, les projets, les tarifs, les textes et les photos de chaque page.
+4. Il modifie dans des formulaires simples, puis clique sur
+   « Publier sur mon site ». Le changement est en ligne aussitôt.
+5. Une erreur ? Il annule en un clic depuis l'historique.
+
+
+--------------------------------------------------------------------------------
+5. CE QUE LE CLIENT PEUT FAIRE
+--------------------------------------------------------------------------------
+
+- Ajouter, modifier, supprimer des produits, des projets ou des formules
+  (avec création automatique de la page d'un nouveau projet).
+- Changer les prix (écrits dans le même format que le site : « 4,50 € »…).
+- Gérer les stocks, masquer un produit sans l'effacer, dupliquer un produit.
+- Changer les photos (recadrées, allégées, nettoyées automatiquement).
+- Modifier les titres, les textes et les photos de chaque page du site.
+- Fermer temporairement sa boutique, avec un message et une date de retour.
+- Enregistrer sans publier (brouillon) ou programmer une publication.
+- Voir l'historique de toutes les modifications et revenir en arrière.
+- Inviter un collègue sur un site précis, et lui retirer l'accès à tout moment.
+- Télécharger une sauvegarde de son contenu.
+- Rester connecté sur son appareil sans limite de durée.
+
+
+--------------------------------------------------------------------------------
+6. QUELS SITES PEUVENT ÊTRE RELIÉS
+--------------------------------------------------------------------------------
+
+Sites hébergés chez n'importe quel hébergeur (accès SFTP, FTP ou FTPS) :
+  OVHcloud, o2switch, Hostinger, IONOS, Infomaniak, LWS, PlanetHoster, autres.
+  Le formulaire est pré-rempli selon l'hébergeur choisi.
+
+Sites faits à la main (HTML, JavaScript) : rien à préparer. Le portail lit les
+pages et reconnaît les fiches répétées (produits, projets, tarifs), les listes
+de produits écrites en JavaScript et les textes de chaque page.
+
+Plateformes : Shopify, WordPress + WooCommerce, Webflow.
+
+Sites dont le code est sur GitHub, GitLab ou Bitbucket.
+
+Sites avec leur propre base de données : par une petite interface sur mesure
+(documentée dans docs/API-SUR-MESURE.md).
+
+Pas encore de site marchand ? « Catalogue hébergé » : les produits sont gérés
+dans Simple Commerce et affichés sur n'importe quel site en collant une ligne.
+
+
+--------------------------------------------------------------------------------
+7. RÔLES
+--------------------------------------------------------------------------------
+
+Client                 Ne voit que ses propres sites.
+« Modifier le contenu » Peut modifier et publier sur le site où il est invité.
+« Tout gérer »         Peut en plus inviter, retirer des personnes, régler le site.
+Administrateur         Le premier compte créé. Voit tous les sites, peut agir pour
+                       un client (assistance), consulte le journal d'activité,
+                       suspend un site, ouvre ou ferme les inscriptions.
+
+
+--------------------------------------------------------------------------------
+8. SÉCURITÉ
+--------------------------------------------------------------------------------
+
+- Les accès aux sites des clients sont chiffrés en base (sodium
+  XChaCha20-Poly1305) et ne sont jamais réaffichés, ni écrits dans les journaux.
+- Chaque client est isolé : un site qui n'est pas le sien répond « page
+  introuvable », sans même révéler qu'il existe.
+- Protection contre les envois de formulaires frauduleux (CSRF), cookies
+  protégés, politique de sécurité stricte (aucun script extérieur).
+- Tentatives de connexion limitées.
+- Le portail refuse d'appeler des adresses internes (protection anti-SSRF).
+- Photos vérifiées par leur contenu réel, réencodées, sans données GPS.
+- Les modifications ne réécrivent que l'élément changé, et sont refusées si
+  le site a été modifié ailleurs entre-temps.
+
+
+--------------------------------------------------------------------------------
+9. TECHNOLOGIES
+--------------------------------------------------------------------------------
+
+Langage           PHP 8.1 minimum (testé en 8.3), sans framework
+Base de données   SQLite (installation automatique) ou MySQL / MariaDB
+Interface         HTML, CSS et JavaScript écrits à la main, sans bibliothèque
+                  externe ; fonctionne même sans JavaScript (sauf photos)
+Police            Figtree, servie par le portail (aucun appel à Google)
+Dépendances       phpseclib 3 (SFTP), symfony/yaml 6.4 — fournies avec le code
+Hébergement       Hébergement mutualisé classique (OVHcloud) : pas besoin de
+                  Node.js, ni de terminal, ni de Composer sur le serveur
+Installation      Envoi des fichiers par FTP ; le portail s'installe seul à la
+                  première visite ; le premier compte devient administrateur
+Tâche planifiée   bin/cron.php toutes les heures (publications programmées)
+
+
+--------------------------------------------------------------------------------
+10. CHARTE
+--------------------------------------------------------------------------------
+
+Couleurs     Fond beige clair #f4efe6, cartes blanches, encre #141210,
+             menu latéral noir, boutons principaux noirs en pilule.
+             Seule autre couleur : rouge sombre #a12d1f pour les erreurs.
+Ton          Français simple, vouvoiement, phrases courtes, aucun jargon.
+Icônes       Dessinées au trait, jamais d'emoji.
+
+
+--------------------------------------------------------------------------------
+11. CE QUI RESTE À FAIRE
+--------------------------------------------------------------------------------
+
+- Paiement en ligne (Stripe), variantes et catégories pour le catalogue hébergé.
+- Tester Shopify et Webflow avec de vrais comptes.
+- Connecteurs Wix, Squarespace, PrestaShop.
+- Envoi des e-mails par SMTP si ceux d'OVH arrivent en indésirables.
+
+================================================================================
