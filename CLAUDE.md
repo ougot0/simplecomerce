@@ -106,7 +106,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 1. **Enregistrer = publier directement** sur le site du client, avec en plus **« Enregistrer sans publier »** (brouillon)
    et **« Programmer… »** (publication à une date/heure). Demande explicite.
 2. **Les clients créent leur compte eux-mêmes** et retrouvent leur site déjà relié à chaque connexion (accès chiffrés
-   stockés une fois). **« Rester connecté »** (jeton 30 jours haché en base). **Connexion par lien e-mail** possible.
+   stockés une fois). **« Rester connecté »** (jeton haché en base, 400 jours renouvelés à chaque visite = sans limite, demandé le 12/10/2026). **Connexion par lien e-mail** possible.
 3. **Un client peut inviter un collègue** (rôle « Modifier le contenu » ou « Tout gérer »), invitation liée à l'adresse
    e-mail, valable 14 jours, lien affiché si l'e-mail ne part pas.
 4. **Nom : « Simple Commerce »** (pas d'autre nom, pas « Kumao »).

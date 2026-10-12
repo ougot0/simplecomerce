@@ -121,7 +121,7 @@ Sous Nginx, faites pointer la racine sur `public/` et renvoyez toutes les adress
 - Tous les appels aux services externes partent du serveur ; adresses internes refusées (protection SSRF) ; empreinte SFTP mémorisée.
 - Photos : vrai type vérifié par le contenu (JPEG, PNG, WebP), 8 Mo maximum, réencodées en WebP (métadonnées et position GPS retirées).
 - Formulaires protégés contre la falsification (jeton CSRF), cookies HttpOnly/SameSite, en-têtes de sécurité (CSP…),
-  limitation des tentatives de connexion, « Rester connecté » par jeton haché de 30 jours.
+  limitation des tentatives de connexion, « Rester connecté » par jeton haché, renouvelé à chaque visite (connexion sans limite jusqu’à « Se déconnecter »).
 
 ## Essayer sur son ordinateur
 

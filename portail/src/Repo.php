@@ -420,6 +420,11 @@ final class Repo
         return $r;
     }
 
+    public static function extendToken(string $id, int $seconds): void
+    {
+        Db::run('UPDATE sc_tokens SET expires_at = ? WHERE id = ?', [gmdate('Y-m-d\\TH:i:s\\Z', time() + $seconds), $id]);
+    }
+
     public static function deleteToken(string $token): void
     {
         Db::run('DELETE FROM sc_tokens WHERE token_hash = ?', [hash('sha256', $token)]);

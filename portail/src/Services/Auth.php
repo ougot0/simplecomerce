@@ -10,12 +10,14 @@ use SimpleCommerce\Support\Session;
 
 /**
  * Comptes : inscription, connexion par mot de passe ou lien envoyé par e-mail, « Rester connecté ».
- * « Rester connecté » dépose un jeton de 30 jours (haché en base) ; sinon la session s'arrête à la fermeture du navigateur.
+ * « Rester connecté » dépose un jeton (haché en base) renouvelé à chaque visite : on reste connecté sans limite,
+ * jusqu'à « Se déconnecter ». Sinon la session s'arrête à la fermeture du navigateur.
  */
 final class Auth
 {
     private const REMEMBER_COOKIE = 'sc_remember';
-    private const REMEMBER_DAYS = 30;
+    /** 400 jours : la plus longue durée acceptée par les navigateurs ; elle repart de zéro à chaque visite. */
+    private const REMEMBER_DAYS = 400;
 
     public static function userId(): ?string
     {
@@ -29,6 +31,8 @@ final class Auth
             if ($t && Repo::user($t['user_id'])) {
                 Session::regenerate();
                 Session::set('uid', $t['user_id']);
+                Repo::extendToken($t['id'], self::REMEMBER_DAYS * 86400);
+                self::setCookie($token);
                 return $t['user_id'];
             }
             self::forgetCookie();
@@ -54,7 +58,7 @@ final class Auth
         Session::forget('assist');
         if ($remember) {
             $token = Repo::createToken($user['id'], 'remember', self::REMEMBER_DAYS * 86400);
-            setcookie(self::REMEMBER_COOKIE, $token, ['expires' => time() + self::REMEMBER_DAYS * 86400, 'path' => '/', 'secure' => self::secure(), 'httponly' => true, 'samesite' => 'Lax']);
+            self::setCookie($token);
         }
         Repo::log($user['id'], null, null, 'login');
     }
@@ -62,6 +66,11 @@ final class Auth
     private static function secure(): bool
     {
         return str_starts_with(Config::url(), 'https://');
+    }
+
+    private static function setCookie(string $token): void
+    {
+        setcookie(self::REMEMBER_COOKIE, $token, ['expires' => time() + self::REMEMBER_DAYS * 86400, 'path' => '/', 'secure' => self::secure(), 'httponly' => true, 'samesite' => 'Lax']);
     }
 
     private static function forgetCookie(): void

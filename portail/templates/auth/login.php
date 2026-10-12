@@ -24,7 +24,7 @@
     </div>
     <label class="checkbox">
         <input type="checkbox" name="remember" value="1" checked>
-        <span>Rester connecté<br><span class="help">Pendant 30 jours. Décochez sur un ordinateur partagé.</span></span>
+        <span>Rester connecté<br><span class="help">Vous restez connecté sur cet appareil jusqu'à ce que vous cliquiez sur « Se déconnecter ». Décochez sur un ordinateur partagé.</span></span>
     </label>
     <div class="actions"><button class="btn btn-primary" type="submit" name="intent" value="password">Se connecter</button></div>
     <div class="divider">ou</div>

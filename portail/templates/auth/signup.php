@@ -17,7 +17,7 @@
         <span class="help">10 caractères minimum, avec au moins un chiffre.</span>
         <?= field_error($errors, 'password') ?>
     </div>
-    <label class="checkbox"><input type="checkbox" name="remember" value="1" checked><span>Rester connecté<br><span class="help">Pendant 30 jours. Décochez sur un ordinateur partagé.</span></span></label>
+    <label class="checkbox"><input type="checkbox" name="remember" value="1" checked><span>Rester connecté<br><span class="help">Vous restez connecté sur cet appareil jusqu'à ce que vous cliquiez sur « Se déconnecter ». Décochez sur un ordinateur partagé.</span></span></label>
     <div class="actions"><button class="btn btn-primary" type="submit">Créer mon compte</button></div>
     <p>Déjà un compte ? <a href="/connexion<?= $next !== '/sites' ? '?next=' . e(rawurlencode($next)) : '' ?>">Se connecter</a></p>
 </form>
