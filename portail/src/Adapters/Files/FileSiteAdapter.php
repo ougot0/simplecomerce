@@ -11,6 +11,7 @@ use SimpleCommerce\Adapters\RetryableConflict;
 use SimpleCommerce\Adapters\Status;
 use SimpleCommerce\Content\ContentSchema;
 use SimpleCommerce\Content\Formats;
+use SimpleCommerce\Content\HtmlCards;
 use SimpleCommerce\Content\Infer;
 use SimpleCommerce\Content\Paths;
 use SimpleCommerce\Content\Values;
@@ -203,6 +204,22 @@ final class FileSiteAdapter implements Adapter
             // Site fait main : on ne garde que les listes de produits et les réglages simples (ouverture…) des mêmes fichiers.
             $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s) || self::isPageTexts($s)
                 || ($s['kind'] === 'singleton' && !empty($s['source']['path']) && array_filter($s['fields'], fn ($f) => $f['type'] === 'boolean'))));
+            // Pages détachées (projet supprimé…) : plus aucune page n'y mène, on ne les propose plus.
+            $linked = [];
+            foreach ($files as $f) {
+                if (Formats::fromPath($f['path']) === 'html') {
+                    foreach (HtmlCards::pageLinks($f['text']) as $href) {
+                        try {
+                            if (($t = $this->linkTarget($f['path'], $href)) !== $f['path']) {
+                                $linked[$t] = true;
+                            }
+                        } catch (\InvalidArgumentException) {
+                        }
+                    }
+                }
+            }
+            $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => !self::isPageTexts($s)
+                || preg_match('#(^|/)index\.(html?|php)$#i', $s['source']['file']) || isset($linked[$s['source']['file']])));
             // Ordre : ouvert/fermé, puis les listes (produits…), puis les textes des pages (accueil d'abord).
             $rank = fn ($s) => self::isOpenSwitch($s) ? 0 : (self::isPageTexts($s) ? (preg_match('#(^|/)index\.html?$#', $s['source']['file']) ? 2 : 3) : 1);
             usort($r['schema']['sections'], fn ($a, $b) => $rank($a) <=> $rank($b));
@@ -456,6 +473,93 @@ final class FileSiteAdapter implements Adapter
         return $id;
     }
 
+    /** Chemin d'un lien de page, depuis le fichier qui le contient. */
+    private function linkTarget(string $fromFile, string $href): string
+    {
+        $dir = dirname($fromFile);
+        return Paths::join($dir === '.' ? '' : $dir, $href);
+    }
+
+    /** Une autre page du site renvoie-t-elle vers $file ? (Sinon c'est une page détachée, par exemple d'un projet supprimé.) */
+    private function isLinked(string $file): bool
+    {
+        foreach ($this->backend->list($this->options['contentDir'], 3) as $f) {
+            if ($f === $file || Formats::fromPath($f) !== 'html' || preg_match(self::SKIP_SCAN, $f)) {
+                continue;
+            }
+            $raw = $this->backend->read($f);
+            foreach ($raw ? HtmlCards::pageLinks($raw['content']) : [] as $href) {
+                try {
+                    if ($this->linkTarget($f, $href) === $file) {
+                        return true;
+                    }
+                } catch (\InvalidArgumentException) {
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Fiche ajoutée dans une page HTML : si les fiches mènent chacune à leur page (« projet-zohar.html »),
+     * la nouvelle fiche reçoit sa propre page, copiée sur celle de la fiche d'origine avec le nouveau nom.
+     * Une page détachée du même nom (fiche supprimée puis remise) est reprise telle quelle.
+     */
+    private function addDetailPage(array $section, array $item, array &$writes): ?string
+    {
+        $src = $this->source($section);
+        $path = $this->path($src['file']);
+        $parsed = $this->file($path, 'html');
+        $cards = $parsed['style']['groups'][$src['path'] ?? '']['cards'] ?? [];
+        if (!$cards) {
+            return null;
+        }
+        $html = $parsed['style']['source'];
+        $last = $cards[count($cards) - 1];
+        $link = HtmlCards::cardLink($html, $last);
+        if ($link === null) {
+            return null;
+        }
+        try {
+            $sourcePath = $this->linkTarget($path, $link);
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+        $source = $this->backend->read($sourcePath);
+        if (!$source) {
+            return null;
+        }
+        $oldName = HtmlCards::values($html, $last)['nom'] ?? '';
+        $newName = trim((string) ($item[$section['titleField'] ?? 'nom'] ?? ''));
+        $oldSlug = Text::slugify($oldName);
+        $newSlug = Text::slugify($newName) ?: 'nouveau';
+        $base = basename($link);
+        $ext = pathinfo($base, PATHINFO_EXTENSION);
+        $stem = $oldSlug !== '' && str_contains($base, $oldSlug) ? str_replace($oldSlug, $newSlug, substr($base, 0, -strlen($ext) - 1)) : $newSlug;
+        $linkDir = dirname($link) === '.' ? '' : dirname($link) . '/';
+        for ($n = 1; $n < 50; $n++) {
+            $name = $stem . ($n > 1 ? "-$n" : '') . '.' . $ext;
+            $target = $this->linkTarget($path, $linkDir . $name);
+            $existing = $target === $sourcePath ? $source : $this->backend->read($target);
+            if (!$existing) {
+                $photo = $item['photo'] ?? null;
+                $writes[] = ['path' => $target, 'content' => HtmlCards::copyPage($source['content'], $oldName, $newName, is_string($photo) ? $photo : null,
+                    trim((string) ($item['description'] ?? '')), $base, $name)];
+                break;
+            }
+            if ($target !== $sourcePath && !$this->isLinked($target)) {
+                break; // page détachée : on la relie de nouveau
+            }
+        }
+        foreach ($writes as &$w) {
+            if ($w['path'] === $path) {
+                $w['content'] = HtmlCards::relink($w['content'], $last['end'], $link, $linkDir . $name);
+            }
+        }
+        unset($w);
+        return $target;
+    }
+
     private function writeCollectionFile(array $section, array $items): array
     {
         $src = $this->source($section);
@@ -487,7 +591,9 @@ final class FileSiteAdapter implements Adapter
                 $item = $this->buildItem($section, $data, $id);
                 $next = [...$raw, $item];
                 $writes[] = $this->writeCollectionFile($section, $next);
-                return [$writes, ['id' => $this->itemId($section, $item, count($next) - 1), 'before' => null, 'after' => Values::pick($section, $item)]];
+                $page = $this->fileFormat($src) === 'html' ? $this->addDetailPage($section, $item, $writes) : null;
+                return [$writes, ['id' => $this->itemId($section, $item, count($next) - 1), 'before' => null, 'after' => Values::pick($section, $item)]
+                    + ($page ? ['pageCreated' => $page] : [])];
             }
             $ext = $src['extension'] ?? ($src['format'] === 'markdown' ? '.md' : '.' . $src['format']);
             $base = Text::slugify((string) ($data[$section['titleField'] ?? ''] ?? $section['itemLabel'] ?? 'element'));

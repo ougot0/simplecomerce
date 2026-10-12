@@ -76,6 +76,50 @@ final class Sites
         }, null, false);
     }
 
+    /** Nouvelle détection, en gardant les noms, champs cachés et rubriques masquées choisis auparavant. */
+    public static function mergeSchema(?array $current, array $found): array
+    {
+        $old = [];
+        foreach ($current['sections'] ?? [] as $s) {
+            $old[$s['key']] = $s;
+        }
+        foreach ($found['sections'] as &$s) {
+            if (!isset($old[$s['key']])) {
+                continue;
+            }
+            $o = $old[$s['key']];
+            $s['label'] = $o['label'];
+            $s['hidden'] = $o['hidden'] ?? false;
+            if (isset($o['itemLabel'])) {
+                $s['itemLabel'] = $o['itemLabel'];
+            }
+            $oldFields = array_column($o['fields'], null, 'key');
+            foreach ($s['fields'] as &$f) {
+                if (isset($oldFields[$f['key']])) {
+                    foreach (['label', 'hidden', 'help'] as $k) {
+                        if (isset($oldFields[$f['key']][$k])) {
+                            $f[$k] = $oldFields[$f['key']][$k];
+                        }
+                    }
+                }
+            }
+            unset($f);
+        }
+        unset($s);
+        return ContentSchema::parse($found);
+    }
+
+    /** Après l'ajout ou la suppression d'une page (projet…), les rubriques du site sont relues. */
+    public static function rediscover(array $site, string $by): void
+    {
+        try {
+            $found = self::discover($site);
+            Repo::saveSchema($site['id'], self::mergeSchema(Repo::schema($site['id']), $found['schema']), $by);
+        } catch (\Throwable $e) {
+            Log::warn('relecture des rubriques échouée', ['site' => $site['slug'], 'err' => $e]);
+        }
+    }
+
     /** Délai d'apparition sur le site, selon la façon dont il est relié. */
     public static function delayText(array $site): string
     {

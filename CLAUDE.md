@@ -265,6 +265,12 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
   Un champ inchangé n'est plus réécrit (badges et mise en forme conservés). **Textes de chaque page** (titres, paragraphes,
   légendes, photos y compris de fond) modifiables un par un (`HtmlCards::texts`, rubrique « Textes de la page … », hors menu,
   liens, boutons, formulaires et fiches). Ordre des rubriques : ouvert/fermé, listes, textes de l'accueil, autres pages.
+  Ensuite (demande : « modifier, en ajouter et supprimer » des projets) : **ajouter une fiche qui mène à sa propre page**
+  (`projet-x.html`) crée cette page (`FileSiteAdapter::addDetailPage`, copie de la page de la dernière fiche : titre, onglet,
+  fil d'Ariane, accroche, 1re photo, description et adresse canonique remplacés ; `HtmlCards::copyPage`), et la fiche y renvoie.
+  Supprimer la fiche **garde le fichier de la page** (rien n'est perdu) mais la page détachée n'est plus proposée ; la remettre
+  (ou annuler) la relie de nouveau. Après un ajout/suppression dans une page HTML, les rubriques sont relues
+  (`Sites::rediscover`, fusion `Sites::mergeSchema` partagée avec « Relire le contenu »). Étiquette de fiche (`categorie`).
 - 08/10/2026 : version Next.js complète (vitest, docs, démo) ; style beige/noir/blanc ; prototype cliquable v3.
 - 08–09/10/2026 : réécriture PHP/MySQL dans `portail/` (connecteurs, éditeur, options, installation, tests, guide OVH).
 - 10/10/2026 : format JS, prix ronds conservés, portail privé par défaut, test réel WordPress/WooCommerce, archive OVH.

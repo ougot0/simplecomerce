@@ -133,35 +133,7 @@ final class SettingsController
                     Session::flash(AdapterError::userMessageFor($e), 'error');
                     return Response::redirect($back . '#rubriques');
                 }
-                $old = [];
-                foreach ($ctx['schema']['sections'] as $s) {
-                    $old[$s['key']] = $s;
-                }
-                $merged = $found['schema'];
-                foreach ($merged['sections'] as &$s) {
-                    if (!isset($old[$s['key']])) {
-                        continue;
-                    }
-                    $o = $old[$s['key']];
-                    $s['label'] = $o['label'];
-                    $s['hidden'] = $o['hidden'] ?? false;
-                    if (isset($o['itemLabel'])) {
-                        $s['itemLabel'] = $o['itemLabel'];
-                    }
-                    $oldFields = array_column($o['fields'], null, 'key');
-                    foreach ($s['fields'] as &$f) {
-                        if (isset($oldFields[$f['key']])) {
-                            foreach (['label', 'hidden', 'help'] as $k) {
-                                if (isset($oldFields[$f['key']][$k])) {
-                                    $f[$k] = $oldFields[$f['key']][$k];
-                                }
-                            }
-                        }
-                    }
-                    unset($f);
-                }
-                unset($s);
-                $merged = ContentSchema::parse($merged);
+                $merged = Sites::mergeSchema($ctx['schema'], $found['schema']);
                 Repo::saveSchema($site['id'], $merged, $v['user']['id']);
                 Access::audit($v, 'schema_detected', ['notes' => $found['notes']], $site['id']);
                 Session::flash('Contenu relu : ' . \SimpleCommerce\Support\Text::plural(count($merged['sections']), 'rubrique') . '. ' . implode(' ', $found['notes']));

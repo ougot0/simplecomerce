@@ -98,6 +98,10 @@ final class Changes
                 self::rememberMedia($data, $result['after']);
             }
             $change = array_merge($change, $patch);
+            if (!empty($result['pageCreated']) || (in_array($op['type'], ['create', 'delete'], true) && ($op['section']['source']['format'] ?? '') === 'html')) {
+                // Une page de projet a pu apparaître ou se détacher : ses textes s'ajoutent ou disparaissent des rubriques.
+                Sites::rediscover($site, $viewer['user']['id']);
+            }
             if ($notify) {
                 Notifier::changed($viewer, $site, $change);
             }

@@ -120,7 +120,7 @@ final class HtmlCards
     /** Champs d'une fiche : identifiants des éléments titre, prix, description, image. */
     private static function cardFields(string $html, array $els, int $card): ?array
     {
-        $title = $price = $desc = $img = $list = null;
+        $title = $price = $desc = $img = $list = $tag = null;
         foreach (self::descendants($els, $card) as $d) {
             $e = $els[$d];
             if (in_array($e['tag'], ['button', 'option', 'select', 'script', 'style', 'label', 'a'], true) || self::insideTag($els, $d, $card, ['button', 'select', 'a', 'label'])) {
@@ -134,6 +134,10 @@ final class HtmlCards
                 $price = $d;
             } elseif ($desc === null && $e['tag'] === 'p' && self::isLeaf($els, $e) && mb_strlen(self::text($html, $e)) >= 15) {
                 $desc = $d;
+            } elseif ($tag === null && in_array($e['tag'], ['span', 'small', 'p', 'div'], true) && !$e['children'] && !in_array($e['parent'], [$title, $price, $desc], true) && preg_match('/\b[\w-]*(tag|categ|badge|type|kicker|label|eyebrow)[\w-]*\b/i', (string) self::attr($e['attrs'], 'class'))
+                && ($t = self::text($html, $e)) !== '' && mb_strlen($t) <= 60) {
+                // Petite étiquette (« Restaurant · ERP ») : sa catégorie.
+                $tag = $d;
             } elseif ($list === null && in_array($e['tag'], ['ul', 'ol'], true) && self::isList($els, $e)) {
                 // Liste à puces (« ce qui est compris ») : un point par ligne.
                 $list = $d;
@@ -142,7 +146,7 @@ final class HtmlCards
                 $img = $d;
             }
         }
-        return $title !== null && ($price !== null || $img !== null || $desc !== null || $list !== null) ? ['title' => $title, 'price' => $price, 'desc' => $desc, 'img' => $img, 'list' => $list] : null;
+        return $title !== null && ($price !== null || $img !== null || $desc !== null || $list !== null) ? ['title' => $title, 'price' => $price, 'desc' => $desc, 'img' => $img, 'list' => $list, 'tag' => $tag] : null;
     }
 
     /** Liste simple : uniquement des <li> sans sous-élément. */
@@ -353,6 +357,104 @@ final class HtmlCards
         return [$el['openEnd'], $el['closeStart'], nl2br($text, false)];
     }
 
+    /** Lien vers une autre page du même site (« projet-zohar.html »), sans adresse complète. */
+    public static function isLocalPage(string $href): bool
+    {
+        return !preg_match('#^([a-z][a-z0-9+.-]*:|//|\#|/)#i', $href) && (bool) preg_match('#\.(html?|php)([?\#].*)?$#i', $href);
+    }
+
+    /** Pages du site vers lesquelles la page renvoie. @return string[] */
+    public static function pageLinks(string $html): array
+    {
+        preg_match_all('/<a\b[^>]*?\shref\s*=\s*(["\'])([^"\']*)\1/i', $html, $m);
+        return array_values(array_unique(array_map(fn ($h) => preg_replace('/[?#].*$/', '', html_entity_decode($h)), array_filter($m[2], [self::class, 'isLocalPage']))));
+    }
+
+    /** Page de détail d'une fiche (la fiche est un lien, ou contient un lien vers une page du site). */
+    public static function cardLink(string $html, array $card): ?string
+    {
+        $chunk = substr($html, $card['start'], $card['end'] - $card['start']);
+        foreach (self::elements($chunk) as $e) {
+            if ($e['tag'] === 'a' && ($h = self::attr($e['attrs'], 'href')) !== null && self::isLocalPage($h)) {
+                return preg_replace('/[?#].*$/', '', $h);
+            }
+        }
+        return null;
+    }
+
+    /** Remplace le premier lien vers $old situé après $from (celui de la fiche ajoutée). */
+    public static function relink(string $html, int $from, string $old, string $new): string
+    {
+        if (!preg_match('/(\shref\s*=\s*["\']?)' . preg_quote($old, '/') . '(?=[?#"\'\s>])/i', $html, $m, PREG_OFFSET_CAPTURE, $from)) {
+            return $html;
+        }
+        $at = $m[0][1] + strlen($m[1][0]);
+        return substr($html, 0, $at) . $new . substr($html, $at + strlen($old));
+    }
+
+    /**
+     * Nouvelle page de détail, copiée sur celle d'une fiche existante : le nom (titre principal et titre de l'onglet)
+     * et la première photo sont remplacés. Les autres textes et photos se modifient ensuite dans « Textes de la page ».
+     */
+    public static function copyPage(string $page, string $oldName, string $newName, ?string $photo, string $desc = '', string $oldFile = '', string $newFile = ''): string
+    {
+        $edits = [];
+        $texts = self::texts($page);
+        $heading = null;
+        foreach ($texts as $t) {
+            if ($t['kind'] === 'titre' && ($heading === null || ($t['el']['tag'] === 'h1' && $heading['el']['tag'] !== 'h1'))) {
+                $heading = $t;
+            }
+        }
+        if ($heading) {
+            $edits[] = self::textEdit($page, $heading, $newName);
+            // Le texte d'accroche juste sous le titre reprend la description de la nouvelle fiche.
+            $after = false;
+            foreach ($texts as $t) {
+                if ($after && $desc !== '') {
+                    if ($t['kind'] === 'texte' && $t['el']['tag'] === 'p') {
+                        $edits[] = self::textEdit($page, $t, $desc);
+                    }
+                    break;
+                }
+                $after = $t === $heading;
+            }
+        }
+        if ($photo !== null && $photo !== '') {
+            foreach ($texts as $t) {
+                if ($t['kind'] === 'img' || $t['kind'] === 'bg') {
+                    $edits[] = self::textEdit($page, $t, $photo);
+                    break;
+                }
+            }
+        }
+        if (preg_match('/(<title[^>]*>)(.*?)(<\/title>)/is', $page, $m, PREG_OFFSET_CAPTURE)) {
+            $title = html_entity_decode($m[2][0], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            // « Ancien projet — détail | Studio » devient « Nouveau projet | Studio ».
+            $new = $newName . (preg_match('/\s[|·–—-]\s[^|·–—-]+$/u', $title, $tail) ? $tail[0] : '');
+            $edits[] = [$m[2][1], $m[2][1] + strlen($m[2][0]), htmlspecialchars($new, ENT_QUOTES | ENT_HTML5, 'UTF-8', false)];
+        }
+        // Fil d'Ariane (« Accueil / Projets / Ancien nom ») et adresse canonique.
+        foreach (self::elements($page) as $e) {
+            if ($e['tag'] === 'nav' && $oldName !== '' && preg_match('/breadcrumb|ariane/i', $e['attrs'])) {
+                $inner = substr($page, $e['openEnd'], $e['closeStart'] - $e['openEnd']);
+                $edits[] = [$e['openEnd'], $e['closeStart'], str_replace(htmlspecialchars($oldName, ENT_QUOTES | ENT_HTML5, 'UTF-8', false), htmlspecialchars($newName, ENT_QUOTES | ENT_HTML5, 'UTF-8', false), $inner)];
+            }
+            if ($e['tag'] === 'meta' && $desc !== '' && preg_match('/\bname\s*=\s*["\']description["\']/i', $e['attrs'])) {
+                $attrs = preg_replace('/(\scontent\s*=\s*)("[^"]*"|\'[^\']*\')/i', '$1"' . str_replace('$', '\\$', htmlspecialchars($desc, ENT_QUOTES)) . '"', $e['attrs'], 1);
+                $edits[] = [$e['start'] + 5, $e['openEnd'] - 1, $attrs];
+            }
+            if ($e['tag'] === 'link' && $oldFile !== '' && preg_match('/\brel\s*=\s*["\']canonical/i', $e['attrs'])) {
+                $edits[] = [$e['start'] + 5, $e['openEnd'] - 1, str_replace($oldFile, $newFile, $e['attrs'])];
+            }
+        }
+        usort($edits, fn ($a, $b) => $b[0] <=> $a[0]);
+        foreach ($edits as [$from, $to, $text]) {
+            $page = substr($page, 0, $from) . $text . substr($page, $to);
+        }
+        return $page;
+    }
+
     /** Titre de la page (balise title), pour nommer la rubrique de ses textes. */
     public static function pageTitle(string $html): string
     {
@@ -376,6 +478,9 @@ final class HtmlCards
         }
         if ($f['desc']) {
             $out['description'] = self::text($html, $f['desc']);
+        }
+        if (!empty($f['tag'])) {
+            $out['categorie'] = self::text($html, $f['tag']);
         }
         if (!empty($f['list'])) {
             $out['points'] = implode("\n", self::listItems($html, $f['list']));
@@ -409,6 +514,7 @@ final class HtmlCards
         $put($f['title'], array_key_exists('nom', $values) ? (string) $values['nom'] : null);
         $put($f['price'], array_key_exists('prix', $values) ? (string) $values['prix'] : null);
         $put($f['desc'], array_key_exists('description', $values) ? (string) $values['description'] : null);
+        $put($f['tag'] ?? null, array_key_exists('categorie', $values) ? (string) $values['categorie'] : null);
         if (!empty($f['list']) && array_key_exists('points', $values)) {
             $lines = array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $values['points'])), fn ($l) => $l !== ''));
             if ($lines !== self::listItems($html, $f['list'])) {
@@ -423,11 +529,17 @@ final class HtmlCards
             }
         }
         if ($f['img'] && $f['img']['tag'] !== 'img') {
-            if (array_key_exists('photo', $values) && ($old = self::bgUrl($f['img']['attrs'])) !== null) {
-                $attrs = $f['img']['attrs'];
+            $attrs = $f['img']['attrs'];
+            if ($clone && isset($values['nom'])) {
+                // Description de la photo pour les lecteurs d'écran : celle de la fiche copiée ne convient plus.
+                $attrs = preg_replace('/(\saria-label\s*=\s*)("[^"]*"|\'[^\']*\')/i', '$1"' . str_replace('$', '\\$', htmlspecialchars((string) $values['nom'], ENT_QUOTES)) . '"', $attrs, 1);
+            }
+            if (array_key_exists('photo', $values) && ($old = self::bgUrl($attrs)) !== null && $old !== (string) $values['photo']) {
                 $pos = strrpos($attrs, $old);
-                $new = substr($attrs, 0, $pos) . htmlspecialchars((string) $values['photo'], ENT_QUOTES) . substr($attrs, $pos + strlen($old));
-                $edits[] = [$f['img']['start'] - $base + 1 + strlen($f['img']['tag']), $f['img']['openEnd'] - $base - 1, $new];
+                $attrs = substr($attrs, 0, $pos) . htmlspecialchars((string) $values['photo'], ENT_QUOTES) . substr($attrs, $pos + strlen($old));
+            }
+            if ($attrs !== $f['img']['attrs']) {
+                $edits[] = [$f['img']['start'] - $base + 1 + strlen($f['img']['tag']), $f['img']['openEnd'] - $base - 1, $attrs];
             }
         } elseif ($f['img'] && array_key_exists('photo', $values)) {
             $attrs = $f['img']['attrs'];
