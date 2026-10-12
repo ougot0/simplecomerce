@@ -229,6 +229,9 @@ D'où vient le schéma ?
        - les textes de chaque page (HtmlCards::texts) : titres, paragraphes,
          légendes, photos, hors menu, liens, boutons, formulaires et fiches
        - un réglage ouvert / fermé (booléen nommé open / ouvert / ferme…)
+       - le logo du site (HtmlCards::logo) : rubrique « Logo du site » de
+         source {type: logo}, remplacé dans toutes les pages par
+         FileSiteAdapter::writeLogo (logo, texte à côté, icône de l'onglet)
      Les pages qu'aucune autre page ne relie (projet supprimé) sont écartées.
   L'administrateur peut ensuite renommer ou masquer des rubriques.
 

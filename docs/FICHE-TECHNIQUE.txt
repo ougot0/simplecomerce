@@ -66,6 +66,7 @@ il est hébergé, et donne au commerçant un espace simple pour le modifier.
 - Gérer les stocks, masquer un produit sans l'effacer, dupliquer un produit.
 - Changer les photos (recadrées, allégées, nettoyées automatiquement).
 - Modifier les titres, les textes et les photos de chaque page du site.
+- Changer le logo du site (et la petite icône de l'onglet) sur toutes les pages.
 - Fermer temporairement sa boutique, avec un message et une date de retour.
 - Enregistrer sans publier (brouillon) ou programmer une publication.
 - Voir l'historique de toutes les modifications et revenir en arrière.

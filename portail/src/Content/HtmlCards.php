@@ -455,6 +455,102 @@ final class HtmlCards
         return $page;
     }
 
+    // ------------------------------------------------------------ logo du site
+
+    private const LOGO = '/logo|brand|monogram|marque|enseigne/i';
+
+    /** Le logo est-il dans cet élément (ou un de ses parents proches) ? Renvoie le conteneur du logo ou null. */
+    private static function logoBox(array $els, int $id): ?int
+    {
+        $e = $els[$id];
+        $own = (string) self::attr($e['attrs'], 'class') . ' ' . (string) self::attr($e['attrs'], 'id') . ' ' . (string) self::attr($e['attrs'], 'src');
+        for ($p = $e['parent'], $n = 0; $p >= 0 && $n < 3; $p = $els[$p]['parent'], $n++) {
+            if (preg_match(self::LOGO, (string) self::attr($els[$p]['attrs'], 'class') . ' ' . (string) self::attr($els[$p]['attrs'], 'id'))) {
+                return $p;
+            }
+        }
+        return preg_match(self::LOGO, $own) ? ($e['parent'] >= 0 ? $e['parent'] : $id) : null;
+    }
+
+    /**
+     * Logo d'une page : image (src tel qu'écrit), texte à côté du logo (« Studio »), icône de l'onglet.
+     * @return array{img: ?string, text: ?string, icon: ?string}
+     */
+    public static function logo(string $html): array
+    {
+        $els = self::elements($html);
+        $out = ['img' => null, 'text' => null, 'icon' => null];
+        foreach ($els as $id => $e) {
+            if ($out['icon'] === null && $e['tag'] === 'link' && preg_match('/\brel\s*=\s*["\']?[^"\'>]*\bicon\b/i', $e['attrs'])) {
+                $out['icon'] = self::attr($e['attrs'], 'href');
+            }
+            if ($out['img'] === null && $e['tag'] === 'img' && self::attr($e['attrs'], 'src') && ($box = self::logoBox($els, $id)) !== null) {
+                $out['img'] = self::attr($e['attrs'], 'src');
+                foreach (self::descendants($els, $box) as $d) {
+                    $t = $els[$d];
+                    if (in_array($t['tag'], ['span', 'strong', 'b', 'em', 'small'], true) && !$t['children'] && ($text = self::text($html, $t)) !== '' && mb_strlen($text) <= 40) {
+                        $out['text'] = $text;
+                        break;
+                    }
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Remplace le logo dans une page. $same(src) dit si une adresse désigne l'ancien logo (ou l'ancienne icône),
+     * $write(chemin) donne l'adresse à écrire dans cette page.
+     * @param array{img?: string, text?: string, icon?: string} $new
+     */
+    public static function replaceLogo(string $html, array $old, array $new, callable $same, callable $write): string
+    {
+        $els = self::elements($html);
+        $edits = [];
+        $esc = fn ($v) => htmlspecialchars($v, ENT_QUOTES | ENT_HTML5, 'UTF-8', false);
+        $setAttr = function (string $attrs, string $name, string $value) use ($esc): string {
+            $re = '/(\s' . $name . '\s*=\s*)("[^"]*"|\'[^\']*\'|[^\s>]+)/i';
+            return preg_match($re, $attrs) ? preg_replace_callback($re, fn ($m) => $m[1] . '"' . $esc($value) . '"', $attrs, 1) : $attrs;
+        };
+        foreach ($els as $id => $e) {
+            $from = $e['start'] + 1 + strlen($e['tag']);
+            $to = $e['openEnd'] - 1;
+            if (isset($new['img']) && $e['tag'] === 'img' && ($src = self::attr($e['attrs'], 'src')) !== null && $same($src, 'img')) {
+                $attrs = $setAttr($e['attrs'], 'src', $write($new['img']));
+                // Les autres tailles de l'ancien logo afficheraient encore l'ancien.
+                $attrs = preg_replace('/\ssrcset\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $attrs);
+                $edits[] = [$from, $to, $attrs];
+                if (isset($new['text'], $old['text']) && ($box = self::logoBox($els, $id)) !== null) {
+                    foreach (self::descendants($els, $box) as $d) {
+                        $t = $els[$d];
+                        if (!$t['children'] && $t['tag'] !== 'img' && self::text($html, $t) === $old['text']) {
+                            $edits[] = [$t['openEnd'], $t['closeStart'], $esc($new['text'])];
+                        }
+                    }
+                }
+            }
+            if (isset($new['icon']) && $e['tag'] === 'link' && preg_match('/\brel\s*=\s*["\']?[^"\'>]*\bicon\b/i', $e['attrs'])) {
+                $attrs = $setAttr($e['attrs'], 'href', $write($new['icon']));
+                $ext = strtolower(pathinfo(parse_url($new['icon'], PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
+                $type = ['webp' => 'image/webp', 'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'svg' => 'image/svg+xml', 'ico' => 'image/x-icon'][$ext] ?? null;
+                if ($type) {
+                    $attrs = $setAttr($attrs, 'type', $type);
+                }
+                $edits[] = [$from, $to, $attrs];
+            }
+        }
+        usort($edits, fn ($a, $b) => $b[0] <=> $a[0]);
+        $last = PHP_INT_MAX;
+        foreach ($edits as [$a, $b, $text]) {
+            if ($b > $last) {
+                continue; // jamais deux remplacements au même endroit
+            }
+            $html = substr($html, 0, $a) . $text . substr($html, $b);
+            $last = $a;
+        }
+        return $html;
+    }
+
     /** Titre de la page (balise title), pour nommer la rubrique de ses textes. */
     public static function pageTitle(string $html): string
     {

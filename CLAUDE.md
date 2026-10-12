@@ -258,6 +258,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 12/10/2026 (nuit, 6) : **logo du site modifiable** (rubrique « Logo du site », en tête de liste, sites reliés par fichiers sans
+  fichier de contenu) : `HtmlCards::logo` trouve l'image du logo (classe/id/src contenant logo, brand, monogram… sur l'image ou un
+  parent proche), le texte à côté (« Studio ») et l'icône de l'onglet (`<link rel=…icon>`) ; source de rubrique `{type: logo}` ;
+  `FileSiteAdapter::writeLogo` remplace dans **toutes** les pages HTML en une écriture (chemins recalculés par page, `srcset`
+  retiré, `type` de l'icône mis à jour) ; annulation exacte (sauf sites à plusieurs icônes différentes : toutes reprennent la
+  première). Champs image `required` → pas de bouton « Retirer ». Aspect « libre », transparence conservée (PNG → WebP).
+  Fichiers `docs/FICHE-TECHNIQUE.txt` et `docs/GUIDE-DEVELOPPEUR.txt` écrits à la demande du propriétaire.
 - 12/10/2026 (nuit, 5) : « Rester connecté » sans limite (jeton 400 jours renouvelé à chaque visite). **Page de présentation
   publique** sur `/` (visiteur non connecté ; `templates/public/home.php`, mise en page `public`, styles `.pub-*`) : seule page
   indexable (`indexable` → `index, follow` + description + canonical via `Req::origin()`), toutes les autres restent `noindex`.

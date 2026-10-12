@@ -108,6 +108,10 @@ final class ContentSchema
             }
             return $out;
         }
+        if (($src['type'] ?? '') === 'logo') {
+            // Logo du site : remplacé dans toutes les pages HTML (voir FileSiteAdapter).
+            return ['type' => 'logo'];
+        }
         if (($src['type'] ?? '') === 'folder') {
             if (!in_array($src['format'] ?? null, ['markdown', 'json', 'yaml'], true)) {
                 throw new \InvalidArgumentException("$at.format : markdown, json ou yaml.");

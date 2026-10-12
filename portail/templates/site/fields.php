@@ -102,7 +102,7 @@ if (!function_exists('sc_field')) {
                     . sc_image_item($name, $str, $ctx['base'], false) . '<input type="hidden" name="' . e($name) . '" value="' . e($str) . '"' . $preview . ' data-image-value>'
                     . '<div class="actions"><button type="button" class="btn btn-small" data-pick>' . icon('photo') . ' ' . ($str !== '' ? 'Changer la photo' : 'Choisir une photo') . '</button>'
                     . '<button type="button" class="btn btn-small btn-quiet" data-library>Mes photos</button>'
-                    . '<button type="button" class="btn btn-small btn-quiet" data-clear' . ($str === '' ? ' hidden' : '') . '>Retirer</button></div></div>'
+                    . (empty($f['required']) ? '<button type="button" class="btn btn-small btn-quiet" data-clear' . ($str === '' ? ' hidden' : '') . '>Retirer</button>' : '') . '</div></div>'
                     . '<span class="help">JPEG, PNG ou WebP, 8 Mo au plus. Vous pourrez recadrer avant l\'envoi.</span>' . sc_foot($f, $errors, $path) . '</div>';
             case 'gallery':
                 $items = '';

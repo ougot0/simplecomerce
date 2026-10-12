@@ -330,7 +330,8 @@
     var frame = box.querySelector(".frame");
     frame.innerHTML = src ? '<img alt="">' : "Pas de photo";
     if (src) frame.querySelector("img").src = src;
-    box.querySelector("[data-clear]").hidden = !value;
+    var clear = box.querySelector("[data-clear]");
+    if (clear) { clear.hidden = !value; }
     box.querySelector("[data-pick]").lastChild.textContent = value ? " Changer la photo" : " Choisir une photo";
     markDirty(box);
     updatePreview();

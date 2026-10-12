@@ -220,8 +220,11 @@ final class FileSiteAdapter implements Adapter
             }
             $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => !self::isPageTexts($s)
                 || preg_match('#(^|/)index\.(html?|php)$#i', $s['source']['file']) || isset($linked[$s['source']['file']])));
+            if ($logo = $this->logoSection($files)) {
+                $r['schema']['sections'][] = $logo;
+            }
             // Ordre : ouvert/fermé, puis les listes (produits…), puis les textes des pages (accueil d'abord).
-            $rank = fn ($s) => self::isOpenSwitch($s) ? 0 : (self::isPageTexts($s) ? (preg_match('#(^|/)index\.html?$#', $s['source']['file']) ? 2 : 3) : 1);
+            $rank = fn ($s) => self::isOpenSwitch($s) || ($s['source']['type'] ?? '') === 'logo' ? 0 : (self::isPageTexts($s) ? (preg_match('#(^|/)index\.html?$#', $s['source']['file']) ? 2 : 3) : 1);
             usort($r['schema']['sections'], fn ($a, $b) => $rank($a) <=> $rank($b));
             foreach ($r['schema']['sections'] as &$s) {
                 if (self::isOpenSwitch($s)) {
@@ -358,6 +361,9 @@ final class FileSiteAdapter implements Adapter
         $this->init();
         $this->resetReads();
         $src = $this->source($section);
+        if ($src['type'] === 'logo') {
+            return Values::pick($section, $this->currentLogo()['values']);
+        }
         $parsed = $this->file($this->path($src['file']), $this->fileFormat($src));
         if (!$parsed) {
             throw new AdapterError('not_found', 'Le fichier de cette rubrique est introuvable sur le site.', $src['file']);
@@ -471,6 +477,125 @@ final class FileSiteAdapter implements Adapter
             $id = $base . '-' . $n++;
         }
         return $id;
+    }
+
+    // ------------------------------------------------------------ logo du site
+
+    /** Adresse d'une image écrite dans une page → chemin depuis la racine du site (null si adresse extérieure). */
+    private static function rootPath(string $page, string $src): ?string
+    {
+        $src = preg_replace('/[?#].*$/', '', trim($src));
+        if ($src === '' || preg_match('#^([a-z][a-z0-9+.-]*:|//)#i', $src)) {
+            return null;
+        }
+        $parts = str_starts_with($src, '/') ? [] : array_filter(explode('/', dirname($page)), fn ($p) => $p !== '.' && $p !== '');
+        foreach (explode('/', ltrim($src, '/')) as $seg) {
+            if ($seg === '..') {
+                array_pop($parts);
+            } elseif ($seg !== '.' && $seg !== '') {
+                $parts[] = $seg;
+            }
+        }
+        return implode('/', $parts);
+    }
+
+    /** Adresse à écrire dans une page pour un chemin depuis la racine du site. */
+    private static function fromPage(string $page, string $value): string
+    {
+        if ($value === '' || preg_match('#^([a-z][a-z0-9+.-]*:|//|/)#i', $value)) {
+            return $value;
+        }
+        $depth = count(array_filter(explode('/', dirname($page)), fn ($p) => $p !== '.' && $p !== ''));
+        return str_repeat('../', $depth) . $value;
+    }
+
+    /** @return string[] pages HTML du site */
+    private function htmlPages(): array
+    {
+        $pages = array_values(array_filter($this->backend->list($this->options['contentDir'], 3), fn ($f) => Formats::fromPath($f) === 'html' && !preg_match(self::SKIP_SCAN, $f)));
+        usort($pages, fn ($a, $b) => [!preg_match('#(^|/)index\.html?$#', $a), substr_count($a, '/'), $a] <=> [!preg_match('#(^|/)index\.html?$#', $b), substr_count($b, '/'), $b]);
+        return array_slice($pages, 0, 200);
+    }
+
+    /** Rubrique « Logo du site », si une page en montre un. @param array<int, array{path: string, text: string}> $files */
+    private function logoSection(array $files): ?array
+    {
+        $pages = array_filter($files, fn ($f) => Formats::fromPath($f['path']) === 'html');
+        usort($pages, fn ($a, $b) => !preg_match('#(^|/)index\.html?$#', $a['path']) <=> !preg_match('#(^|/)index\.html?$#', $b['path']));
+        foreach ($pages as $f) {
+            $l = HtmlCards::logo($f['text']);
+            if ($l['img'] === null && $l['icon'] === null) {
+                continue;
+            }
+            $fields = [];
+            if ($l['img'] !== null) {
+                $fields[] = ['key' => 'logo', 'label' => 'Logo', 'type' => 'image', 'required' => true, 'aspect' => 'libre', 'maxWidth' => 1200,
+                    'help' => 'Remplacé sur toutes les pages du site. Image PNG, JPG ou WebP, de préférence sur fond transparent.'];
+                if ($l['text'] !== null) {
+                    $fields[] = ['key' => 'nom', 'label' => 'Texte à côté du logo', 'type' => 'text', 'maxLength' => 40];
+                }
+            }
+            if ($l['icon'] !== null) {
+                $fields[] = ['key' => 'icone', 'label' => "Petite icône de l'onglet", 'type' => 'image', 'required' => true, 'aspect' => '1:1', 'maxWidth' => 512,
+                    'help' => "L'image carrée affichée dans l'onglet du navigateur et les favoris."];
+            }
+            return ['key' => 'logo-du-site', 'label' => 'Logo du site', 'kind' => 'singleton', 'source' => ['type' => 'logo'], 'fields' => $fields];
+        }
+        return null;
+    }
+
+    /** Logo actuel (lu sur la page d'accueil) : valeurs du formulaire et chemins depuis la racine du site. */
+    private function currentLogo(): array
+    {
+        foreach ($this->htmlPages() as $page) {
+            $raw = $this->backend->read($page);
+            $l = $raw ? HtmlCards::logo($raw['content']) : ['img' => null, 'icon' => null, 'text' => null];
+            if ($l['img'] === null && $l['icon'] === null) {
+                continue;
+            }
+            $root = fn ($v) => $v === null ? null : (self::rootPath($page, $v) ?? $v);
+            // Valeur affichée : adresse depuis la racine du site (« /… » et adresses complètes gardées telles quelles).
+            $shown = fn ($v) => $v === null ? null : (preg_match('#^([a-z][a-z0-9+.-]*:|/)#i', $v) ? $v : $root($v));
+            return ['values' => array_filter(['logo' => $shown($l['img']), 'nom' => $l['text'], 'icone' => $shown($l['icon'])], fn ($v) => $v !== null),
+                'img' => $root($l['img']), 'icon' => $root($l['icon']), 'text' => $l['text']];
+        }
+        throw new AdapterError('not_found', "Le logo n'a pas été retrouvé dans les pages du site.");
+    }
+
+    /** Remplace le logo (et l'icône, le texte) dans toutes les pages du site, en une seule écriture. */
+    private function writeLogo(array $section, array $data, ?array $expected, array $writes): array
+    {
+        $cur = $this->currentLogo();
+        $current = Values::pick($section, $cur['values']);
+        $this->assertExpected($section, $current, $expected);
+        $new = [];
+        foreach (['logo' => 'img', 'icone' => 'icon', 'nom' => 'text'] as $field => $k) {
+            if (isset($data[$field]) && is_string($data[$field]) && $data[$field] !== '' && $data[$field] !== ($cur['values'][$field] ?? null)) {
+                $new[$k] = $data[$field];
+            }
+        }
+        if (isset($new['text']) && !isset($new['img'])) {
+            $new['img'] = $cur['img']; // le texte se remplace à côté du logo : on réécrit le logo à l'identique
+        }
+        if ($new) {
+            foreach ($this->htmlPages() as $page) {
+                $raw = $this->backend->read($page);
+                if (!$raw) {
+                    continue;
+                }
+                $same = function (string $src, string $what) use ($page, $cur): bool {
+                    $target = $what === 'img' ? $cur['img'] : $cur['icon'];
+                    return $target !== null && (self::rootPath($page, $src) ?? $src) === $target;
+                };
+                $html = HtmlCards::replaceLogo($raw['content'], ['text' => $cur['text']], $new, $same, fn ($v) => self::fromPage($page, $v));
+                if ($html !== $raw['content']) {
+                    $this->versions[$page] = $raw['version'];
+                    $writes[] = ['path' => $page, 'content' => $html];
+                }
+            }
+        }
+        $after = array_replace($current, array_intersect_key($data, $current + array_flip(['logo', 'nom', 'icone'])));
+        return [$writes, ['before' => $current, 'after' => Values::pick($section, $after)]];
     }
 
     /** Chemin d'un lien de page, depuis le fichier qui le contient. */
@@ -695,11 +820,14 @@ final class FileSiteAdapter implements Adapter
     public function updateSingleton(array $section, array $input, ?array $expected, array $ctx): array
     {
         $src = $this->source($section);
-        if ($src['type'] !== 'file') {
+        if ($src['type'] !== 'file' && $src['type'] !== 'logo') {
             throw new AdapterError('invalid', 'Rubrique mal configurée.', $section['key']);
         }
         return $this->run($ctx, function () use ($section, $input, $expected, $ctx, $src) {
             [$data, $writes] = $this->planAssets($input, $ctx);
+            if ($src['type'] === 'logo') {
+                return $this->writeLogo($section, $data, $expected, $writes);
+            }
             $path = $this->path($src['file']);
             $parsed = $this->file($path, $this->fileFormat($src));
             if (!$parsed) {
