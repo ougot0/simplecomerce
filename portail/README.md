@@ -60,20 +60,22 @@ La propagation prend de quelques minutes à quelques heures.
 Le fichier `.ovhconfig` fourni demande PHP 8.3. Placez-le à la racine de votre hébergement (à côté de `www/`) s'il n'y en a pas
 déjà un ; s'il en existe un, mettez simplement `app.engine.version=8.3` (et `environment=production`) dedans.
 
-### 6. Installer
+### 6. Créer votre compte administrateur
 
-Ouvrez `https://portail.votre-domaine.fr` : la page d'installation vérifie l'hébergement, puis demande la base de données et
-votre compte administrateur. Les clés de chiffrement sont créées automatiquement dans `config.php`.
+Ouvrez `https://votre-domaine` : le site se met en service tout seul (base de données SQLite rangée dans `storage/`,
+clés de chiffrement créées dans `config.php`) et affiche directement la page **Créer un compte**.
+**Le premier compte créé devient l'administrateur** : créez le vôtre tout de suite après l'envoi des fichiers.
 
-- Faites l'installation **juste après l'envoi des fichiers** : tant qu'elle n'est pas faite, la page reste ouverte à tous.
-- **Téléchargez une copie de `config.php`** (FTP) et gardez-la en lieu sûr : sans ses clés, les accès enregistrés de vos clients
-  ne peuvent plus être relus (il faudrait les ressaisir).
+- Si l'hébergement ne permet pas cette mise en service automatique (extension SQLite absente), une page demande à la place
+  les informations d'une base MySQL (espace client OVH → Bases de données).
+- **Téléchargez une copie de `config.php` et de `storage/simplecommerce.sqlite`** (FTP) et gardez-les en lieu sûr :
+  sans les clés de `config.php`, les accès enregistrés de vos clients ne peuvent plus être relus.
 
-### Portail privé pour commencer
+### Inscriptions
 
-Après l'installation, le portail est **privé** : personne ne peut créer de compte, à part les personnes que vous invitez
-(depuis les réglages d'un site). Vous pouvez donc tester tranquillement avec de vrais sites. Quand vous êtes prêt,
-**Administration → « Ouvrir les inscriptions »** permet à tout le monde de créer un compte et de relier son site.
+Les inscriptions sont **ouvertes** : n'importe qui peut créer un compte (e-mail + mot de passe) et relier ses sites ;
+chacun ne voit que les siens. **Administration → « Rendre le portail privé »** les ferme (seules les personnes invitées
+peuvent alors entrer).
 
 ### 7. Publication programmée
 

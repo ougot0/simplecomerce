@@ -120,9 +120,12 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
    **par FTP + page web d'installation** (pas de terminal). Dossier racine du multisite = `simplecommerce/public`.
 8. **« Les clients ne sont pas tous chez OVH »** ⇒ préréglages d'hébergeurs (OVH, o2switch, Hostinger, IONOS, Infomaniak,
    LWS, PlanetHoster, autre) qui pré-remplissent le formulaire SFTP/FTP et disent où trouver les accès.
-9. **Portail privé par défaut après installation** : personne ne peut s'inscrire sauf via une invitation ;
-   bouton « Ouvrir les inscriptions » dans l'administration (réglage `signup_open` dans `sc_meta`). Pour que le
-   propriétaire teste avec de vrais sites sans ouvrir au public.
+9. **(Révisé le 12/10/2026) Plus de page d'installation** : le propriétaire l'a trouvée incompréhensible (« trop
+   d'informations, le mec ne sait pas où les trouver »). Au premier passage, `InstallController::autoInstall()` met le
+   site en service seul : base **SQLite** `storage/simplecommerce.sqlite` (sans WAL : disques réseau), clés générées,
+   `config.php` écrit, inscriptions **ouvertes** (`signup_open=1`). L'accueil `/` affiche **Créer un compte** (e-mail +
+   mot de passe + « Rester connecté », plus de champ nom). **Le premier compte créé devient administrateur** et arrive sur
+   `/admin`. Le formulaire MySQL ne reste qu'en secours si SQLite manque. Bouton admin « Rendre le portail privé » inchangé.
 10. **Mode démonstration** (`SC_DEMO=1`) avec 2 faux sites (Pâtisserie Lune en `content.json`, Atelier Brun en
     Markdown/YAML) et 3 comptes. Le propriétaire a été **déçu de voir de faux produits** en reliant un vrai site dans
     le prototype : toujours expliquer clairement ce qui est démo et ce qui est réel. En production, aucune donnée de démo.
@@ -255,6 +258,7 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 - 08–09/10/2026 : réécriture PHP/MySQL dans `portail/` (connecteurs, éditeur, options, installation, tests, guide OVH).
 - 10/10/2026 : format JS, prix ronds conservés, portail privé par défaut, test réel WordPress/WooCommerce, archive OVH.
 - 11/10/2026 : création de ce fichier.
+- 12/10/2026 (soir) : mise en service automatique SQLite + inscription e-mail/mot de passe (décision 9 révisée).
 - 12/10/2026 : vérification complète avant mise en ligne. Testés en réel : installation web (PHP intégré et **Apache** avec
   les `.htaccess`, y compris dossier racine mal réglé), SFTP, FTPS, WordPress+WooCommerce, API sur mesure ; GitHub et
   Shopify contre des imitations de leurs API. Corrections : Shopify (Client ID/secret, API 2026-07, mise en vente des

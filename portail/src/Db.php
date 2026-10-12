@@ -33,9 +33,10 @@ final class Db
             PDO::ATTR_EMULATE_PREPARES => false,
         ];
         if (($cfg['driver'] ?? 'mysql') === 'sqlite') {
-            $pdo = new PDO('sqlite:' . $cfg['path'], null, null, $options);
+            $pdo = new PDO('sqlite:' . $cfg['path'], null, null, $options + [PDO::ATTR_TIMEOUT => 10]);
             $pdo->exec('PRAGMA foreign_keys = ON');
-            $pdo->exec('PRAGMA journal_mode = WAL');
+            // Pas de mode WAL : il ne fonctionne pas sur les disques réseau des hébergements mutualisés.
+            $pdo->exec('PRAGMA journal_mode = DELETE');
             return $pdo;
         }
         $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $cfg['host'] ?? 'localhost', (int) ($cfg['port'] ?? 3306), $cfg['name'] ?? '');

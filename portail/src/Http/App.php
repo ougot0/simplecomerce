@@ -120,6 +120,9 @@ final class App
         $method = Req::method();
         $path = Req::path();
 
+        if (!Config::installed() && InstallController::autoInstall()) {
+            return Response::redirect('/');
+        }
         if (!Config::installed()) {
             return $path === '/installation' ? ($method === 'POST' ? InstallController::install() : InstallController::form()) : Response::redirect('/installation');
         }

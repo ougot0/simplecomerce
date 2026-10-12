@@ -45,6 +45,38 @@ final class InstallController
         return Response::page('install', $state + ['checks' => self::checks(), 'values' => ['url' => self::guessUrl(), 'db_host' => '', 'db_name' => '', 'db_user' => '', 'name' => '', 'email' => '', 'mail_from' => ''], 'errors' => []], 'auth', $state ? 422 : 200);
     }
 
+    /**
+     * Mise en service automatique, sans aucune question : base SQLite rangée dans storage/ (hors d'Internet),
+     * clés de chiffrement générées. Le premier compte créé devient l'administrateur.
+     * Renvoie false si l'hébergement ne le permet pas (on garde alors le formulaire avec MySQL).
+     */
+    public static function autoInstall(): bool
+    {
+        if (!extension_loaded('pdo_sqlite') || PHP_VERSION_ID < 80100 || !function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')
+            || !is_dir(SC_STORAGE) || !is_writable(SC_STORAGE) || !is_writable(SC_ROOT)) {
+            return false;
+        }
+        $db = ['driver' => 'sqlite', 'path' => SC_STORAGE . '/simplecommerce.sqlite'];
+        try {
+            Db::use($db);
+            Schema::install();
+            Repo::setMeta('signup_open', '1');
+        } catch (\Throwable) {
+            return false;
+        }
+        $url = self::guessUrl();
+        Config::write([
+            'url' => $url,
+            'db' => $db,
+            'key' => base64_encode(random_bytes(32)),
+            'secret' => bin2hex(random_bytes(32)),
+            'cron_key' => bin2hex(random_bytes(16)),
+            'mail_from' => 'ne-pas-repondre@' . preg_replace('/^www\./', '', (string) parse_url($url, PHP_URL_HOST)),
+            'debug' => false,
+        ]);
+        return true;
+    }
+
     public static function install(): Response
     {
         Session::start();

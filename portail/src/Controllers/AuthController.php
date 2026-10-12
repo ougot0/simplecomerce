@@ -16,7 +16,10 @@ final class AuthController
 {
     public static function home(): Response
     {
-        return Response::redirect(Access::viewer() ? '/sites' : '/connexion');
+        if (Access::viewer()) {
+            return Response::redirect('/sites');
+        }
+        return Response::redirect(self::signupOpen() ? '/inscription' : '/connexion');
     }
 
     public static function loginForm(array $p, array $state = []): Response
@@ -55,7 +58,8 @@ final class AuthController
     /** Inscriptions ouvertes à tous ? (réglage de l'administrateur ; fermées par défaut). */
     public static function signupOpen(): bool
     {
-        return Config::demo() || Repo::meta('signup_open', '0') === '1';
+        // Tant qu'aucun compte n'existe, l'inscription est ouverte : le premier compte devient l'administrateur.
+        return Config::demo() || Repo::meta('signup_open', '0') === '1' || !Repo::users();
     }
 
     /** Invitation en attente correspondant à la page de retour (/invitation/…), pour les inscriptions fermées. */
@@ -70,21 +74,19 @@ final class AuthController
         if (!self::signupOpen() && !self::invitationFor($next)) {
             return Response::page('message', ['title' => 'Inscriptions sur invitation', 'text' => "Pour l'instant, on ne peut créer un compte qu'avec une invitation. Demandez-la à la personne qui gère Simple Commerce, ou connectez-vous si vous avez déjà un compte.", 'link' => ['/connexion', 'Se connecter']], 'auth', 403);
         }
-        return Response::page('auth/signup', $state + ['next' => $next, 'values' => ['email' => Req::query('email', 200), 'name' => ''], 'errors' => []], 'auth', $state ? 422 : 200);
+        return Response::page('auth/signup', $state + ['next' => $next, 'values' => ['email' => Req::query('email', 200), 'name' => ''], 'errors' => [], 'firstAccount' => !Config::demo() && !Repo::users()], 'auth', $state ? 422 : 200);
     }
 
     public static function signup(array $p): Response
     {
         $email = mb_strtolower(Req::str('email', 200));
-        $name = Req::str('name', 120);
         $password = Req::raw('password');
+        // Seuls l'e-mail et le mot de passe sont demandés ; le nom se change ensuite dans « Mon compte ».
+        $name = Req::str('name', 120) ?: mb_substr(ucfirst((string) strtok($email, '@')), 0, 80);
         $values = compact('email', 'name');
         $errors = [];
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors['email'] = 'Adresse e-mail invalide.';
-        }
-        if (mb_strlen($name) < 2 || mb_strlen($name) > 80) {
-            $errors['name'] = 'Indiquez votre prénom et votre nom.';
         }
         if ($problem = Auth::passwordProblem($password)) {
             $errors['password'] = $problem;
@@ -108,8 +110,15 @@ final class AuthController
             return self::signupForm($p, ['error' => 'Un compte existe déjà avec cette adresse. Connectez-vous, ou demandez un lien de connexion par e-mail.', 'values' => $values]);
         }
         Repo::recordAttempt('signup:' . Req::ip());
-        $user = Repo::createUser($email, $name, $password);
+        $first = !Repo::users();
+        $user = Repo::createUser($email, $name, $password, $first && !Config::demo());
         Repo::log($user['id'], null, null, 'signup');
+        if ($first && !Config::demo()) {
+            // Le propriétaire du portail vient de créer son compte : la suite des inscriptions reste à son choix.
+            Session::flash('Bienvenue ! Vous êtes l\'administrateur de Simple Commerce. Vous pouvez maintenant relier vos sites.');
+            Auth::login($user, Req::bool('remember'));
+            return Response::redirect('/admin');
+        }
         Auth::login($user, Req::bool('remember'));
         return Response::redirect(Req::safeNext(Req::str('next', 500)));
     }
