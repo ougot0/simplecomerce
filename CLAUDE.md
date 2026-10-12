@@ -176,6 +176,8 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 - **Garder `vendor/` commité** (OVH sans Composer) et compatible PHP 8.1.
 - **Ne pas ajouter de dépendance Node.js / build** à la version PHP, ni de CDN / Google Fonts (CSP + RGPD).
 - **Ne pas mettre `php_value` dans `.htaccess`** : erreur 500 sur OVH mutualisé.
+- **Ne pas mettre `RewriteCond %{ENV:REDIRECT_STATUS}` dans `.htaccess`** : chez OVH (PHP lancé par redirection) la variable
+  est déjà remplie, la règle ne s'applique plus → toutes les pages en erreur 500 (arrivé le 13/10/2026).
 - **Ne pas affaiblir** l'isolation (404), le CSRF, l'anti-SSRF, la validation des photos, le masquage des secrets.
 - **Ne pas réécrire tout un fichier de contenu** du client : toujours passer par `Formats::parse/serialize` qui conserve le style.
 - **Ne pas supprimer la version Next.js** sans accord explicite du propriétaire.
@@ -259,6 +261,11 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit) : **incident** — le propriétaire a effacé par erreur tout son espace OVH (/home/coumaoq vidé à 0 h 26 : `www`,
+  `ougot`, `aminteriorss`, `simplecommerce`…). Restauration OVH refusée avant 7 h (« Wait until 7:00 AM ») ; accès `-snapN` en FTP
+  refusé chez lui. À faire après 7 h : FTP-SSH → Restaurer une sauvegarde → la plus récente (13/10 0 h 01). Copies anciennes des
+  sites données en secours (dépôts coumao/yotam + copie AM). Erreur 500 de Simple Commerce causée par `REDIRECT_STATUS` dans
+  le `.htaccess` racine (retiré). D'après les logs OVH, la racine du multisite est en fait **`simplecommerce/public`** à vérifier.
 - 12/10/2026 (nuit, 8) : **page d'accueil publique = vraie page** `public/accueil.html` (créée au premier passage depuis
   `templates/public/accueil.html`, `{{ORIGINE}}` remplacé ; ignorée par git, jamais écrasée par les mises à jour) : le propriétaire
   peut relier simplecommercess.com à son propre portail (SFTP/FTP OVH, dossier `/simplecommerce/public/public`) et modifier ses

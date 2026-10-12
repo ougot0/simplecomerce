@@ -3,8 +3,6 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule ^(src|templates|storage|vendor|demo|tests|bin|config\.php|composer\.(json|lock)|README\.md|\.ovhconfig) - [F,L]
-    # Une seule fois (sinon boucle sans fin et « Erreur interne du serveur » si le dossier public/ manque).
-    RewriteCond %{ENV:REDIRECT_STATUS} ^$
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
