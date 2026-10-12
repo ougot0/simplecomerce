@@ -42,7 +42,7 @@
 <section id="hebergeurs">
     <h2>Mon site n'est pas chez OVH</h2>
     <p>Simple Commerce fonctionne avec <strong>tous les hébergeurs</strong> qui donnent un accès FTP ou SFTP : OVHcloud, o2switch, Hostinger, IONOS, Infomaniak, LWS, PlanetHoster, Gandi, serveurs dédiés… Le formulaire « Relier un site » se pré-remplit selon votre hébergeur et vous dit où trouver vos accès.</p>
-    <p>Il fonctionne aussi avec les boutiques <strong>Shopify</strong>, les sites <strong>WordPress</strong> (et WooCommerce) et <strong>Webflow</strong>, et les sites dont le code est sur <strong>GitHub</strong>, <strong>GitLab</strong> ou <strong>Bitbucket</strong> (Next.js, Astro, Hugo, Jekyll, Eleventy… hébergés sur Vercel, Netlify, GitHub Pages ou ailleurs). Un site avec sa propre base de données peut être relié par une petite « API sur mesure » que son développeur ajoute.</p>
+    <p>Il fonctionne aussi avec les boutiques <strong>Shopify</strong>, les sites <strong>WordPress</strong> (et WooCommerce) et <strong>Webflow</strong>, les sites déposés sur <strong>Netlify</strong> (même sans GitHub), et les sites dont le code est sur <strong>GitHub</strong>, <strong>GitLab</strong> ou <strong>Bitbucket</strong> (Next.js, Astro, Hugo, Jekyll, Eleventy… hébergés sur Vercel, Netlify, GitHub Pages ou ailleurs). Un site avec sa propre base de données peut être relié par une petite « API sur mesure » que son développeur ajoute.</p>
     <p>Vos accès sont chiffrés dès leur enregistrement, ne sont jamais réaffichés et ne quittent jamais le serveur du portail.</p>
 </section>
 <section id="preparer">

@@ -10,6 +10,7 @@ use SimpleCommerce\Adapters\Files\FtpBackend;
 use SimpleCommerce\Adapters\Files\GitHubBackend;
 use SimpleCommerce\Adapters\Files\GitLabBackend;
 use SimpleCommerce\Adapters\Files\LocalBackend;
+use SimpleCommerce\Adapters\Files\NetlifyBackend;
 use SimpleCommerce\Adapters\Files\SftpBackend;
 use SimpleCommerce\Config;
 use SimpleCommerce\Content\Paths;
@@ -90,6 +91,13 @@ final class Registry
                     }
                     $config['remoteRoot'] = '/' . trim($config['remoteRoot'], '/');
                     break;
+                case 'netlify':
+                    $site = strtolower(trim(preg_replace('#^https?://|/.*$#i', '', trim($config['netlifySite']))));
+                    if (!preg_match('/^([a-z0-9-]+\.)+[a-z]{2,}$|^[0-9a-f-]{36}$/', $site)) {
+                        $errors['netlifySite'] = "Indiquez l'adresse du site, par exemple mon-site.netlify.app";
+                    }
+                    $config['netlifySite'] = $site;
+                    break;
                 case 'shopify':
                     $domain = strtolower(preg_replace('#^https?://|/.*$#', '', $config['shopDomain']));
                     if (!preg_match(ShopifyAdapter::DOMAIN_RE, $domain)) {
@@ -135,6 +143,8 @@ final class Registry
             case 'ftp':
                 Net::assertPublicHost($s('host'));
                 return new FileSiteAdapter(new FtpBackend($s('host'), (int) ($config['port'] ?? 0), $s('username'), (string) ($secrets['password'] ?? ''), $s('tls') ?: 'explicit', $s('remoteRoot') ?: '/'), self::fileOptions($config, $ctx, true));
+            case 'netlify':
+                return new FileSiteAdapter(new NetlifyBackend($s('netlifySite'), (string) ($secrets['token'] ?? '')), self::fileOptions($config, $ctx, true));
             case 'shopify':
                 return new ShopifyAdapter($s('shopDomain'), (string) ($secrets['accessToken'] ?? ''), $s('apiVersion') ?: ShopifyAdapter::API_VERSION, $s('clientId'), (string) ($secrets['clientSecret'] ?? ''));
             case 'wordpress':

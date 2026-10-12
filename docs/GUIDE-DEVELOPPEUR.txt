@@ -274,6 +274,12 @@ Connecteurs (choisis par Adapters\Registry selon sc_sites.connector) :
                  vérifiée. FTP : mode passif, liste via LIST si MLSD manque.
   github, gitlab, bitbucket   Fichiers dans un dépôt de code (chaque
                  modification = un enregistrement signé « via Simple Commerce »)
+  netlify        Site déposé sur Netlify sans dépôt de code (NetlifyBackend) :
+                 jeton personnel ; lecture par l'API des fichiers ; chaque
+                 modification = nouveau déploiement par empreintes SHA1 (seuls
+                 les fichiers changés sont envoyés). Refusé si le site se
+                 reconstruit depuis un dépôt ou utilise des fonctions Netlify.
+                 Testé seulement contre une imitation de l'API.
   shopify        API Admin GraphQL 2026-07, Client ID + Client secret
                  (jeton de 24 h obtenu à chaque connexion)
   wordpress      API REST WordPress + WooCommerce (mot de passe d'application)

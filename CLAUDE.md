@@ -259,6 +259,16 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 12/10/2026 (nuit, 8) : **page d'accueil publique = vraie page** `public/accueil.html` (créée au premier passage depuis
+  `templates/public/accueil.html`, `{{ORIGINE}}` remplacé ; ignorée par git, jamais écrasée par les mises à jour) : le propriétaire
+  peut relier simplecommercess.com à son propre portail (SFTP/FTP OVH, dossier `/simplecommerce/public/public`) et modifier ses
+  textes, étapes et logo. `accueil|home.html` comptent comme page d'accueil ; 2 blocs h1/h2 côte à côte ≠ liste.
+  **Connecteur Netlify sans GitHub** (`NetlifyBackend`, type `netlify`, groupe « plateforme ») : jeton personnel Netlify + adresse
+  `xxx.netlify.app` (ou domaine) ; lecture par `GET /sites/{id}/files` (+ contenu brut `application/vnd.bitballoon.v1.raw`),
+  écriture = nouveau déploiement par empreintes SHA1 (liste complète, seuls les fichiers `required` envoyés), attente `ready`.
+  Refus si le site se reconstruit depuis un dépôt (`build_settings.repo_url`) ou a des fonctions Netlify. **Testé seulement
+  contre une imitation de l'API** (pas de vrai compte) : à vérifier en réel, notamment que `_redirects`/`_headers` figurent
+  dans la liste des fichiers (sinon ils seraient perdus au déploiement).
 - 12/10/2026 (nuit, 7) : **logo officiel de Simple Commerce** fourni par le propriétaire (carré noir arrondi, « SC » crème et
   flèche de souris) : `public/assets/logo-512.png`, `logo-96.png`, `favicon-32.png`, `apple-touch-icon.png` (recadrés, fond
   transparent). Affiché devant « Simple Commerce » (`.wordmark::before`), icône d'onglet, icône téléphone, `og:image` de l'accueil.

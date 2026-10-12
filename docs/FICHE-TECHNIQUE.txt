@@ -87,7 +87,8 @@ Sites faits à la main (HTML, JavaScript) : rien à préparer. Le portail lit le
 pages et reconnaît les fiches répétées (produits, projets, tarifs), les listes
 de produits écrites en JavaScript et les textes de chaque page.
 
-Plateformes : Shopify, WordPress + WooCommerce, Webflow.
+Plateformes : Shopify, WordPress + WooCommerce, Webflow, Netlify (site déposé
+sans GitHub : chaque modification publie une nouvelle version du site).
 
 Sites dont le code est sur GitHub, GitLab ou Bitbucket.
 

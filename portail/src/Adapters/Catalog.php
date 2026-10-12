@@ -85,6 +85,13 @@ final class Catalog
                     ['name' => 'token', 'label' => "Jeton d'accès du site", 'type' => 'password', 'required' => true, 'secret' => true],
                     ['name' => 'siteId', 'label' => 'Identifiant du site', 'type' => 'text', 'advanced' => true, 'help' => 'Uniquement si le jeton donne accès à plusieurs sites.'],
                 ]],
+            ['id' => 'netlify', 'group' => 'plateforme', 'label' => 'Mon site est sur Netlify (sans GitHub)', 'description' => 'Site déposé directement sur Netlify (glisser-déposer du dossier). Chaque modification publie une nouvelle version du site.',
+                'steps' => ['Dans Netlify : cliquez sur votre photo de profil (en haut à droite) → « User settings » → « Applications » → « Personal access tokens » → « New access token ».', 'Donnez-lui un nom (Simple Commerce), choisissez une date d\'expiration lointaine, puis « Generate token ».', 'Copiez le jeton (il n\'est affiché qu\'une fois) et collez-le ci-contre.', 'Indiquez l\'adresse de votre site en .netlify.app : elle est écrite en haut de la page de votre site dans Netlify.', 'Votre site se reconstruit depuis GitHub ? Choisissez plutôt « Mon site est sur GitHub ».'],
+                'fields' => [
+                    ['name' => 'netlifySite', 'label' => 'Adresse Netlify du site', 'type' => 'text', 'required' => true, 'placeholder' => 'mon-site.netlify.app', 'help' => 'Ou votre propre nom de domaine s\'il est relié au site dans Netlify.'],
+                    ['name' => 'token', 'label' => "Jeton d'accès Netlify", 'type' => 'password', 'required' => true, 'secret' => true, 'placeholder' => 'nfp_…'],
+                    $contentDir, $mediaDir, $mediaPrefix,
+                ]],
             ['id' => 'github', 'group' => 'code', 'label' => 'Mon site est sur GitHub', 'description' => 'Site fait sur mesure (Next.js, Astro, Hugo, Jekyll, Eleventy, HTML…) dont le code est sur GitHub. Il se met à jour tout seul après chaque modification (Vercel, Netlify, GitHub Pages, OVH…).',
                 'steps' => ['Sur GitHub : Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.', 'Repository access : « Only select repositories », choisissez le dépôt du site.', 'Permissions → Contents : « Read and write ».', 'Générez le jeton et copiez-le (il commence par github_pat_).'],
                 'fields' => [
