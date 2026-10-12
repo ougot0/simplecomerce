@@ -1,6 +1,6 @@
 <?php /** @var array $checks @var array $values @var array $errors */ ?>
-<h2>Installer Simple Commerce</h2>
-<p class="muted">Une seule fois, juste après avoir envoyé les fichiers. Comptez cinq minutes.</p>
+<h2>Mise en service de votre site</h2>
+<p class="muted">Cette page ne s'affiche qu'une seule fois, avant la toute première utilisation. Elle relie le site à sa base de données et crée votre compte administrateur. Ensuite, les visiteurs arrivent directement sur la page de connexion.</p>
 <ul class="checks install-checks">
     <?php foreach ($checks as [$label, $ok, $hint]): ?>
     <li><?= tag($ok ? 'live' : 'error', $ok ? 'OK' : 'À régler') ?><span><?= e($label) ?><?php if (!$ok): ?><span class="help block"><?= e($hint) ?></span><?php endif ?></span></li>
@@ -22,6 +22,6 @@
     <div class="field<?= invalid($errors, 'email') ?>"><label for="email">Adresse e-mail</label><input id="email" name="email" type="email" value="<?= e($values['email']) ?>"><?= field_error($errors, 'email') ?></div>
     <div class="field<?= invalid($errors, 'password') ?>"><label for="password">Mot de passe</label><input id="password" name="password" type="password" autocomplete="new-password"><span class="help">10 caractères minimum, avec au moins un chiffre.</span><?= field_error($errors, 'password') ?></div>
     <div class="field<?= invalid($errors, 'mail_from') ?>"><label for="mail_from">Adresse d'envoi des e-mails <span class="optional">(facultatif)</span></label><input id="mail_from" name="mail_from" type="email" value="<?= e($values['mail_from']) ?>" placeholder="ne-pas-repondre@mon-domaine.fr"><span class="help">Une adresse de votre nom de domaine, pour que les e-mails n'arrivent pas en indésirables.</span><?= field_error($errors, 'mail_from') ?></div>
-    <div class="actions"><button class="btn btn-primary" type="submit">Installer</button></div>
+    <div class="actions"><button class="btn btn-primary" type="submit">Mettre le site en service</button></div>
     <p class="help">Les clés de chiffrement sont créées automatiquement et enregistrées dans config.php, hors du dossier public. Gardez-en une copie.</p>
 </form>
