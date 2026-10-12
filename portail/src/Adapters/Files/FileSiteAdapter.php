@@ -89,14 +89,14 @@ final class FileSiteAdapter implements Adapter
     private function findProductFiles(array $files): array
     {
         $found = [];
-        $candidates = array_values(array_filter($files, fn ($f) => in_array(Formats::fromPath($f), ['js', 'json'], true) && !preg_match(self::SKIP_SCAN, $f)));
+        $candidates = array_values(array_filter($files, fn ($f) => in_array(Formats::fromPath($f), ['js', 'json', 'html'], true) && !preg_match(self::SKIP_SCAN, $f)));
         foreach (array_slice($candidates, 0, 60) as $f) {
             $raw = $this->backend->read($f);
             if (!$raw || strlen($raw['content']) > 400_000) {
                 continue;
             }
             $r = Infer::schema([['path' => $f, 'text' => $raw['content']]]);
-            if (array_filter($r['schema']['sections'], [self::class, 'isProductSection'])) {
+            if (array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s) || self::isOpenSwitch($s))) {
                 $found[] = $f;
             }
         }
@@ -107,6 +107,12 @@ final class FileSiteAdapter implements Adapter
     public static function isProductSection(array $s): bool
     {
         return $s['kind'] === 'collection' && !empty($s['titleField']) && (!empty($s['subtitleField']) || !empty($s['imageField']));
+    }
+
+    /** Réglage « ouvert / fermé » écrit dans un fichier du site (ex. OUVERTURE = { ouvert: true, message: "…" }). */
+    public static function isOpenSwitch(array $s): bool
+    {
+        return $s['kind'] === 'singleton' && (bool) array_filter($s['fields'], fn ($f) => $f['type'] === 'boolean' && preg_match('/(open|ouvert|ferme|closed|actif|enabled|status)/i', $f['key']));
     }
 
     private function path(string $rel): string
@@ -190,6 +196,12 @@ final class FileSiteAdapter implements Adapter
             // Site fait main : on ne garde que les listes de produits et les réglages simples (ouverture…) des mêmes fichiers.
             $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s)
                 || ($s['kind'] === 'singleton' && !empty($s['source']['path']) && array_filter($s['fields'], fn ($f) => $f['type'] === 'boolean'))));
+            foreach ($r['schema']['sections'] as &$s) {
+                if (self::isOpenSwitch($s)) {
+                    $s['label'] = 'Ouverture du site';
+                }
+            }
+            unset($s);
             $notes = ['Produits trouvés dans : ' . implode(', ', $this->scanFiles) . '.'];
         }
         if ($r['skipped']) {

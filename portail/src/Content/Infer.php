@@ -34,7 +34,8 @@ final class Infer
         'surface' => 'Surface', 'categories' => 'Catégories', 'collections' => 'Collections', 'site' => 'Informations générales',
         'accueil' => 'Accueil', 'apropos' => 'À propos', 'heures' => 'Heures', 'reseaux' => 'Réseaux sociaux', 'produits' => 'Produits', 'produit' => 'Produit',
         'products' => 'Produits', 'product' => 'Produit', 'items' => 'Articles', 'articles' => 'Articles', 'catalogue' => 'Catalogue', 'catalog' => 'Catalogue',
-        'boutique' => 'Boutique', 'shop' => 'Boutique', 'store' => 'Boutique', 'solde' => 'En solde', 'nouveaute' => 'Nouveauté', 'ouverte' => 'Ouverte',
+        'open' => 'Site ouvert', 'ouvert' => 'Site ouvert', 'ouverte' => 'Ouverte', 'reopenat' => 'Réouverture prévue le', 'reouverture' => 'Réouverture prévue le', 'message' => 'Message affiché',
+        'boutique' => 'Boutique', 'shop' => 'Boutique', 'store' => 'Boutique', 'solde' => 'En solde', 'nouveaute' => 'Nouveauté',
     ];
     private const ID_KEYS = ['id', '_id', 'uuid', 'slug', 'sku', 'ref', 'reference'];
     private const TITLE_KEYS = ['name', 'nom', 'title', 'titre', 'label', 'libelle'];
@@ -251,7 +252,9 @@ final class Infer
                 continue;
             }
             try {
-                $data = Formats::parse($file['text'], $format)['data'];
+                $parsedFile = Formats::parse($file['text'], $format);
+                $data = $parsedFile['data'];
+                $labels = $parsedFile['style']['labels'] ?? [];
             } catch (\Throwable) {
                 $skipped[] = $file['path'];
                 continue;
@@ -273,15 +276,20 @@ final class Infer
             foreach ($data as $k => $v) {
                 $k = (string) $k;
                 if (is_array($v) && array_is_list($v) && $v && !array_filter($v, fn ($i) => !self::isAssoc($i)) && count((array) $v[0]) >= 2) {
-                    $sections[] = self::collection(self::unique($k, $used), self::humanize($k), $v, ['type' => 'file', 'file' => $file['path'], 'format' => $format, 'path' => $k]);
-                } elseif (self::isAssoc($v) && count($data) > 1 && array_filter((array) $v, 'is_string')) {
+                    $section = self::collection(self::unique($k, $used), $labels[$k] ?? self::humanize($k), $v, ['type' => 'file', 'file' => $file['path'], 'format' => $format, 'path' => $k]);
+                    if ($format === 'html') {
+                        // Fiches d'une page : elles se lisent dans l'ordre de la page, sans identifiant.
+                        $section['itemLabel'] = 'produit';
+                    }
+                    $sections[] = $section;
+                } elseif (self::isAssoc($v) && (count($data) > 1 || $format === 'js') && array_filter((array) $v, 'is_string')) {
                     $sections[] = ['key' => self::unique($k, $used), 'label' => self::humanize($k), 'kind' => 'singleton',
                         'source' => ['type' => 'file', 'file' => $file['path'], 'format' => $format, 'path' => $k], 'fields' => self::fields([(array) $v])];
                 } else {
                     $rest[$k] = $v;
                 }
             }
-            if ($rest) {
+            if ($rest && !in_array($format, ['js', 'html'], true)) {
                 $sections[] = ['key' => self::unique($base, $used), 'label' => self::humanize($base), 'kind' => 'singleton',
                     'source' => ['type' => 'file', 'file' => $file['path'], 'format' => $format], 'fields' => self::fields([$rest])];
             }

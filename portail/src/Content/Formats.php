@@ -20,6 +20,7 @@ final class Formats
             str_ends_with($p, '.yml'), str_ends_with($p, '.yaml') => 'yaml',
             str_ends_with($p, '.md'), str_ends_with($p, '.mdx'), str_ends_with($p, '.markdown') => 'markdown',
             str_ends_with($p, '.js') && !str_ends_with($p, '.min.js') => 'js',
+            str_ends_with($p, '.html'), str_ends_with($p, '.htm') => 'html',
             default => null,
         };
     }
@@ -53,6 +54,15 @@ final class Formats
             }
             return self::parseJsVars($src, $style);
         }
+        if ($format === 'html') {
+            $groups = HtmlCards::find($src);
+            $data = [];
+            foreach ($groups as $key => $g) {
+                $data[$key] = array_map(fn ($c) => HtmlCards::values($src, $c), $g['cards']);
+            }
+            return ['format' => 'html', 'data' => $data, 'body' => null, 'style' => $style + ['source' => $src, 'groups' => $groups,
+                'labels' => array_map(fn ($g) => $g['label'], $groups), 'orig' => $data]];
+        }
         if ($format === 'yaml') {
             return ['format' => 'yaml', 'data' => self::yamlParse($src), 'body' => null, 'style' => $style];
         }
@@ -71,6 +81,7 @@ final class Formats
             'yaml' => self::yamlDump($data),
             'js' => ($style['prefix'] ?? 'window.CONTENU = ') . self::jsonEncode($data, $style['indent']) . ($style['suffix'] ?? ";\n"),
             'jsvars' => self::serializeJsVars($style, (array) $data),
+            'html' => self::serializeHtml($style, (array) $data),
             default => "---\n" . self::yamlDump($data ?: []) . "---\n\n" . rtrim($body ?? $parsed['body'] ?? '') . "\n",
         };
         return ($style['bom'] ? "\u{FEFF}" : '') . $out;
@@ -106,6 +117,46 @@ final class Formats
                 'style' => JsLiteral::style(substr($src, $d['start'], $d['end'] - $d['start']), $ind[0])];
         }
         return ['format' => 'jsvars', 'data' => $data, 'body' => null, 'style' => $style + ['source' => $src, 'decls' => $meta]];
+    }
+
+    /** Pages HTML : chaque fiche modifiée est réécrite sur place ; une fiche ajoutée est copiée sur la dernière. */
+    private static function serializeHtml(array $style, array $data): string
+    {
+        $src = $style['source'];
+        $changes = [];
+        foreach ($style['groups'] as $key => $g) {
+            $new = array_values((array) ($data[$key] ?? []));
+            $old = $style['orig'][$key];
+            if (json_encode($new) === json_encode($old)) {
+                continue;
+            }
+            $cards = $g['cards'];
+            $sep = count($cards) > 1 ? substr($src, $cards[0]['end'], $cards[1]['start'] - $cards[0]['end']) : "\n";
+            $oldJson = array_map('json_encode', $old);
+            $used = [];
+            $chunks = [];
+            foreach ($new as $i => $item) {
+                $same = array_search(json_encode($item), array_diff_key($oldJson, $used), true);
+                if ($same !== false) {
+                    $used[$same] = true;
+                    $c = $cards[$same];
+                    $chunks[] = substr($src, $c['start'], $c['end'] - $c['start']);
+                } elseif (isset($cards[$i]) && !isset($used[$i])) {
+                    $used[$i] = true;
+                    $chunks[] = HtmlCards::patch($src, $cards[$i], $item);
+                } else {
+                    $chunks[] = HtmlCards::patch($src, $cards[count($cards) - 1], $item, true);
+                }
+            }
+            $first = $cards[0]['start'];
+            $last = $cards[count($cards) - 1]['end'];
+            $changes[$first] = [$last, implode($sep, $chunks)];
+        }
+        krsort($changes);
+        foreach ($changes as $start => [$end, $text]) {
+            $src = substr($src, 0, $start) . $text . substr($src, $end);
+        }
+        return $src;
     }
 
     private static function serializeJsVars(array $style, array $data): string

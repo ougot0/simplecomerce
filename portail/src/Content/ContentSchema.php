@@ -98,7 +98,7 @@ final class ContentSchema
         if (($src['type'] ?? '') === 'file') {
             $out = ['type' => 'file', 'file' => self::relPath($src['file'] ?? '', "$at.file")];
             if (isset($src['format'])) {
-                if (!in_array($src['format'], ['json', 'yaml', 'js'], true)) {
+                if (!in_array($src['format'], ['json', 'yaml', 'js', 'html'], true)) {
                     throw new \InvalidArgumentException("$at.format : json, yaml ou js.");
                 }
                 $out['format'] = $src['format'];

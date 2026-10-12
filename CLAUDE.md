@@ -262,6 +262,11 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 - 08–09/10/2026 : réécriture PHP/MySQL dans `portail/` (connecteurs, éditeur, options, installation, tests, guide OVH).
 - 10/10/2026 : format JS, prix ronds conservés, portail privé par défaut, test réel WordPress/WooCommerce, archive OVH.
 - 11/10/2026 : création de ce fichier.
+- 12/10/2026 (nuit, 3) : **produits écrits dans les pages HTML** reconnus (`HtmlCards` : blocs frères répétés avec un titre h1-h6 et
+  un prix ; nom/prix/description/photo modifiés sur place ; ajout = copie de la dernière fiche, liens de paiement Stripe/PayPal
+  de la copie remplacés par « # » ; format `html` dans `Formats`/`ContentSchema`). Réglage « ouvert/fermé » d'un fichier JS
+  (`window.X = { open: … }`) proposé comme rubrique « Ouverture du site ». Testé par FTP sur une copie d'un vrai site de
+  pâtisserie (dépôt `ougot0/yotam`, dossier `/ougot` chez OVH) : 7 gâteaux trouvés, prix « 6,90&nbsp;€ », ajout avec photo.
 - 12/10/2026 (nuit, 2) : **sites faits main reliés sans préparation** : si aucun dossier/fichier de contenu, `FileSiteAdapter`
   cherche dans les .js/.json du site une liste de produits (`findProductFiles`, `isProductSection`) ; `JsLiteral` lit les
   `const NOM = [ … ]` (clés sans guillemets, virgules finales, commentaires) et ne réécrit que les éléments modifiés
