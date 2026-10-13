@@ -62,10 +62,10 @@ use SimpleCommerce\Adapters\Catalog;
         <tbody>
         <?php foreach ($users as $u): ?>
         <tr>
-            <td class="title-cell"><strong><?= e($u['name'] ?: '(sans nom)') ?></strong><?= $u['is_admin'] ? '<span class="muted"> · administrateur</span>' : '' ?><div class="muted small"><?= e($u['email']) ?></div></td>
+            <td class="title-cell"><strong><?= e($u['name'] ?: '(sans nom)') ?></strong><?= $u['is_admin'] ? '<span class="muted"> · administrateur</span>' : '' ?><?= !$u['is_admin'] && !\SimpleCommerce\Services\Auth::isVerified($u) ? ' ' . tag('draft', 'E-mail non confirmé') : '' ?><div class="muted small"><?= e($u['email']) ?></div></td>
             <td class="hide-small num"><?= (int) ($count[$u['id']] ?? 0) ?></td>
             <td class="hide-small small muted"><?= e(when($u['created_at'])) ?></td>
-            <td class="shrink"><?php if (!$u['is_admin']): ?><form method="post" action="/admin/assister" class="inline"><?= csrf_field() ?><input type="hidden" name="userId" value="<?= e($u['id']) ?>"><button class="btn btn-small" type="submit">Agir pour ce client</button></form><?php endif ?></td>
+            <td class="shrink"><?php if (!$u['is_admin'] && !\SimpleCommerce\Services\Auth::isVerified($u)): ?><form method="post" action="/admin/confirmer-email" class="inline"><?= csrf_field() ?><input type="hidden" name="userId" value="<?= e($u['id']) ?>"><button class="btn btn-small btn-quiet" type="submit">Confirmer l'e-mail</button></form><?php endif ?><?php if (!$u['is_admin']): ?><form method="post" action="/admin/assister" class="inline"><?= csrf_field() ?><input type="hidden" name="userId" value="<?= e($u['id']) ?>"><button class="btn btn-small" type="submit">Agir pour ce client</button></form><?php endif ?></td>
         </tr>
         <?php endforeach ?>
         </tbody>

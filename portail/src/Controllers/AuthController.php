@@ -142,8 +142,10 @@ final class AuthController
         Repo::recordAttempt('signup:' . Req::ipBucket());
         $first = !Repo::users();
         $user = Repo::createUser($email, $name, $password, $first && !Config::demo());
+        $demoLink = null;
         if (!$first) {
             Auth::markUnverified($user['id']);
+            $demoLink = Auth::sendVerification($user);
         }
         Repo::log($user['id'], null, null, 'signup', ['conditions_acceptees' => \SimpleCommerce\Services\Legal::UPDATED]);
         if ($first && !Config::demo()) {
@@ -153,7 +155,31 @@ final class AuthController
             return Response::redirect('/admin');
         }
         Auth::login($user, Req::bool('remember'));
+        Session::set('signup_uid', $user['id']);
+        Session::flash("Votre compte est créé. Un e-mail de confirmation vient d'être envoyé à $email : ouvrez le lien qu'il contient pour pouvoir relier votre site."
+            . ($demoLink ? " (Démonstration : $demoLink)" : ''), 'warn');
         return Response::redirect(Req::safeNext(Req::str('next', 500)));
+    }
+
+    public static function verify(array $p): Response
+    {
+        $next = Auth::consumeVerification($p['token']);
+        if ($next === null) {
+            return Response::page('message', ['title' => 'Lien expiré', 'text' => "Ce lien de confirmation n'est plus valable (il a déjà servi, ou il a plus de 7 jours). Connectez-vous : vous pourrez en demander un nouveau.", 'link' => ['/connexion', 'Aller à la connexion']], 'auth', 410);
+        }
+        Session::flash(str_contains($next, 'nouveau-mot-de-passe') ? 'Adresse confirmée. Choisissez maintenant votre mot de passe.' : 'Merci, votre adresse est confirmée ! Vous pouvez relier votre site.');
+        return Response::redirect($next);
+    }
+
+    public static function resendVerification(): Response
+    {
+        $v = Access::requireViewer();
+        if (Auth::isVerified($v['user'])) {
+            return Response::redirect('/sites');
+        }
+        $link = Auth::sendVerification($v['user']);
+        Session::flash('E-mail de confirmation renvoyé à ' . $v['user']['email'] . '. Regardez aussi dans les indésirables.' . ($link ? " (Démonstration : $link)" : ''));
+        return Response::redirect(Req::safeNext(Req::str('next', 500)) ?: '/sites');
     }
 
     public static function forgotForm(array $p, array $state = []): Response
@@ -262,6 +288,7 @@ final class AuthController
             return self::invitation($p, 'Cette invitation est destinée à une autre adresse.');
         }
         Repo::acceptInvitation($inv, $v['effective']['id']);
+        Auth::markVerified($v['effective']['id']); // l'invitation est arrivée à cette adresse : elle est prouvée
         Access::audit($v, 'invitation_accepted', ['email' => $inv['email']], $inv['site_id']);
         $site = Repo::site($inv['site_id']);
         Session::flash('Bienvenue ! Vous pouvez maintenant modifier ce site.');

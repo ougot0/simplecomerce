@@ -30,9 +30,21 @@ final class SitesController
         return Response::page('sites/index', ['viewer' => $v, 'sites' => $sites], 'plain');
     }
 
+    /** Tant que l'adresse e-mail n'est pas confirmée, on ne relie pas de site. */
+    private static function verifiedOrPage(array $v): ?Response
+    {
+        if (Access::isAdmin($v) || \SimpleCommerce\Services\Auth::isVerified($v['effective'])) {
+            return null;
+        }
+        return Response::page('auth/verify-needed', ['viewer' => $v, 'email' => $v['effective']['email'], 'title' => 'Confirmez votre adresse'], 'plain', 403);
+    }
+
     public static function newForm(array $p, array $state = []): Response
     {
         $v = Access::requireViewer();
+        if ($r = self::verifiedOrPage($v)) {
+            return $r;
+        }
         $type = $state['connector'] ?? Req::query('type', 40);
         $def = $type !== '' ? Catalog::get($type) : null;
         return Response::page('sites/new', $state + ['viewer' => $v, 'def' => $def, 'values' => [], 'errors' => [], 'report' => null, 'isAdmin' => Access::isAdmin($v)], 'plain', $state ? 422 : 200);
@@ -66,6 +78,9 @@ final class SitesController
     public static function create(array $p): Response
     {
         $v = Access::requireViewer();
+        if ($r = self::verifiedOrPage($v)) {
+            return $r;
+        }
         $connector = Req::str('connector', 40);
         $def = Catalog::get($connector);
         if (!$def) {

@@ -74,6 +74,58 @@ final class Auth
         }
     }
 
+    public static function isVerified(array $user): bool
+    {
+        return Repo::meta('unverified:' . $user['id']) === null;
+    }
+
+    public static function markVerified(string $userId): void
+    {
+        \SimpleCommerce\Db::run('DELETE FROM sc_meta WHERE name = ?', ['unverified:' . $userId]);
+    }
+
+    /**
+     * Envoie le lien « Confirmez votre adresse » (valable 7 jours). Au plus 3 envois par heure.
+     * @return ?string le lien en démonstration (pour l'afficher), sinon null
+     */
+    public static function sendVerification(array $user): ?string
+    {
+        if (Repo::tooManyAttempts('verify:' . $user['id'], 3, 3600)) {
+            return null;
+        }
+        Repo::recordAttempt('verify:' . $user['id']);
+        $link = Config::url('/verifier/' . Repo::createToken($user['id'], 'verify', 7 * 86400));
+        Mailer::send($user['email'], 'Confirmez votre adresse e-mail — Simple Commerce',
+            "Bonjour,\n\nBienvenue sur Simple Commerce ! Pour confirmer votre adresse e-mail, ouvrez ce lien :\n$link\n\n"
+            . "Ensuite, vous pourrez relier votre site.\n\nSi vous n'avez pas créé de compte, ignorez ce message.");
+        return Config::demo() ? $link : null;
+    }
+
+    /**
+     * Lien de confirmation ouvert. Dans le navigateur qui a créé le compte : simple confirmation.
+     * Ailleurs : le lien prouve l'adresse comme un lien de connexion (ancien mot de passe annulé, à rechoisir),
+     * pour le cas où quelqu'un aurait créé ce compte avec l'adresse d'un autre.
+     * @return ?string page où aller, ou null si le lien n'est plus valable
+     */
+    public static function consumeVerification(string $token): ?string
+    {
+        $t = Repo::useToken($token, 'verify', true);
+        $user = $t ? Repo::user($t['user_id']) : null;
+        if (!$user) {
+            return null;
+        }
+        if (Session::get('uid') === $user['id'] && Session::get('signup_uid') === $user['id']) {
+            self::markVerified($user['id']);
+            return '/sites/nouveau?verifie=1';
+        }
+        Repo::updateUser($user['id'], ['password_hash' => password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT)]);
+        Repo::deleteUserTokens($user['id'], 'remember');
+        self::markVerified($user['id']);
+        self::login(Repo::user($user['id']), false);
+        Session::set('magic_at', time());
+        return '/compte?nouveau-mot-de-passe=1';
+    }
+
     /** Compte créé sans que l'adresse e-mail ait été prouvée (inscription libre). */
     public static function markUnverified(string $userId): void
     {
@@ -181,7 +233,7 @@ final class Auth
         if (Repo::meta('unverified:' . $user['id']) !== null) {
             Repo::updateUser($user['id'], ['password_hash' => password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT)]);
             Repo::deleteUserTokens($user['id'], 'remember');
-            \SimpleCommerce\Db::run('DELETE FROM sc_meta WHERE name = ?', ['unverified:' . $user['id']]);
+            self::markVerified($user['id']);
             $user = Repo::user($user['id']);
             self::login($user, (bool) ($t['extra']['remember'] ?? false));
             Session::set('magic_at', time());

@@ -156,4 +156,18 @@ final class AdminController
         Session::flash(Req::str('intent') === 'retirer' ? 'Brevo retiré : les e-mails repartent par l\'hébergeur.' : 'Réglages enregistrés. Envoyez-vous un e-mail de test.');
         return Response::redirect('/admin/emails');
     }
+
+    /** L'administrateur confirme lui-même l'adresse d'un client (e-mail jamais reçu, par exemple). */
+    public static function confirmEmail(): Response
+    {
+        $v = Access::requireAdmin();
+        $u = Repo::user(Req::str('userId', 64));
+        if (!$u) {
+            throw Halt::notFound();
+        }
+        \SimpleCommerce\Services\Auth::markVerified($u['id']);
+        Repo::log($v['user']['id'], null, null, 'email_confirmed_by_admin', ['email' => $u['email']]);
+        Session::flash("Adresse de {$u['email']} confirmée.");
+        return Response::redirect('/admin');
+    }
 }

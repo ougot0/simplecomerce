@@ -59,6 +59,7 @@ include dirname(__DIR__) . '/partials/assist.php';
         </div>
     </aside>
     <main class="main" id="contenu">
+        <?php include dirname(__DIR__) . '/partials/verify-banner.php'; ?>
         <?php include dirname(__DIR__) . '/partials/billing-banner.php'; ?>
         <?php include dirname(__DIR__) . '/partials/flash.php'; ?>
         <?= $content ?>
