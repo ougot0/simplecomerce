@@ -101,6 +101,59 @@ final class SiteController
         return self::page($ctx, 'site/section', $vars, $section['label']);
     }
 
+    /**
+     * Photo du site lue directement sur l'hébergement du client, quand elle ne s'affiche pas depuis l'adresse
+     * publique du site (adresse en http, incomplète, ou photos rangées ailleurs). Mise en cache un jour.
+     */
+    public static function file(array $p): Response
+    {
+        $ctx = Access::site($p['slug']);
+        $site = $ctx['site'];
+        $types = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp', 'avif' => 'image/avif'];
+        $path = rawurldecode((string) preg_replace('/[?#].*$/s', '', Req::query('chemin', 500)));
+        $path = ltrim((string) preg_replace('#^(\./)+#', '', $path), '/');
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (!in_array($site['connector'], \SimpleCommerce\Services\Translation::FILE_CONNECTORS, true) || !isset($types[$ext])
+            || $path === '' || preg_match('#(^|/)\.\.?(/|$)|\x00#', $path)) {
+            return new Response('', 404);
+        }
+        $dir = SC_STORAGE . '/apercu';
+        $cache = $dir . '/' . sha1($site['id'] . '|' . $path) . '.' . $ext;
+        if (!is_file($cache) || filemtime($cache) < time() - 86400) {
+            try {
+                $bytes = Sites::with($site, function (Adapter $a) use ($path) {
+                    if (!$a instanceof \SimpleCommerce\Adapters\Files\FileSiteAdapter) {
+                        return null;
+                    }
+                    $tries = [$path];
+                    $first = $a->pagePaths()[0] ?? '';
+                    if (str_contains($first, '/')) {
+                        $tries[] = dirname($first) . '/' . $path;
+                    }
+                    foreach ($tries as $t) {
+                        $raw = $a->readFile($t);
+                        if ($raw && $raw['content'] !== '') {
+                            return $raw['content'];
+                        }
+                    }
+                    return null;
+                }, null, true);
+            } catch (\Throwable) {
+                $bytes = null;
+            }
+            if ($bytes === null || strlen($bytes) > 15_000_000 || @getimagesizefromstring($bytes) === false) {
+                return new Response('', 404);
+            }
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0700, true);
+            }
+            @file_put_contents($cache, $bytes);
+        } else {
+            $bytes = (string) file_get_contents($cache);
+        }
+        return Response::file($bytes, $types[$ext], null, 'private, max-age=86400');
+    }
+
     /** Bibliothèque « Mes photos » (pour l'éditeur). */
     public static function photos(array $p): Response
     {

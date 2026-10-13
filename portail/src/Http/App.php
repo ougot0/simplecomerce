@@ -77,6 +77,7 @@ final class App
             ['POST', "$s/photo", [EditorController::class, 'upload']],
             ['POST', "$s/ecrire", [EditorController::class, 'write']],
             ['GET', "$s/photos", [SiteController::class, 'photos']],
+            ['GET', "$s/fichier", [SiteController::class, 'file']],
             ['GET', "$s/brouillons", [SiteController::class, 'drafts']],
             ['POST', "$s/brouillons/publier", [SiteController::class, 'publishDraft']],
             ['POST', "$s/brouillons/jeter", [SiteController::class, 'discardDraft']],

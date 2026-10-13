@@ -14,7 +14,7 @@ $navItem = function (string $href, string $label, string $icon, bool $exact = fa
 include __DIR__ . '/head.php';
 include dirname(__DIR__) . '/partials/assist.php';
 ?>
-<div class="shell">
+<div class="shell" data-site-base="<?= e($base) ?>" data-site-url="<?= e((string) $site['public_url']) ?>">
     <aside class="sidebar">
         <div class="sidebar-top">
             <a href="<?= e($base) ?>" class="site-name"><?= e($site['name']) ?></a>

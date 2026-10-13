@@ -719,6 +719,29 @@
     });
   });
 
+  // ---------------------------------------------------------------- photos du site qui ne s'affichent pas
+  // Le portail montre les photos depuis l'adresse publique du site. Si elle ne répond pas (adresse en http,
+  // incomplète…), il va chercher la photo lui-même sur l'hébergement du client.
+  (function () {
+    var shell = $("[data-site-base]");
+    if (!shell) return;
+    var base = shell.getAttribute("data-site-base");
+    var site = (shell.getAttribute("data-site-url") || "").replace(/\/+$/, "");
+    function retry(img) {
+      if (!img || img.tagName !== "IMG" || img.__retried) return;
+      var src = img.getAttribute("src") || "";
+      var path = null;
+      if (site && src.indexOf(site + "/") === 0) path = src.slice(site.length + 1);
+      else if (src.charAt(0) === "/" && src.indexOf("/media/") !== 0 && src.indexOf("/s/") !== 0 && src.indexOf("/assets/") !== 0) path = src.slice(1);
+      if (!path) return;
+      img.__retried = true;
+      img.src = base + "/fichier?chemin=" + encodeURIComponent(path);
+    }
+    document.addEventListener("error", function (e) { retry(e.target); }, true);
+    // Photos déjà en échec avant le chargement de ce script.
+    $$("img").forEach(function (img) { if (img.complete && img.naturalWidth === 0) retry(img); });
+  })();
+
   // ---------------------------------------------------------------- mise en route
   function enhance(root) {
     counters(root);

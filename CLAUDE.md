@@ -218,7 +218,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 `simplecommerce/public/bin/cron.php`, mises à jour à renvoyer dans `simplecommerce/public/`. Autres sites sur le même
 hébergement (ne pas y toucher) : `www`, `ougot`, `aminteriorss`.
 
-**Statut au 13/10/2026 (soir) : version G installée chez lui** (il voit Administration → Rédaction automatique ; clé Claude
+**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos)** (il voit Administration → Rédaction automatique ; clé Claude
 pas encore créée). Avant : **installation en cours sur l'OVH du propriétaire (envoi par WinSCP)** (il a reçu l'archive et les étapes ; il ne
 nous donne pas ses mots de passe — ne pas les lui demander dans la conversation).
 
@@ -280,6 +280,12 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit, 4) : chez lui, site Ougot relié de nouveau (`ougot-3`) : produits et prix lus, mais **photos cassées**
+  dans le portail (le portail les affiche depuis l'adresse publique du site ; adresse probablement en http — bloquée par la
+  CSP `img-src https:` — ou incomplète). Correction **version H** : si une photo ne s'affiche pas, `app.js` la redemande à
+  `/s/{slug}/fichier?chemin=…` (`SiteController::file`) qui la lit sur l'hébergement avec les accès enregistrés
+  (connecteurs fichiers seulement, images jpg/png/gif/webp/avif vérifiées, cache 1 jour dans `storage/apercu/`).
+  Lui conseiller aussi de mettre l'adresse exacte en https dans Réglages.
 - 13/10/2026 (nuit, 3) : **douze nouvelles fonctions** (« 8 9 12 13 15 17 20 21 22 24 25 26 »), version **G** :
   bon de commande / facture imprimable (n° de facture annuel, mentions du commerçant dans Réglages → Boutique) ;
   aperçu « Sur téléphone » ; **prise de rendez-vous** (`Bookings`, table `sc_bookings`, base v5, ligne `/rdv/{clé}.js`,
