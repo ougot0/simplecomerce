@@ -127,7 +127,7 @@ final class Changes
      * @param array<string, ?array> $items identifiant => valeurs à changer (null = supprimer)
      * @return array{ok: bool, count?: int, error?: string}
      */
-    public static function publishBatch(array $viewer, array $site, array $section, array $items, string $summary): array
+    public static function publishBatch(array $viewer, array $site, array $section, array $items, string $summary, bool $notify = true): array
     {
         if (!$items) {
             return ['ok' => true, 'count' => 0];
@@ -177,7 +177,7 @@ final class Changes
                 }
             }
         }
-        if ($first) {
+        if ($first && $notify) {
             Notifier::changed($viewer, $site, ['entry_label' => $summary] + $first);
         }
         if (in_array(null, $items, true) && ($section['source']['format'] ?? '') === 'html') {

@@ -144,6 +144,18 @@ final class Sites
         return null;
     }
 
+    /** Le premier propriétaire du site, au nom de qui sont faites les actions automatiques (fermeture prévue, stock d'une commande). */
+    public static function ownerViewer(array $site): ?array
+    {
+        foreach (Repo::members($site['id']) as $m) {
+            $u = $m['role'] === 'owner' ? Repo::user($m['user_id']) : null;
+            if ($u) {
+                return ['user' => $u, 'effective' => $u, 'assist' => null];
+            }
+        }
+        return null;
+    }
+
     /** Réglages du portail pour ce site (seuil de stock, horaires, fermetures prévues…), rangés à part de la connexion. */
     public static function extras(array $site): array
     {

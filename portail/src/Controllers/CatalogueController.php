@@ -36,11 +36,12 @@ final class CatalogueController
         $status = $backend->read(\SimpleCommerce\Adapters\Files\FileSiteAdapter::STATUS_FILE);
         $closed = $status ? Status::fromFile(json_decode($status['content'], true)) : Status::OPEN;
         $products = [];
-        foreach ((array) ($content['produits'] ?? []) as $p) {
+        foreach (array_values((array) ($content['produits'] ?? [])) as $i => $p) {
             if (!is_array($p) || (array_key_exists('disponible', $p) && $p['disponible'] === false)) {
                 continue;
             }
             $products[] = [
+                'id' => isset($p['id']) && $p['id'] !== '' ? (string) $p['id'] : "n$i",
                 'nom' => (string) ($p['nom'] ?? ''),
                 'photos' => array_values(array_filter((array) ($p['photos'] ?? []), 'is_string')),
                 'prix' => is_numeric($p['prix'] ?? null) ? (float) $p['prix'] : null,
@@ -55,7 +56,11 @@ final class CatalogueController
         // Produits mis en avant d'abord, sans changer l'ordre des autres.
         $featured = array_values(array_filter($products, fn ($p) => $p['enAvant']));
         $products = array_merge($featured, array_values(array_filter($products, fn ($p) => !$p['enAvant'])));
-        return ['produits' => $products, 'ferme' => !empty($closed['closed']), 'message' => (string) ($closed['message'] ?? '')];
+        $x = \SimpleCommerce\Services\Sites::extras($site);
+        $key = (string) ($site['config']['publicKey'] ?? '');
+        return ['produits' => $products, 'ferme' => !empty($closed['closed']), 'message' => (string) ($closed['message'] ?? ''),
+            'commandes' => !empty($x['orders']), 'noteCommande' => (string) ($x['orderNote'] ?? ''),
+            'api' => Config::url('/catalogue/' . $key)];
     }
 
     public static function script(array $p): Response

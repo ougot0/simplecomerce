@@ -63,6 +63,11 @@ $viewer = $ctx['viewer'];
         <div class="field"><label for="stock-alert">Me prévenir quand il reste</label>
             <div class="inline-fields"><input id="stock-alert" name="stockAlert" type="number" min="0" max="999" class="short" value="<?= e((string) \SimpleCommerce\Services\Shop::threshold($site)) ?>"><span>pièces ou moins d'un produit</span></div>
             <span class="help">Un e-mail est envoyé quand un produit descend à ce niveau, puis quand il est épuisé. Mettez 0 pour ne pas être prévenu.</span></div>
+        <?php if ($site['connector'] === 'catalogue'): $x = Sites::extras($site) ?>
+        <label class="checkbox"><input type="checkbox" name="orders" value="1" <?= !empty($x['orders']) ? 'checked' : '' ?>><span>Recevoir des commandes depuis mon site<br><span class="help">Vos visiteurs ajoutent des produits à un panier et vous envoient leur commande. Vous la recevez par e-mail et dans « Commandes ». Le paiement se règle directement avec le client (sur place, virement…).</span></span></label>
+        <div class="field"><label for="order-note">Message affiché sous le panier <span class="optional">(facultatif)</span></label>
+            <textarea id="order-note" name="orderNote" rows="2" maxlength="300" placeholder="Exemple : Retrait en boutique sous 48 h, paiement sur place."><?= e((string) ($x['orderNote'] ?? '')) ?></textarea></div>
+        <?php endif ?>
         <div class="actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
     </form>
 </section>

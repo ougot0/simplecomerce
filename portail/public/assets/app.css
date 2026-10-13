@@ -2024,3 +2024,37 @@ input.short {
 /* Horaires */
 .hours-row { display: grid; grid-template-columns: 7.5rem 1fr; align-items: center; gap: 12px; margin-bottom: 8px; }
 .hours-row label { margin: 0; }
+
+/* Commandes, avis, statistiques */
+.order-items { margin: 6px 0; padding-left: 18px; }
+.stars { color: var(--ink); letter-spacing: 1px; }
+.stars-off { color: var(--line-strong); }
+.review-body { margin: 6px 0 8px; max-width: 70ch; }
+.reply-form { display: grid; gap: 6px; max-width: 560px; }
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 160px; padding: 10px 12px 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.bar { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.bar-fill { display: block; width: 100%; background: var(--ink); border-radius: 3px 3px 0 0; min-height: 2px; }
+.bars-legend { display: flex; justify-content: space-between; margin-top: 6px; }
+.two-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 24px; }
+.ledger td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.bar-h0 { height: 0%; }
+.bar-h1 { height: 5%; }
+.bar-h2 { height: 10%; }
+.bar-h3 { height: 15%; }
+.bar-h4 { height: 20%; }
+.bar-h5 { height: 25%; }
+.bar-h6 { height: 30%; }
+.bar-h7 { height: 35%; }
+.bar-h8 { height: 40%; }
+.bar-h9 { height: 45%; }
+.bar-h10 { height: 50%; }
+.bar-h11 { height: 55%; }
+.bar-h12 { height: 60%; }
+.bar-h13 { height: 65%; }
+.bar-h14 { height: 70%; }
+.bar-h15 { height: 75%; }
+.bar-h16 { height: 80%; }
+.bar-h17 { height: 85%; }
+.bar-h18 { height: 90%; }
+.bar-h19 { height: 95%; }
+.bar-h20 { height: 100%; }

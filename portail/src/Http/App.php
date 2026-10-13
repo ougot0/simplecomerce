@@ -10,7 +10,9 @@ use SimpleCommerce\Controllers\CatalogueController;
 use SimpleCommerce\Controllers\EditorController;
 use SimpleCommerce\Controllers\InstallController;
 use SimpleCommerce\Controllers\MiscController;
+use SimpleCommerce\Controllers\PublicController;
 use SimpleCommerce\Controllers\SettingsController;
+use SimpleCommerce\Controllers\ShopController;
 use SimpleCommerce\Controllers\SiteController;
 use SimpleCommerce\Controllers\SitesController;
 use SimpleCommerce\Schema;
@@ -70,6 +72,13 @@ final class App
             ['POST', "$s/historique/annuler", [SiteController::class, 'revert']],
             ['GET', "$s/sauvegarde", [SiteController::class, 'backup']],
             ['GET', "$s/sauvegardes/(?<name>\d{8}-\d{6}-[a-z]{4,5}\.zip)", [SettingsController::class, 'downloadBackup']],
+            ['GET', "$s/commandes", [ShopController::class, 'orders']],
+            ['GET', "$s/commandes\.csv", [ShopController::class, 'ordersCsv']],
+            ['POST', "$s/commandes/etat", [ShopController::class, 'orderStatus']],
+            ['GET', "$s/avis", [ShopController::class, 'reviews']],
+            ['POST', "$s/avis/action", [ShopController::class, 'reviewAction']],
+            ['GET', "$s/statistiques", [ShopController::class, 'stats']],
+            ['POST', "$s/statistiques/action", [ShopController::class, 'statsAction']],
             ['GET', "$s/reglages", [SettingsController::class, 'show']],
             ['POST', "$s/reglages/(?<action>[a-z-]{2,30})", [SettingsController::class, 'action']],
 
@@ -153,6 +162,28 @@ final class App
                 return CatalogueController::hours($m);
             }
         }
+        // Envois des sites des clients : « Prévenez-moi », commandes, avis, statistiques (sans session ni cookie).
+        if (preg_match('#^/(?:catalogue/(?<ckey>[a-f0-9]{24})/(?<what>alerte|commande)|avis/(?<akey>[a-f0-9]{24})|p/(?<pkey>[a-f0-9]{24}))$#', $path, $m)) {
+            if ($method === 'OPTIONS') {
+                return PublicController::preflight();
+            }
+            if ($method === 'POST') {
+                return match (true) {
+                    ($m['what'] ?? '') === 'alerte' => PublicController::waitlist(['key' => $m['ckey']]),
+                    ($m['what'] ?? '') === 'commande' => PublicController::order(['key' => $m['ckey']]),
+                    ($m['akey'] ?? '') !== '' => PublicController::review(['key' => $m['akey']]),
+                    default => PublicController::statsHit(['key' => $m['pkey']]),
+                };
+            }
+        }
+        if ($method === 'GET' || $method === 'HEAD') {
+            if (preg_match('#^/avis/(?<key>[a-f0-9]{24})\.js$#', $path, $m)) {
+                return PublicController::reviewsScript($m);
+            }
+            if (preg_match('#^/p/(?<key>[a-f0-9]{24})\.js$#', $path, $m)) {
+                return PublicController::statsScript($m);
+            }
+        }
         Demo::ensure();
         Schema::migrate();
         Session::start();
@@ -187,7 +218,7 @@ final class App
 
     private static function securityHeaders(): void
     {
-        header("Content-Security-Policy: default-src 'self'; img-src 'self' https: data: blob:; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'none'; object-src 'none'");
+        header("Content-Security-Policy: default-src 'self'; img-src 'self' https: data: blob:; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'");
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: same-origin');
         header('X-Frame-Options: SAMEORIGIN');

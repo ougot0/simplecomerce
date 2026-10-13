@@ -211,7 +211,11 @@ final class SettingsController
                 return Response::redirect($back . '#horaires');
 
             case 'boutique':
-                Sites::setExtras($site, ['stockAlert' => max(0, min(999, (int) Req::str('stockAlert', 4)))]);
+                $patch = ['stockAlert' => max(0, min(999, (int) Req::str('stockAlert', 4)))];
+                if ($site['connector'] === 'catalogue') {
+                    $patch += ['orders' => Req::str('orders') === '1', 'orderNote' => Req::str('orderNote', 300)];
+                }
+                Sites::setExtras($site, $patch);
                 Access::audit($v, 'shop_settings', [], $site['id']);
                 Session::flash('Réglages de la boutique enregistrés.');
                 return Response::redirect($back . '#boutique');

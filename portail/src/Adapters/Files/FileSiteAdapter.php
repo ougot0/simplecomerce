@@ -600,6 +600,42 @@ final class FileSiteAdapter implements Adapter
         return [$writes, ['before' => $current, 'after' => Values::pick($section, $after)]];
     }
 
+    /**
+     * Ajoute (ou retire) une balise <script src="…"> à toutes les pages HTML du site, en une seule écriture
+     * (statistiques de visite). Le reste des pages n'est pas touché. @return array{changed: int, pages: int}
+     */
+    public function setPageScript(string $src, bool $on, string $summary): array
+    {
+        $this->init();
+        $tag = '<script src="' . htmlspecialchars($src, ENT_QUOTES) . '" defer></script>';
+        $re = '#[ \t]*<script\b[^>]*\bsrc=["\']' . preg_quote(htmlspecialchars($src, ENT_QUOTES), '#') . '["\'][^>]*>\s*</script>[ \t]*\r?\n?#i';
+        $writes = [];
+        $expected = [];
+        $pages = $this->htmlPages();
+        foreach ($pages as $page) {
+            $raw = $this->backend->read($page);
+            if (!$raw) {
+                continue;
+            }
+            $html = $raw['content'];
+            $has = (bool) preg_match($re, $html);
+            if ($on && !$has) {
+                $pos = strripos($html, '</body>');
+                $html = $pos === false ? $html . "\n" . $tag . "\n" : substr($html, 0, $pos) . $tag . "\n" . substr($html, $pos);
+            } elseif (!$on && $has) {
+                $html = (string) preg_replace($re, '', $html);
+            }
+            if ($html !== $raw['content']) {
+                $writes[] = ['path' => $page, 'content' => $html];
+                $expected[$page] = $raw['version'];
+            }
+        }
+        if ($writes) {
+            $this->backend->commit($writes, "$summary\n\nvia Simple Commerce", $expected);
+        }
+        return ['changed' => count($writes), 'pages' => count($pages)];
+    }
+
     /** Chemin d'un lien de page, depuis le fichier qui le contient. */
     private function linkTarget(string $fromFile, string $href): string
     {

@@ -14,7 +14,7 @@ final class Mailer
     /** Derniers messages « envoyés » en démonstration, pour les afficher à l'écran. */
     public static array $demoOutbox = [];
 
-    public static function send(string $to, string $subject, string $text): bool
+    public static function send(string $to, string $subject, string $text, ?string $replyTo = null): bool
     {
         if (Config::demo()) {
             self::$demoOutbox[] = compact('to', 'subject', 'text');
@@ -27,7 +27,7 @@ final class Mailer
         }
         $headers = [
             'From' => 'Simple Commerce <' . $from . '>',
-            'Reply-To' => $from,
+            'Reply-To' => $replyTo && filter_var($replyTo, FILTER_VALIDATE_EMAIL) ? $replyTo : $from,
             'MIME-Version' => '1.0',
             'Content-Type' => 'text/plain; charset=UTF-8',
             'Content-Transfer-Encoding' => '8bit',

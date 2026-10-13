@@ -48,6 +48,9 @@ const SC_ICONS = [
     'italic' => 'M10 5h8M6 19h8M14 5l-4 14',
     'bullets' => 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
     'external' => 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+    'bag' => 'M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2',
+    'star' => 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z',
+    'chart' => 'M4 20h16M7 16v-5M12 16V6M17 16v-8',
 ];
 
 function icon(string $name, string $class = 'icon'): string

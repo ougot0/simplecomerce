@@ -33,6 +33,17 @@ include dirname(__DIR__) . '/partials/assist.php';
                     <?php endforeach ?>
                 </ul>
             </nav>
+            <?php $shop = \SimpleCommerce\Services\Shop::summary($site); ?>
+            <nav aria-label="Boutique">
+                <div class="nav-title">Boutique</div>
+                <ul class="nav">
+                    <?php if ($site['connector'] === 'catalogue'): ?>
+                        <?= $navItem("$base/commandes", 'Commandes', 'bag', false, $shop['ordersToDo']) ?>
+                    <?php endif ?>
+                    <?= $navItem("$base/avis", 'Avis clients', 'star', false, $shop['reviewsToCheck']) ?>
+                    <?= $navItem("$base/statistiques", 'Statistiques', 'chart') ?>
+                </ul>
+            </nav>
             <nav aria-label="Suivi">
                 <div class="nav-title">Suivi</div>
                 <ul class="nav">

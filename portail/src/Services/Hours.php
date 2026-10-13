@@ -48,20 +48,6 @@ final class Hours
         ];
     }
 
-    /** Une personne du site au nom de qui la fermeture automatique est faite (premier propriétaire). */
-    private static function actor(array $site): ?array
-    {
-        foreach (Repo::members($site['id']) as $m) {
-            if ($m['role'] === 'owner' && !empty($m['user'])) {
-                $u = Repo::user($m['user_id']);
-                if ($u) {
-                    return ['user' => $u, 'effective' => $u, 'assist' => null];
-                }
-            }
-        }
-        return null;
-    }
-
     /** Ferme ou rouvre les sites dont c'est le jour. @return int nombre de sites changés */
     public static function tick(): int
     {
@@ -74,7 +60,7 @@ final class Hours
             if ($site['status'] !== 'active' || (!is_array($plan) && $reopen === '')) {
                 continue;
             }
-            $viewer = self::actor($site);
+            $viewer = Sites::ownerViewer($site);
             if (!$viewer) {
                 continue;
             }
