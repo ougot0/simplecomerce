@@ -235,7 +235,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 `simplecommerce/public/bin/cron.php`, mises à jour à renvoyer dans `simplecommerce/public/`. Autres sites sur le même
 hébergement (ne pas y toucher) : `www`, `ougot`, `aminteriorss`.
 
-**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos)** (il voit Administration → Rédaction automatique ; clé Claude
+**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique)** (il voit Administration → Rédaction automatique ; clé Claude
 pas encore créée). Avant : **installation en cours sur l'OVH du propriétaire (envoi par WinSCP)** (il a reçu l'archive et les étapes ; il ne
 nous donne pas ses mots de passe — ne pas les lui demander dans la conversation).
 
@@ -303,6 +303,14 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit, 6) : le propriétaire refuse la « ligne à coller » pour les rendez-vous (« je veux pas que la personne
+  ait à demander à son développeur ») : veut un **onglet ajouté tout seul** dans le menu du site. **Version I** :
+  bouton « Ajouter l'onglet « Rendez-vous » à mon site » (sites reliés par fichiers, propriétaire) → `Content\HtmlTab`
+  ajoute `<li data-sc-onglet="rdv">` dans chaque menu d'en-tête/nav (copie d'un élément du menu, sans marque « page en
+  cours », placé avant « Contact »), jamais dans le bas de page ; `FileSiteAdapter::setTabPage` crée `rendez-vous.html`
+  à partir de la page contact (sinon l'accueil) : même en-tête/menu/pied, contenu principal remplacé, meta generator ;
+  tout en une écriture. « Retirer l'onglet » remet le site exactement comme avant (testé). `rendez-vous.html` exclu de la
+  détection. La ligne à coller reste en option repliée. Idée réutilisable pour d'autres pages (avis, catalogue…). 101 vérifications.
 - 13/10/2026 (nuit, 5) : chez lui, site Ougot relié de nouveau (`ougot-3`) : produits et prix lus, mais **photos cassées**
   dans le portail (le portail les affiche depuis l'adresse publique du site ; adresse probablement en http — bloquée par la
   CSP `img-src https:` — ou incomplète). Correction **version H** : si une photo ne s'affiche pas, `app.js` la redemande à

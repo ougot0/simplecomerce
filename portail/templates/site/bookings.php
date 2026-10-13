@@ -8,8 +8,24 @@ $s = $settings;
 
 <?php if ($s['enabled']): ?>
 <div class="panel mb-12">
+    <?php if (!empty($auto) && $role !== 'editor'): ?>
+        <?php if (!empty($s['tab'])): ?>
+        <p><strong>L'onglet « Rendez-vous » est sur votre site</strong>, dans le menu de toutes les pages<?php if ($site['public_url']): ?> : <a href="<?= e(rtrim($site['public_url'], '/') . '/' . basename((string) $s['tab'])) ?>" target="_blank" rel="noopener">voir la page</a><?php endif ?>.</p>
+        <form method="post" action="<?= e($base) ?>/rendez-vous/action" class="mt-8" data-confirm="Retirer l'onglet « Rendez-vous » et sa page de votre site ?"><?= csrf_field() ?><input type="hidden" name="do" value="retirer-onglet">
+            <button class="btn btn-small btn-quiet" type="submit">Retirer l'onglet de mon site</button></form>
+        <?php else: ?>
+        <p><strong>Mettez la réservation sur votre site en un clic.</strong> Un onglet « Rendez-vous » est ajouté au menu de toutes vos pages, avec sa page, dans le style de votre site. Rien à copier.</p>
+        <form method="post" action="<?= e($base) ?>/rendez-vous/action" class="mt-8"><?= csrf_field() ?><input type="hidden" name="do" value="onglet">
+            <button class="btn btn-primary" type="submit" data-busy="Ajout sur votre site…"><?= icon('plus') ?> Ajouter l'onglet « Rendez-vous » à mon site</button></form>
+        <?php endif ?>
+        <details class="mt-12"><summary class="muted small">Autre possibilité : mettre la réservation ailleurs dans une page</summary>
+            <p class="small mt-8">Collez cette ligne à l'endroit voulu de votre site.</p>
+            <div class="copy-row"><input type="text" readonly value="<?= e($line) ?>" class="code" aria-label="Ligne à coller dans votre site" data-select><button type="button" class="btn btn-small" data-copy><?= icon('copy') ?> Copier</button></div>
+        </details>
+    <?php else: ?>
     <p><strong>Pour afficher la réservation sur votre site</strong>, collez cette ligne une seule fois à l'endroit voulu (ou demandez-le à la personne qui s'occupe de votre site).</p>
     <div class="copy-row"><input type="text" readonly value="<?= e($line) ?>" class="code" aria-label="Ligne à coller dans votre site" data-select><button type="button" class="btn btn-small" data-copy><?= icon('copy') ?> Copier</button></div>
+    <?php endif ?>
 </div>
 <?php endif ?>
 

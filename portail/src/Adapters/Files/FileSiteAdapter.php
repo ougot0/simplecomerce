@@ -34,7 +34,7 @@ final class FileSiteAdapter implements Adapter
     private ?array $scanFiles = null;
     /** Page d'accueil d'un site (index.html, ou accueil.html / home.html). */
     private const HOME_PAGE = '#(^|/)(index|accueil|home)\.(html?|php)$#i';
-    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$|-en\.html?$#i';
+    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$|-en\.html?$|(^|/)rendez-vous\.html$#i';
     /** @var array<string, ?string> versions lues pendant une opération */
     private array $versions = [];
     /** @var array<string, ?array> fichiers lus pendant une opération */
@@ -657,6 +657,71 @@ final class FileSiteAdapter implements Adapter
         if ($writes) {
             $this->backend->commit($writes, "$summary\n\nvia Simple Commerce", $expected);
         }
+    }
+
+    /**
+     * Ajoute (ou retire) une page et son onglet dans le menu de toutes les pages du site, en une écriture.
+     * La page est faite à partir de la page « contact » (sinon de l'accueil) : même en-tête, même menu, même bas de page.
+     * @return array{pages: int, menus: int, file: string}
+     */
+    public function setTabPage(string $id, string $fileName, string $label, string $title, string $body, bool $on, string $summary): array
+    {
+        $this->init();
+        $pages = $this->htmlPages();
+        if (!$pages) {
+            throw new \RuntimeException('Aucune page n\'a été trouvée sur votre site.');
+        }
+        $home = $pages[0];
+        $dir = dirname($home) === '.' ? '' : dirname($home);
+        $file = ($dir !== '' ? "$dir/" : '') . $fileName;
+        $existing = $this->backend->read($file);
+        if ($on && $existing && !\SimpleCommerce\Content\HtmlTab::isOurs($existing['content'])) {
+            throw new \RuntimeException("Votre site a déjà une page « $fileName » : elle n'a pas été remplacée.");
+        }
+        $writes = [];
+        $expected = [];
+        $menus = 0;
+        $template = null;
+        $templateName = '';
+        foreach ($pages as $page) {
+            $raw = $this->backend->read($page);
+            if (!$raw) {
+                continue;
+            }
+            $depth = substr_count($page, '/') - substr_count($file, '/');
+            $href = ($depth > 0 ? str_repeat('../', $depth) : '') . $fileName;
+            if ($on) {
+                $r = \SimpleCommerce\Content\HtmlTab::add($raw['content'], $id, $href, $label);
+                $html = $r['html'];
+                $menus += $r['added'];
+            } else {
+                $html = \SimpleCommerce\Content\HtmlTab::remove($raw['content'], $id);
+            }
+            if ($html !== $raw['content']) {
+                $writes[] = ['path' => $page, 'content' => $html];
+                $expected[$page] = $raw['version'];
+            }
+            if ($on && dirname($page) === dirname($file) && ($template === null || preg_match('#contact[^/]*\.html?$#i', $page))) {
+                if ($template === null || !preg_match('#contact[^/]*\.html?$#i', $templateName)) {
+                    $template = $html;
+                    $templateName = basename($page);
+                }
+            }
+        }
+        if ($on) {
+            if ($menus === 0) {
+                throw new \RuntimeException('Le menu de votre site n\'a pas été trouvé : l\'onglet ne peut pas être ajouté tout seul.');
+            }
+            $writes[] = ['path' => $file, 'content' => \SimpleCommerce\Content\HtmlTab::page((string) $template, $title, $body, $fileName, $templateName)];
+            $expected[$file] = $existing['version'] ?? null;
+        } elseif ($existing && \SimpleCommerce\Content\HtmlTab::isOurs($existing['content'])) {
+            $writes[] = ['path' => $file, 'content' => null];
+            $expected[$file] = $existing['version'];
+        }
+        if ($writes) {
+            $this->backend->commit($writes, "$summary\n\nvia Simple Commerce", $expected);
+        }
+        return ['pages' => count($pages), 'menus' => $menus, 'file' => $file];
     }
 
     /** Chemin d'un lien de page, depuis le fichier qui le contient. */

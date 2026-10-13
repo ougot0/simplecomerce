@@ -22,7 +22,7 @@ final class Bookings
     public static function settings(array $site): array
     {
         $b = (array) (Sites::extras($site)['booking'] ?? []);
-        return $b + ['enabled' => false, 'services' => [], 'week' => array_fill(0, 7, ''), 'notice' => 2, 'days' => 30, 'capacity' => 1, 'message' => ''];
+        return $b + ['enabled' => false, 'services' => [], 'week' => array_fill(0, 7, ''), 'notice' => 2, 'days' => 30, 'capacity' => 1, 'message' => '', 'tab' => null];
     }
 
     /** Créneaux d'un jour : ceux des réglages de rendez-vous, sinon les horaires d'ouverture. @return array<int, array{0: int, 1: int}> minutes depuis minuit */

@@ -24,7 +24,7 @@ final class BookingController
         $s = Bookings::settings($site);
         $lines = implode("\n", array_map(fn ($sv) => $sv['nom'] . ' | ' . $sv['duree'] . ($sv['prix'] !== '' ? ' | ' . $sv['prix'] : ''), $s['services']));
         return SiteController::page($ctx, 'site/bookings', ['settings' => $s, 'servicesText' => $lines, 'list' => Bookings::list($site['id']),
-            'hours' => Hours::week($site), 'line' => '<script src="' . Config::url('/rdv/' . Sites::publicKey($site) . '.js') . '"></script>'], 'Rendez-vous');
+            'hours' => Hours::week($site), 'auto' => \SimpleCommerce\Services\Translation::supported($site), 'line' => '<script src="' . Config::url('/rdv/' . Sites::publicKey($site) . '.js') . '"></script>'], 'Rendez-vous');
     }
 
     public static function action(array $p): Response
@@ -44,6 +44,9 @@ final class BookingController
         }
         if ($ctx['role'] === 'editor') {
             throw Halt::notFound();
+        }
+        if (in_array(Req::str('do', 20), ['onglet', 'retirer-onglet'], true)) {
+            return self::tab($ctx, Req::str('do', 20) === 'onglet');
         }
         // Prestations : une par ligne, « Nom | durée en minutes | prix ».
         $services = [];
@@ -78,6 +81,7 @@ final class BookingController
             'days' => max(1, min(180, (int) Req::str('days', 4))),
             'capacity' => max(1, min(20, (int) Req::str('capacity', 3))),
             'message' => Req::str('message', 300),
+            'tab' => Bookings::settings($site)['tab'] ?? null,
         ];
         Sites::setExtras($site, ['booking' => $booking]);
         Access::audit($ctx['viewer'], 'booking_settings', ['enabled' => $booking['enabled']], $site['id']);
@@ -106,5 +110,47 @@ final class BookingController
             Bookings::cancel($b, true);
         }
         return self::cancelPage($p, 'Votre rendez-vous est annulé. L\'établissement a été prévenu.');
+    }
+
+    /** Onglet « Rendez-vous » ajouté (ou retiré) automatiquement dans le menu du site, avec sa page. */
+    private static function tab(array $ctx, bool $on): Response
+    {
+        $site = $ctx['site'];
+        $back = "/s/{$site['slug']}/rendez-vous";
+        if (!\SimpleCommerce\Services\Translation::supported($site)) {
+            Session::flash('Pour ce type de site, collez la ligne ci-dessous dans votre site.', 'error');
+            return Response::redirect($back);
+        }
+        if ($on && !\SimpleCommerce\Services\Billing::siteAllowed($site, $ctx['viewer'])) {
+            Session::flash(\SimpleCommerce\Services\Billing::blockedMessage(), 'error');
+            return Response::redirect($back);
+        }
+        $src = Config::url('/rdv/' . Sites::publicKey($site) . '.js');
+        $body = '<section data-sc-rendez-vous style="max-width:880px;margin:0 auto;padding:56px 20px 80px">'
+            . "\n  <h1>Prendre rendez-vous</h1>"
+            . "\n  <p>Choisissez une prestation, puis le jour et l'heure qui vous conviennent. Vous recevrez une confirmation par e-mail.</p>"
+            . "\n  <script src=\"" . htmlspecialchars($src, ENT_QUOTES) . "\"></script>\n</section>";
+        try {
+            $r = Sites::with($site, function (\SimpleCommerce\Adapters\Adapter $a) use ($on, $site, $body) {
+                if (!$a instanceof \SimpleCommerce\Adapters\Files\FileSiteAdapter) {
+                    throw new \RuntimeException('Ce site ne peut pas recevoir de nouvel onglet automatiquement.');
+                }
+                return $a->setTabPage('rdv', 'rendez-vous.html', 'Rendez-vous', 'Prendre rendez-vous — ' . $site['name'], $body, $on,
+                    $on ? 'Ajout de l\'onglet Rendez-vous' : 'Retrait de l\'onglet Rendez-vous');
+            }, null, true);
+        } catch (\RuntimeException $e) {
+            Session::flash($e->getMessage(), 'error');
+            return Response::redirect($back);
+        } catch (\Throwable $e) {
+            Session::flash(\SimpleCommerce\Adapters\AdapterError::userMessageFor($e), 'error');
+            return Response::redirect($back);
+        }
+        $booking = Bookings::settings($site);
+        $booking['tab'] = $on ? $r['file'] : null;
+        Sites::setExtras($site, ['booking' => $booking]);
+        Access::audit($ctx['viewer'], $on ? 'booking_tab_added' : 'booking_tab_removed', [], $site['id']);
+        Session::flash($on ? 'C\'est fait : l\'onglet « Rendez-vous » est sur votre site, dans le menu de toutes les pages. Rechargez votre site pour le voir.'
+            : 'L\'onglet « Rendez-vous » et sa page ont été retirés de votre site.');
+        return Response::redirect($back);
     }
 }

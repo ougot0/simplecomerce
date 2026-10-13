@@ -288,5 +288,18 @@ test('Suppression de compte', function () {
     unset($_SERVER['HTTP_USER_AGENT']);
 });
 
+test('onglet ajouté au menu du site', function () {
+    $T = \SimpleCommerce\Content\HtmlTab::class;
+    $html = "<html><head><title>Accueil</title></head><body><header><nav><ul>\n  <li><a href=\"index.html\" class=\"active\">Accueil</a></li>\n  <li><a href=\"sacs.html\">Sacs</a></li>\n  <li><a href=\"contact.html\" class=\"btn\">Contact</a></li>\n</ul></nav></header>"
+        . "<main><h1>Bienvenue</h1></main><footer><ul><li><a href=\"a.html\">A</a></li><li><a href=\"b.html\">B</a></li><li><a href=\"c.html\">C</a></li></ul></footer></body></html>";
+    $r = $T::add($html, 'rdv', 'rendez-vous.html', 'Rendez-vous');
+    check($r['added'] === 1, 'un seul menu complété (pas le bas de page)');
+    check(str_contains($r['html'], "<li data-sc-onglet=\"rdv\"><a href=\"rendez-vous.html\">Rendez-vous</a></li>\n  <li><a href=\"contact.html\""), 'onglet placé avant Contact, sans la marque « page en cours »');
+    check($T::remove($r['html'], 'rdv') === $html, 'onglet retiré sans trace');
+    check($T::add($r['html'], 'rdv', 'rendez-vous.html', 'Rendez-vous')['html'] === $r['html'], 'pas de doublon si on recommence');
+    $page = $T::page($r['html'], 'Prendre rendez-vous', '<p>RDV</p>', 'rendez-vous.html', 'index.html');
+    check(str_contains($page, '<p>RDV</p>') && !str_contains($page, 'Bienvenue') && str_contains($page, 'Sacs') && $T::isOurs($page), 'page créée avec le même menu');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);
