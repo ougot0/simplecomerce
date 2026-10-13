@@ -2126,3 +2126,10 @@ input.short {
 /* Liste simple dans un panneau (suppression de compte). */
 .list-plain { margin: 0 0 12px; padding-left: 18px; }
 .list-plain li { margin: 4px 0; }
+
+/* Filtres par case cochée (« Solde », « Nouveauté »…) */
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.filter-chips .chip { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line-strong); text-decoration: none; font-size: 14px; font-weight: 600; background: var(--surface); color: var(--ink); }
+.filter-chips .chip:hover { border-color: var(--ink); }
+.filter-chips .chip[aria-current="page"] { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+.filter-chips .chip[aria-current="page"] .muted { color: #cfc7bb; }

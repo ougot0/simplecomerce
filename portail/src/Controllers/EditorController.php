@@ -309,7 +309,15 @@ final class EditorController
             throw Halt::notFound();
         }
         $ids = array_values(array_unique(array_filter(array_map(fn ($x) => is_string($x) ? self::cleanId($x) : null, (array) ($_POST['ids'] ?? [])))));
-        $action = Req::str('action', 20);
+        $action = Req::str('action', 100);
+        $flag = null;
+        if (preg_match('/^(oui|non):(.+)$/', $action, $fm)) {
+            $flag = current(array_filter($section['fields'], fn ($f) => $f['type'] === 'boolean' && empty($f['hidden']) && $f['key'] === $fm[2])) ?: null;
+            if (!$flag) {
+                throw Halt::notFound();
+            }
+            $action = $fm[1];
+        }
         if (!$ids) {
             Session::flash('Cochez d\'abord les éléments à modifier.', 'error');
             return Response::redirect($url);
@@ -367,6 +375,14 @@ final class EditorController
                     }
                     $items[$id] = [$stockField['key'] => $stockField['type'] === 'number' ? (int) $n : $n];
                     $what = ['a son nouveau stock', 'ont leur nouveau stock'];
+                    break;
+                case 'oui':
+                case 'non':
+                    if (($cur[$flag['key']] ?? null) === ($action === 'oui')) {
+                        break;
+                    }
+                    $items[$id] = [$flag['key'] => $action === 'oui'];
+                    $what = $action === 'oui' ? ['est en « ' . $flag['label'] . ' »', 'sont en « ' . $flag['label'] . ' »'] : ['n\'est plus en « ' . $flag['label'] . ' »', 'ne sont plus en « ' . $flag['label'] . ' »'];
                     break;
                 case 'supprimer':
                     $items[$id] = null;

@@ -235,7 +235,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 `simplecommerce/public/bin/cron.php`, mises à jour à renvoyer dans `simplecommerce/public/`. Autres sites sur le même
 hébergement (ne pas y toucher) : `www`, `ougot`, `aminteriorss`.
 
-**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique), version J (menus comme celui de Coumao)** (il voit Administration → Rédaction automatique ; clé Claude
+**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique), version J (menus comme celui de Coumao), version K (filtres Soldes/Nouveautés/catégories)** (il voit Administration → Rédaction automatique ; clé Claude
 pas encore créée). Avant : **installation en cours sur l'OVH du propriétaire (envoi par WinSCP)** (il a reçu l'archive et les étapes ; il ne
 nous donne pas ses mots de passe — ne pas les lui demander dans la conversation).
 
@@ -303,6 +303,16 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit, 8) : **version K**. (1) Décocher « Ouvrir la prise de rendez-vous » retire aussi l'onglet et sa page
+  (avant : l'onglet restait et le bouton « Retirer » disparaissait) ; bouton « Refaire la page Rendez-vous ». (2) Menus
+  remplis par le JavaScript du site (Coumao : Soldes, Nouveautés, Sacs… fabriqués depuis les produits) : la page créée
+  garde le contenu d'origine **caché** (`<div hidden data-sc-page-originale>`) pour que le site fabrique ses onglets, et un
+  petit script renvoie les clics sur ces onglets vers `index.html#collection`. (3) Demande « accès à Soldes et Nouveautés,
+  pour tous les sites » : dans chaque liste, **filtres** (`?case=` pour chaque case à cocher non « visibilité », `?categorie=`
+  pour une liste de choix de 2 à 10 valeurs), pastilles beiges sur les fiches, et dans « Modifier plusieurs » :
+  « Mettre en « X » » / « Retirer de « X » » (`oui:`/`non:` + clé dans `EditorController::bulk`). Générique : marche pour
+  tout site dont les produits ont des cases (JSON, JS, HTML, WooCommerce…). Testé sur une copie de Coumao dans la démo
+  (`storage/demo-sites/cmtest`).
 - 13/10/2026 (nuit, 7) : chez lui, sur Coumao : « Le menu de votre site n'a pas été trouvé ». Le menu de Coumao n'a que
   2 liens écrits (Accueil `#top`, Contact `#contact`) + `<div id="tabs">` rempli par JavaScript. **Version J** : menus
   `<nav>` sans liste acceptés dès 2 liens ; modèle d'onglet = le lien le plus simple (sans classe) ; sur la page créée, les
