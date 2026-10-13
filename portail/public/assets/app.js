@@ -56,11 +56,23 @@
       if (label) {
         // Après l'envoi : un bouton désactivé trop tôt ne serait pas transmis.
         setTimeout(function () {
+          if (btn.__label === undefined) btn.__label = btn.innerHTML;
           btn.disabled = true;
+          btn.setAttribute("data-was-busy", "");
           btn.textContent = label;
         }, 0);
       }
     }
+  });
+
+  // Retour en arrière (bouton du navigateur) : la page revient telle qu'on l'avait quittée, boutons grisés compris.
+  // On les remet comme avant pour pouvoir cliquer de nouveau.
+  window.addEventListener("pageshow", function () {
+    $$("[data-was-busy]").forEach(function (b) {
+      b.disabled = false;
+      if (b.__label !== undefined) b.innerHTML = b.__label;
+      b.removeAttribute("data-was-busy");
+    });
   });
 
   $$("[data-autosubmit]").forEach(function (el) {

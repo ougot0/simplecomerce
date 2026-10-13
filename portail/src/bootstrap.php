@@ -8,7 +8,7 @@ declare(strict_types=1);
 define('SC_ROOT', dirname(__DIR__));
 define('SC_STORAGE', SC_ROOT . '/storage');
 /** Version affichée dans l'administration : sert à vérifier qu'une mise à jour est bien en ligne. */
-define('SC_VERSION', '13 octobre 2026 — B');
+define('SC_VERSION', '13 octobre 2026 — C');
 
 // Erreur grave de PHP (fichier manquant ou abîmé…) : le serveur n'afficherait qu'une page « Erreur interne ».
 // On note le détail dans storage/erreurs.txt (à envoyer à la personne qui s'occupe du portail) et on le dit simplement.

@@ -160,7 +160,7 @@ final class BillingController
         Billing::saveSettings(['enabled' => true]);
         Repo::log($v['user']['id'], null, null, 'billing_settings', ['enabled' => true, 'done' => $done]);
         $hookMissing = Billing::fingerprint('webhookSecret') === '';
-        Session::flash('Abonnements activés' . ($done ? ' (' . implode(', ', $done) . ')' : '') . '. Chaque client a ' . $patch['trialDays'] . ' jours d\'essai gratuit, puis doit s\'abonner pour publier.'
+        Session::flash('Abonnements activés' . ($done ? ' (' . implode(', ', $done) . ')' : '') . '. Pour publier, chaque client s\'abonne avec sa carte : ' . $patch['trialDays'] . ' jours gratuits, puis prélèvement.'
             . ($hookMissing ? ' Attention : les avis de paiement n\'ont pas pu être branchés (adresse du portail sans https).' : ''), $hookMissing ? 'warn' : 'ok');
         return Response::redirect('/admin/abonnements');
     }

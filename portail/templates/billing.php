@@ -11,12 +11,15 @@ use SimpleCommerce\Support\Text;
 <div class="panel billing-card">
     <p class="muted small">Votre situation</p>
     <p class="billing-status"><?= tag($active ? ($row['status'] === 'impaye' ? 'draft' : 'live') : 'error', Billing::label($row)) ?></p>
+    <?php $trial = (int) $settings['trialDays']; $plans = Billing::plans(); ?>
     <?php if ($row['status'] === 'essai' && $active): ?>
-    <p>Votre essai gratuit se termine le <strong><?= e(Text::date($row['trial_ends_at'], true, true)) ?></strong> (<?= $days > 1 ? "encore $days jours" : ($days === 1 ? 'demain' : "aujourd'hui") ?>). Abonnez-vous quand vous voulez : le premier paiement n'aura lieu qu'à la fin de l'essai.</p>
+    <p>Un accès d'essai vous est offert jusqu'au <strong><?= e(Text::date($row['trial_ends_at'], true, true)) ?></strong>. Abonnez-vous quand vous voulez pour continuer ensuite.</p>
     <?php elseif ($row['status'] === 'essai'): ?>
-    <p>Votre essai gratuit est terminé. Vos sites restent intacts et vous pouvez toujours les consulter ; pour publier de nouveau, choisissez l'abonnement.</p>
+    <p>Pour modifier vos sites, choisissez votre abonnement.<?= $trial > 0 ? " <strong>Les $trial premiers jours sont gratuits</strong> : votre carte est demandée, mais rien n'est prélevé avant le " . e(Text::date(gmdate('Y-m-d', time() + $trial * 86400), true, true)) . '. Vous pouvez arrêter avant sans rien payer.' : '' ?></p>
+    <?php elseif (Billing::inTrial($row)): ?>
+    <p>Merci ! Vous profitez de vos jours gratuits jusqu'au <strong><?= e(Text::date($row['trial_ends_at'], true, true)) ?></strong>. Le premier paiement aura lieu ce jour-là, sur la carte que vous avez donnée. Vous pouvez arrêter avant sans rien payer.</p>
     <?php elseif ($row['status'] === 'actif'): ?>
-    <p>Merci ! Vous publiez sans limite.<?= $row['period_end'] ? ' Prochain renouvellement le ' . e(Text::date($row['period_end'], true, true)) . '.' : '' ?></p>
+    <p>Merci ! Vous publiez sans limite.<?= $row['period_end'] ? ' Prochain paiement le ' . e(Text::date($row['period_end'], true, true)) . '.' : '' ?></p>
     <?php elseif ($row['status'] === 'impaye'): ?>
     <p>Le dernier paiement n'est pas passé. Stripe va réessayer dans les prochains jours ; vérifiez votre carte pour éviter une coupure.</p>
     <?php elseif ($row['status'] === 'termine'): ?>

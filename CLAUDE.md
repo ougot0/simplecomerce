@@ -276,6 +276,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (après-midi) : le propriétaire a testé en réel (sa clé Stripe, code promo) et s'est abonné **sans carte** : venait
+  de `payment_method_collection=if_required` + essai côté portail. Demande : **il faut s'abonner avec sa carte pour avoir les
+  7 jours gratuits**, puis prélèvement. Donc : plus d'essai sans abonnement (nouveau compte = « Pas encore abonné », lecture
+  seule), `trial_period_days` chez Stripe (1er abonnement seulement), carte toujours demandée (même avec le code à 100 %),
+  `trial_ends_at` = fin des jours gratuits Stripe (« Abonné — jours gratuits »). Boutons grisés après « retour arrière »
+  (cache de page du navigateur) : remis à neuf sur `pageshow`. Version C. Il a envoyé chez OVH une installation complète
+  (zip `simplecommerce-COMPLET-*.zip` = dossier `public` à mettre dans `/home/coumaoq/simplecommerce/`).
 - 13/10/2026 (midi) : abonnements simplifiés à la demande : **9 €/mois ou 90 €/an**, **essai 7 jours**, l'admin colle
   seulement sa clé Stripe → `Billing::setupStripe` crée produit, 2 prix et webhook (si https) ; **code promo 100 %**
   (`setupPromo`, défaut `GRATUIT100`, `payment_method_collection=if_required` → 0 € sans carte). `SC_STRIPE_API` pour

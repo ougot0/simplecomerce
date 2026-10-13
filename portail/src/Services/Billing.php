@@ -13,7 +13,8 @@ use SimpleCommerce\Support\Vault;
 
 /**
  * Abonnements payants (Stripe). Désactivés tant que l'administrateur ne les a pas réglés et allumés.
- * Chaque compte a un essai gratuit ; ensuite il faut un abonnement pour publier (la lecture reste possible).
+ * Pour publier, il faut s'abonner (carte demandée) ; l'abonnement commence par N jours gratuits chez Stripe,
+ * puis le premier prélèvement. Sans abonnement : lecture seule. L'administrateur peut offrir un accès ou des jours d'essai.
  * Ce sont les propriétaires d'un site qui paient : les personnes invitées en profitent.
  * Le paiement se fait sur la page sécurisée de Stripe (Checkout) ; le portail ne voit jamais la carte.
  *
@@ -24,7 +25,7 @@ final class Billing
     private const AD = 'simplecommerce-billing';
     public const EVENTS = ['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'];
     public const PLANS = ['mois' => 'priceId', 'an' => 'priceIdYear'];
-    public const LABELS = ['essai' => 'Essai gratuit', 'actif' => 'Abonné', 'impaye' => 'Paiement en retard', 'termine' => 'Abonnement arrêté', 'gratuit' => 'Offert'];
+    public const LABELS = ['essai' => 'Pas encore abonné', 'actif' => 'Abonné', 'impaye' => 'Paiement en retard', 'termine' => 'Abonnement arrêté', 'gratuit' => 'Offert'];
 
     /** Mis à vrai pendant les actions automatiques (commande d'un client, fermeture programmée) : jamais bloquées. */
     public static bool $system = false;
@@ -109,8 +110,8 @@ final class Billing
     {
         $r = Db::one('SELECT * FROM sc_billing WHERE user_id = ?', [$user['id']]);
         if (!$r) {
-            // Premier passage depuis l'ouverture des abonnements : l'essai commence maintenant.
-            $r = ['user_id' => $user['id'], 'status' => 'essai', 'trial_ends_at' => gmdate('Y-m-d\TH:i:s\Z', time() + max(0, (int) self::settings()['trialDays']) * 86400),
+            // Pas d'essai sans abonnement : les jours gratuits commencent quand la personne s'abonne avec sa carte.
+            $r = ['user_id' => $user['id'], 'status' => 'essai', 'trial_ends_at' => Db::now(),
                 'customer_id' => null, 'subscription_id' => null, 'period_end' => null, 'updated_at' => Db::now()];
             try {
                 Db::insert('sc_billing', $r);
@@ -146,7 +147,19 @@ final class Billing
     /** Libellé de la situation (« Essai terminé » plutôt que « Essai gratuit » une fois la date passée). */
     public static function label(array $row): string
     {
-        return $row['status'] === 'essai' && $row['trial_ends_at'] <= Db::now() ? 'Essai terminé' : (self::LABELS[$row['status']] ?? $row['status']);
+        if ($row['status'] === 'essai' && $row['trial_ends_at'] > Db::now()) {
+            return 'Essai offert';
+        }
+        if ($row['status'] === 'actif' && self::inTrial($row)) {
+            return 'Abonné — jours gratuits';
+        }
+        return self::LABELS[$row['status']] ?? $row['status'];
+    }
+
+    /** Abonné, mais encore dans ses jours gratuits (rien n'a encore été prélevé). */
+    public static function inTrial(array $row): bool
+    {
+        return $row['status'] === 'actif' && (string) $row['trial_ends_at'] > Db::now() && (string) $row['subscription_id'] !== '';
     }
 
     public static function daysLeft(array $row): int
@@ -173,7 +186,7 @@ final class Billing
 
     public static function blockedMessage(): string
     {
-        return 'La période d\'essai est terminée. Pour publier de nouveau, le propriétaire du site doit choisir l\'abonnement dans « Mon compte → Abonnement ». Rien n\'a été effacé.';
+        return 'Pour publier, le propriétaire du site doit avoir un abonnement (« Mon compte → Abonnement », ' . (int) self::settings()['trialDays'] . ' jours gratuits pour commencer). Rien n\'a été effacé.';
     }
 
     // --- Stripe ---
@@ -221,7 +234,7 @@ final class Billing
             'cancel_url' => Config::url('/compte/abonnement'),
             'locale' => 'fr',
             'allow_promotion_codes' => 'true',
-            'payment_method_collection' => 'if_required', // avec un code à 100 %, pas de carte demandée
+            'payment_method_collection' => 'always', // la carte est toujours demandée, même pendant les jours gratuits
             'subscription_data' => ['metadata' => ['user_id' => $user['id']]],
         ];
         if ($r['customer_id']) {
@@ -229,9 +242,10 @@ final class Billing
         } else {
             $form['customer_email'] = $user['email'];
         }
-        // Essai pas fini : le premier paiement attend la fin de l'essai.
-        if ($r['status'] === 'essai' && ($end = strtotime((string) $r['trial_ends_at'])) > time() + 48 * 3600) {
-            $form['subscription_data']['trial_end'] = $end;
+        // Jours gratuits : seulement pour un premier abonnement (pas après un arrêt, pour éviter les essais à répétition).
+        $days = (int) self::settings()['trialDays'];
+        if ($days > 0 && !$r['subscription_id']) {
+            $form['subscription_data']['trial_period_days'] = $days;
         }
         $s = self::stripe('POST', '/checkout/sessions', $form);
         return (string) $s['url'];
@@ -351,11 +365,13 @@ final class Billing
             default => 'termine',
         };
         $end = $sub['current_period_end'] ?? ($sub['items']['data'][0]['current_period_end'] ?? null);
+        $trialEnd = ($sub['status'] ?? '') === 'trialing' && is_numeric($sub['trial_end'] ?? null) ? gmdate('Y-m-d\TH:i:s\Z', (int) $sub['trial_end']) : null;
         if ($row['status'] === 'gratuit') {
             $status = 'gratuit'; // offert par l'administrateur : on garde
         }
         self::update($row['user_id'], ['status' => $status, 'subscription_id' => (string) $sub['id'], 'customer_id' => (string) ($sub['customer'] ?? $row['customer_id']),
-            'period_end' => is_numeric($end) ? gmdate('Y-m-d\TH:i:s\Z', (int) $end) : $row['period_end']]);
+            'period_end' => is_numeric($end) ? gmdate('Y-m-d\TH:i:s\Z', (int) $end) : $row['period_end'],
+            'trial_ends_at' => $trialEnd ?? ($status === 'actif' ? Db::now() : $row['trial_ends_at'])]);
         Repo::log($row['user_id'], null, null, 'billing_' . $status, ['sub' => substr((string) $sub['id'], -6)]);
     }
 
