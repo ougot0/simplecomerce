@@ -121,6 +121,71 @@ final class Changes
         }
     }
 
+    /**
+     * Plusieurs éléments d'une liste modifiés ou supprimés d'un coup (une seule écriture quand c'est possible).
+     * Chaque élément a sa ligne dans l'historique, et peut donc être annulé seul.
+     * @param array<string, ?array> $items identifiant => valeurs à changer (null = supprimer)
+     * @return array{ok: bool, count?: int, error?: string}
+     */
+    public static function publishBatch(array $viewer, array $site, array $section, array $items, string $summary): array
+    {
+        if (!$items) {
+            return ['ok' => true, 'count' => 0];
+        }
+        $ctx = ['author' => self::authorName($viewer), 'summary' => $summary, 'changeId' => 'lot-' . bin2hex(random_bytes(6)), 'assets' => []];
+        try {
+            $result = Sites::with($site, function (Adapter $a) use ($section, $items, $ctx) {
+                if (method_exists($a, 'changeMany')) {
+                    return $a->changeMany($section, $items, $ctx);
+                }
+                $out = [];
+                foreach ($items as $id => $data) {
+                    $id = (string) $id;
+                    if ($data === null) {
+                        $r = $a->deleteEntry($section, $id, null, $ctx);
+                    } else {
+                        $cur = $a->getEntry($section, $id);
+                        if (!$cur) {
+                            throw new ConflictError("élément $id introuvable");
+                        }
+                        $r = $a->updateEntry($section, $id, array_replace($cur['data'], $data), null, $ctx);
+                    }
+                    $out[$id] = ['before' => $r['before'] ?? null, 'after' => $r['after'] ?? null];
+                }
+                return $out;
+            });
+        } catch (\Throwable $e) {
+            Log::warn('modification groupée échouée', ['site' => $site['slug'], 'err' => $e instanceof AdapterError ? ($e->detail ?? $e->getMessage()) : $e]);
+            return ['ok' => false, 'error' => AdapterError::userMessageFor($e)];
+        }
+        $first = null;
+        foreach ($result as $id => $r) {
+            $after = $r['after'];
+            $change = Repo::insertChange([
+                'site_id' => $site['id'], 'actor_id' => $viewer['user']['id'],
+                'on_behalf_of' => $viewer['effective']['id'] !== $viewer['user']['id'] ? $viewer['effective']['id'] : null,
+                'action' => $after === null ? 'delete' : 'update', 'section_key' => $section['key'], 'entry_id' => (string) $id,
+                'entry_label' => mb_substr(ContentSchema::title($section, $after ?? $r['before'] ?? []), 0, 250),
+                'status' => 'applied', 'before_json' => $r['before'], 'after_json' => $after,
+            ]);
+            $first ??= $change;
+            if ($after !== null) {
+                try {
+                    Shop::afterChange($site, $section, $r['before'], $after, (string) $id);
+                } catch (\Throwable $e) {
+                    Log::warn('alerte de stock', ['err' => $e]);
+                }
+            }
+        }
+        if ($first) {
+            Notifier::changed($viewer, $site, ['entry_label' => $summary] + $first);
+        }
+        if (in_array(null, $items, true) && ($section['source']['format'] ?? '') === 'html') {
+            Sites::rediscover($site, $viewer['user']['id']);
+        }
+        return ['ok' => true, 'count' => count($result)];
+    }
+
     /** Note l'adresse définitive des photos envoyées, pour la bibliothèque « Mes photos ». */
     private static function rememberMedia(mixed $sent, mixed $stored): void
     {

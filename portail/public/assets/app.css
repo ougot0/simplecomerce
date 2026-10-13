@@ -1970,3 +1970,53 @@ section[id] { scroll-margin-top: 70px; }
 input.short {
   width: 6.5em;
 }
+
+/* Modification groupée */
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.bulk-bar select {
+  width: auto;
+  min-width: 12em;
+}
+
+.bulk-bar .checkbox {
+  margin: 0;
+}
+
+.bulk-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulk-bar[data-empty] select,
+.bulk-bar[data-empty] .bulk-extra,
+.bulk-bar[data-empty] button {
+  display: none;
+}
+
+.item-card {
+  position: relative;
+}
+
+.item-check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 4px;
+  line-height: 0;
+  box-shadow: var(--shadow);
+}

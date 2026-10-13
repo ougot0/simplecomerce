@@ -593,3 +593,30 @@
   }
   enhance(document);
 })();
+
+/* Modification groupée : cocher des éléments, choisir l'action. */
+(function () {
+  var form = document.querySelector("[data-bulk]");
+  if (!form) return;
+  var items = function () { return Array.prototype.slice.call(document.querySelectorAll("[data-bulk-item]")); };
+  var all = form.querySelector("[data-bulk-all]");
+  var count = form.querySelector("[data-bulk-count]");
+  var action = form.querySelector("[data-bulk-action]");
+  function refresh() {
+    var n = items().filter(function (c) { return c.checked; }).length;
+    if (n) { form.removeAttribute("data-empty"); } else { form.setAttribute("data-empty", ""); }
+    count.textContent = n ? (n > 1 ? n + " éléments cochés" : "1 élément coché") : "Cochez des éléments pour les modifier ensemble.";
+    if (all) all.checked = n > 0 && n === items().length;
+    Array.prototype.forEach.call(form.querySelectorAll("[data-bulk-for]"), function (el) {
+      el.hidden = el.getAttribute("data-bulk-for") !== action.value;
+    });
+  }
+  document.addEventListener("change", function (e) {
+    if (e.target === all) { items().forEach(function (c) { c.checked = all.checked; }); }
+    if (e.target === all || e.target.hasAttribute("data-bulk-item") || e.target === action) refresh();
+  });
+  form.addEventListener("submit", function (e) {
+    if (action.value === "supprimer" && !window.confirm("Supprimer les éléments cochés de votre site ?")) e.preventDefault();
+  });
+  refresh();
+})();

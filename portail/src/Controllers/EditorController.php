@@ -299,6 +299,99 @@ final class EditorController
         return Response::redirect($url);
     }
 
+    /** Plusieurs éléments cochés dans une liste : masquer, afficher, changer le prix ou le stock, supprimer. */
+    public static function bulk(array $p): Response
+    {
+        $ctx = Access::site($p['slug']);
+        $section = Access::section($ctx, Req::str('section', 120));
+        $url = "/s/{$p['slug']}/r/{$section['key']}";
+        if (($section['kind'] ?? '') !== 'collection') {
+            throw Halt::notFound();
+        }
+        $ids = array_values(array_unique(array_filter(array_map(fn ($x) => is_string($x) ? self::cleanId($x) : null, (array) ($_POST['ids'] ?? [])))));
+        $action = Req::str('action', 20);
+        if (!$ids) {
+            Session::flash('Cochez d\'abord les éléments à modifier.', 'error');
+            return Response::redirect($url);
+        }
+        if (count($ids) > 200) {
+            Session::flash('200 éléments au plus à la fois.', 'error');
+            return Response::redirect($url);
+        }
+        try {
+            $entries = Sites::with($ctx['site'], fn (Adapter $a) => $a->listEntries($section));
+        } catch (\Throwable $e) {
+            Session::flash(AdapterError::userMessageFor($e), 'error');
+            return Response::redirect($url);
+        }
+        $byId = array_column($entries, 'data', 'id');
+        $visKey = ContentSchema::visibilityField($section);
+        $priceField = current(array_filter($section['fields'], fn ($f) => $f['type'] === 'price' && empty($f['hidden']))) ?: null;
+        $stockField = \SimpleCommerce\Services\Shop::stockField($section);
+        $items = [];
+        $what = ['', ''];
+        foreach ($ids as $id) {
+            if (!array_key_exists($id, $byId)) {
+                continue;
+            }
+            $cur = $byId[$id];
+            switch ($action) {
+                case 'masquer':
+                case 'afficher':
+                    if (!$visKey) {
+                        break 2;
+                    }
+                    $items[$id] = [$visKey => $action === 'afficher'];
+                    $what = $action === 'afficher' ? ['est de nouveau visible', 'sont de nouveau visibles'] : ['n\'est plus visible', 'ne sont plus visibles'];
+                    break;
+                case 'prix':
+                    $pct = \SimpleCommerce\Support\Text::parseDecimal(Req::str('percent', 10));
+                    if (!$priceField || $pct === null || $pct <= -100 || $pct > 1000) {
+                        Session::flash('Indiquez un pourcentage, par exemple 10 pour augmenter de 10 %, ou -20 pour baisser de 20 %.', 'error');
+                        return Response::redirect($url);
+                    }
+                    $old = \SimpleCommerce\Content\Price::toNumber($priceField, $cur[$priceField['key']] ?? null);
+                    if ($old === null) {
+                        break;
+                    }
+                    $new = $old * (1 + $pct / 100);
+                    $new = Req::bool('round') ? round($new) : round($new, 2);
+                    $items[$id] = [$priceField['key'] => \SimpleCommerce\Content\Price::toStored($priceField, $new)];
+                    $what = ['a son nouveau prix', 'ont leur nouveau prix'];
+                    break;
+                case 'stock':
+                    $n = Req::str('stock', 6);
+                    if (!$stockField || !preg_match('/^\d{1,5}$/', $n)) {
+                        Session::flash('Indiquez le nouveau stock (un nombre).', 'error');
+                        return Response::redirect($url);
+                    }
+                    $items[$id] = [$stockField['key'] => $stockField['type'] === 'number' ? (int) $n : $n];
+                    $what = ['a son nouveau stock', 'ont leur nouveau stock'];
+                    break;
+                case 'supprimer':
+                    $items[$id] = null;
+                    $what = ['n\'est plus sur votre site', 'ne sont plus sur votre site'];
+                    break;
+                default:
+                    throw Halt::notFound();
+            }
+        }
+        if (!$items) {
+            Session::flash('Rien à changer pour ces éléments.', 'error');
+            return Response::redirect($url);
+        }
+        $n = count($items);
+        $label = \SimpleCommerce\Support\Text::plural($n, $section['itemLabel'] ?? 'élément');
+        $verb = $what[$n > 1 ? 1 : 0];
+        $r = Changes::publishBatch($ctx['viewer'], $ctx['site'], $section, $items, "{$section['label']} : $label — $verb");
+        if (!$r['ok']) {
+            Session::flash($r['error'], 'error');
+            return Response::redirect($url);
+        }
+        Session::flash(($n > 1 ? "Ces $label $verb. " : "Cet élément $verb. ") . Sites::delayText($ctx['site']) . ' Chaque changement peut être annulé dans l\'historique.');
+        return Response::redirect($url);
+    }
+
     /** Dupliquer un élément (la copie est masquée si la rubrique le permet). */
     public static function duplicate(array $p): Response
     {

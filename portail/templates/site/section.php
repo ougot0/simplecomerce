@@ -27,6 +27,9 @@ $toggle = function (array $e) use ($visKey, $base, $section) {
     return '<form method="post" action="' . e($base) . '/visibilite" class="inline">' . csrf_field() . '<input type="hidden" name="section" value="' . e($section['key']) . '"><input type="hidden" name="entryId" value="' . e((string) $e['id']) . '"><input type="hidden" name="visible" value="' . ($on ? '0' : '1') . '">'
         . '<button type="submit" class="btn btn-small btn-quiet" title="' . ($on ? 'Masquer sur le site' : 'Afficher sur le site') . '">' . icon($on ? 'eye-off' : 'eye') . '<span>' . ($on ? 'Masquer' : 'Afficher') . '</span></button></form>';
 };
+$bulkPrice = (bool) array_filter($section['fields'], fn ($f) => $f['type'] === 'price' && empty($f['hidden']));
+$bulkStock = \SimpleCommerce\Services\Shop::stockField($section) !== null;
+$check = fn (array $e) => '<input type="checkbox" name="ids[]" value="' . e((string) $e['id']) . '" form="bulk-form" data-bulk-item aria-label="Sélectionner ' . e(ContentSchema::title($section, $e['data'])) . '">';
 ?>
 <div class="page-head">
     <div>
@@ -54,10 +57,27 @@ $toggle = function (array $e) use ($visKey, $base, $section) {
     <?php if (count($entries) > 5): ?>
     <div class="search"><?= icon('search') ?><input type="search" placeholder="Rechercher dans <?= e(mb_strtolower($section['label'])) ?>…" data-filter aria-label="Rechercher"></div>
     <?php endif ?>
+    <?php if (count($entries) > 1): ?>
+    <form method="post" action="<?= e($base) ?>/groupe" id="bulk-form" class="bulk-bar" data-bulk>
+        <?= csrf_field() ?><input type="hidden" name="section" value="<?= e($section['key']) ?>">
+        <label class="checkbox bulk-all"><input type="checkbox" data-bulk-all><span>Tout cocher</span></label>
+        <span class="muted small" data-bulk-count>Cochez des éléments pour les modifier ensemble.</span>
+        <select name="action" aria-label="Que faire des éléments cochés ?" data-bulk-action>
+            <?php if ($visKey): ?><option value="masquer">Masquer sur le site</option><option value="afficher">Afficher sur le site</option><?php endif ?>
+            <?php if ($bulkPrice): ?><option value="prix">Changer le prix de…</option><?php endif ?>
+            <?php if ($bulkStock): ?><option value="stock">Mettre le stock à…</option><?php endif ?>
+            <?php if ($caps['delete']): ?><option value="supprimer">Supprimer</option><?php endif ?>
+        </select>
+        <?php if ($bulkPrice): ?><span class="bulk-extra" data-bulk-for="prix"><input type="text" name="percent" inputmode="decimal" class="short" placeholder="+10 ou -20" aria-label="Pourcentage"> % <label class="checkbox"><input type="checkbox" name="round" value="1" checked><span>Arrondir à l'euro</span></label></span><?php endif ?>
+        <?php if ($bulkStock): ?><span class="bulk-extra" data-bulk-for="stock"><input type="number" name="stock" min="0" class="short" aria-label="Nouveau stock"></span><?php endif ?>
+        <button class="btn btn-small btn-primary" type="submit" data-busy="Modification…">Appliquer</button>
+    </form>
+    <?php endif ?>
     <?php if ($imageKey): ?>
     <div class="cards-grid" data-filter-list>
         <?php foreach ($entries as $e): $t = $thumb($e); $title = ContentSchema::title($section, $e['data']); ?>
         <div class="item-card" data-filter-item data-text="<?= e(mb_strtolower($title)) ?>">
+            <?php if (count($entries) > 1): ?><label class="item-check"><?= $check($e) ?></label><?php endif ?>
             <a href="<?= e($href($e)) ?>" class="item-link">
                 <?= $t ? '<img class="item-photo" src="' . e($t) . '" alt="" loading="lazy">' : '<span class="item-photo">Pas de photo</span>' ?>
                 <span class="item-body">
@@ -72,10 +92,11 @@ $toggle = function (array $e) use ($visKey, $base, $section) {
     <?php else: ?>
     <div class="ledger-wrap">
         <table class="ledger" data-filter-list>
-            <thead><tr><th>Nom</th><?php if ($subField): ?><th class="num hide-small"><?= e($subField['label']) ?></th><?php endif ?><th class="shrink">État</th><th class="shrink"><span class="visually-hidden">Actions</span></th></tr></thead>
+            <thead><tr><?php if (count($entries) > 1): ?><th class="shrink"><span class="visually-hidden">Sélection</span></th><?php endif ?><th>Nom</th><?php if ($subField): ?><th class="num hide-small"><?= e($subField['label']) ?></th><?php endif ?><th class="shrink">État</th><th class="shrink"><span class="visually-hidden">Actions</span></th></tr></thead>
             <tbody>
                 <?php foreach ($entries as $e): $title = ContentSchema::title($section, $e['data']); ?>
                 <tr data-filter-item data-text="<?= e(mb_strtolower($title)) ?>">
+                    <?php if (count($entries) > 1): ?><td class="shrink"><?= $check($e) ?></td><?php endif ?>
                     <td class="title-cell"><a href="<?= e($href($e)) ?>"><?= e($title) ?></a></td>
                     <?php if ($subField): ?><td class="num hide-small"><?= e(show_value($subField, $e['data'][$subField['key']] ?? null, 60)) ?></td><?php endif ?>
                     <td class="shrink"><?= $state($e) ?></td>

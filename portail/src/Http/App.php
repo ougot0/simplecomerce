@@ -60,6 +60,7 @@ final class App
             ['POST', "$s/ordre", [EditorController::class, 'reorder']],
             ['POST', "$s/visibilite", [EditorController::class, 'toggleVisibility']],
             ['POST', "$s/dupliquer", [EditorController::class, 'duplicate']],
+            ['POST', "$s/groupe", [EditorController::class, 'bulk']],
             ['POST', "$s/photo", [EditorController::class, 'upload']],
             ['GET', "$s/photos", [SiteController::class, 'photos']],
             ['GET', "$s/brouillons", [SiteController::class, 'drafts']],

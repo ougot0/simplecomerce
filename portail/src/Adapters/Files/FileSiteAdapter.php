@@ -764,6 +764,48 @@ final class FileSiteAdapter implements Adapter
         });
     }
 
+    /**
+     * Plusieurs éléments modifiés (ou supprimés) d'un coup, en une seule écriture.
+     * @param array<string, ?array> $items identifiant => nouvelles valeurs (null = supprimer)
+     * @return array<string, array{before: ?array, after: ?array}>
+     */
+    public function changeMany(array $section, array $items, array $ctx): array
+    {
+        $src = $this->source($section);
+        return $this->run($ctx, function () use ($section, $items, $src) {
+            ['entries' => $entries, 'raw' => $raw, 'files' => $files] = $this->readCollection($section);
+            $ids = array_column($entries, 'id');
+            $out = [];
+            $writes = [];
+            $drop = [];
+            foreach ($items as $id => $data) {
+                $index = array_search((string) $id, $ids, true);
+                if ($index === false) {
+                    throw new ConflictError("élément $id introuvable");
+                }
+                $current = $entries[$index]['data'];
+                $merged = $data === null ? null : array_replace($current, $data);
+                $out[(string) $id] = ['before' => Values::pick($section, $current), 'after' => $merged === null ? null : Values::pick($section, $merged), 'index' => $index];
+                if ($src['type'] === 'file') {
+                    if ($merged === null) {
+                        $drop[] = $index;
+                    } else {
+                        $raw[$index] = $merged;
+                    }
+                } else {
+                    $writes[] = ['path' => $files[(string) $id], 'content' => $merged === null ? null : $this->serializeFolderItem($src, $merged, $this->file($files[(string) $id], $src['format']))];
+                }
+            }
+            if ($src['type'] === 'file') {
+                foreach ($drop as $i) {
+                    unset($raw[$i]);
+                }
+                $writes[] = $this->writeCollectionFile($section, array_values($raw));
+            }
+            return [$writes, ['items' => $out]];
+        })['items'];
+    }
+
     public function deleteEntry(array $section, string $id, ?array $expected, array $ctx): array
     {
         $src = $this->source($section);
