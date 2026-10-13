@@ -6,13 +6,17 @@ $s = $settings;
 ?>
 <div class="page-head"><div><h1>Rendez-vous</h1><p class="page-intro">Vos clients réservent eux-mêmes un créneau depuis votre site. Vous et eux recevez un e-mail de confirmation ; ils peuvent annuler en un clic.</p></div></div>
 
-<?php if ($s['enabled']): ?>
+<?php if ($s['enabled'] || !empty($s['tab'])): ?>
 <div class="panel mb-12">
     <?php if (!empty($auto) && $role !== 'editor'): ?>
         <?php if (!empty($s['tab'])): ?>
         <p><strong>L'onglet « Rendez-vous » est sur votre site</strong>, dans le menu de toutes les pages<?php if ($site['public_url']): ?> : <a href="<?= e(rtrim($site['public_url'], '/') . '/' . basename((string) $s['tab'])) ?>" target="_blank" rel="noopener">voir la page</a><?php endif ?>.</p>
-        <form method="post" action="<?= e($base) ?>/rendez-vous/action" class="mt-8" data-confirm="Retirer l'onglet « Rendez-vous » et sa page de votre site ?"><?= csrf_field() ?><input type="hidden" name="do" value="retirer-onglet">
+        <div class="actions mt-8">
+        <form method="post" action="<?= e($base) ?>/rendez-vous/action" class="inline"><?= csrf_field() ?><input type="hidden" name="do" value="onglet">
+            <button class="btn btn-small" type="submit" data-busy="Mise à jour…">Refaire la page Rendez-vous</button></form>
+        <form method="post" action="<?= e($base) ?>/rendez-vous/action" class="inline" data-confirm="Retirer l'onglet « Rendez-vous » et sa page de votre site ?"><?= csrf_field() ?><input type="hidden" name="do" value="retirer-onglet">
             <button class="btn btn-small btn-quiet" type="submit">Retirer l'onglet de mon site</button></form>
+        </div>
         <?php else: ?>
         <p><strong>Mettez la réservation sur votre site en un clic.</strong> Un onglet « Rendez-vous » est ajouté au menu de toutes vos pages, avec sa page, dans le style de votre site. Rien à copier.</p>
         <form method="post" action="<?= e($base) ?>/rendez-vous/action" class="mt-8"><?= csrf_field() ?><input type="hidden" name="do" value="onglet">

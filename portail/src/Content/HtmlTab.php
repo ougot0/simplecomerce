@@ -141,11 +141,25 @@ final class HtmlTab
     public static function page(string $template, string $title, string $body, string $fileName, string $templateName): string
     {
         $html = $template;
+        // Menu rempli par le site lui-même au chargement (ex. onglets fabriqués à partir des produits) : le contenu
+        // d'origine reste dans la page, caché, pour que le site fabrique ses onglets ; un clic sur l'un d'eux ramène
+        // à la page d'origine.
+        $jsMenu = (bool) preg_match('#<nav\b[^>]*>(?:(?!</nav>).)*<(div|ul|span)\b[^>]*>\s*(?:<!--(?:(?!-->).)*-->\s*)?</\1>#is', $template);
+        $fill = function (string $original) use ($body, $jsMenu, $templateName): string {
+            if (!$jsMenu) {
+                return "\n" . $body . "\n";
+            }
+            $anchor = preg_match('#\sid="(collection|boutique|produits|shop|catalogue|products)"#i', $original, $a) ? '#' . $a[1] : '';
+            $go = json_encode($templateName . $anchor, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES);
+            return "\n" . $body . "\n<div hidden data-sc-page-originale>" . $original . "</div>\n"
+                . '<script>document.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("nav button"):null;'
+                . 'if(!b||b.hasAttribute("aria-controls"))return;e.preventDefault();e.stopImmediatePropagation();location.href=' . $go . ';},true);</script>' . "\n";
+        };
         if (preg_match('#(<main\b[^>]*>)(.*)(</main>)#is', $html, $m, PREG_OFFSET_CAPTURE)) {
-            $html = substr($html, 0, $m[2][1]) . "\n" . $body . "\n" . substr($html, $m[3][1]);
+            $html = substr($html, 0, $m[2][1]) . $fill($m[2][0]) . substr($html, $m[3][1]);
         } elseif (preg_match('#</header>#i', $html, $h, PREG_OFFSET_CAPTURE) && preg_match('#<footer\b#i', $html, $f, PREG_OFFSET_CAPTURE, $h[0][1])) {
             $a = $h[0][1] + strlen($h[0][0]);
-            $html = substr($html, 0, $a) . "\n<main>\n" . $body . "\n</main>\n" . substr($html, $f[0][1]);
+            $html = substr($html, 0, $a) . "\n<main>" . $fill(substr($html, $a, $f[0][1] - $a)) . "</main>\n" . substr($html, $f[0][1]);
         } elseif (preg_match('#(<body\b[^>]*>)(.*)(</body>)#is', $html, $m, PREG_OFFSET_CAPTURE)) {
             $html = substr($html, 0, $m[2][1]) . "\n<main>\n" . $body . "\n</main>\n" . substr($html, $m[3][1]);
         }

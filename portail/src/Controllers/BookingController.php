@@ -85,6 +85,10 @@ final class BookingController
         ];
         Sites::setExtras($site, ['booking' => $booking]);
         Access::audit($ctx['viewer'], 'booking_settings', ['enabled' => $booking['enabled']], $site['id']);
+        if (!$booking['enabled'] && !empty($booking['tab'])) {
+            // Rendez-vous fermés : l'onglet et sa page quittent aussi le site.
+            return self::tab(['site' => \SimpleCommerce\Repo::site($site['id'])] + $ctx, false);
+        }
         Session::flash($booking['enabled'] ? 'Prise de rendez-vous enregistrée et ouverte.' : (Req::str('enabled') === '1' && !$services ? 'Ajoutez au moins une prestation pour ouvrir les rendez-vous.' : 'Réglages enregistrés. La prise de rendez-vous est fermée.'),
             Req::str('enabled') === '1' && !$services ? 'error' : 'ok');
         return Response::redirect($back);
@@ -150,7 +154,7 @@ final class BookingController
         Sites::setExtras($site, ['booking' => $booking]);
         Access::audit($ctx['viewer'], $on ? 'booking_tab_added' : 'booking_tab_removed', [], $site['id']);
         Session::flash($on ? 'C\'est fait : l\'onglet « Rendez-vous » est sur votre site, dans le menu de toutes les pages. Rechargez votre site pour le voir.'
-            : 'L\'onglet « Rendez-vous » et sa page ont été retirés de votre site.');
+            : 'Prise de rendez-vous fermée. L\'onglet « Rendez-vous » et sa page ont été retirés de votre site.');
         return Response::redirect($back);
     }
 }
