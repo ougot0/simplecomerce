@@ -198,4 +198,33 @@ final class SiteController
         $json = json_encode(['site' => $site['name'], 'adresse' => $site['public_url'], 'date' => date('c'), 'contenu' => $data], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         return Response::file((string) $json, 'application/json; charset=utf-8', 'sauvegarde-' . $site['slug'] . '-' . date('Y-m-d') . '.json', 'no-store');
     }
+
+    /** Aperçu du site dans un cadre de téléphone (ou de tablette). */
+    public static function phone(array $p): Response
+    {
+        $ctx = Access::site($p['slug']);
+        $site = $ctx['site'];
+        $url = (string) $site['public_url'];
+        $absolute = str_starts_with($url, '/') ? \SimpleCommerce\Http\Req::origin() . $url : $url;
+        $blocked = false;
+        if (preg_match('#^https://#i', $absolute)) {
+            // Certains sites refusent d'être affichés dans un cadre : on le détecte pour l'expliquer au lieu d'une page vide.
+            try {
+                $res = \SimpleCommerce\Support\Http::request('GET', $absolute, [], null, 8);
+                $xfo = strtolower((string) ($res['headers']['x-frame-options'] ?? ''));
+                $csp = strtolower((string) ($res['headers']['content-security-policy'] ?? ''));
+                $blocked = in_array($xfo, ['deny', 'sameorigin'], true)
+                    || (preg_match('/frame-ancestors([^;]*)/', $csp, $m) && !str_contains($m[1], '*') && !str_contains($m[1], strtolower((string) parse_url(\SimpleCommerce\Config::url(), PHP_URL_HOST))));
+            } catch (\Throwable) {
+            }
+        } elseif (!str_starts_with($url, '/')) {
+            $blocked = true; // adresse en http : un navigateur n'affiche pas une page non sécurisée dans une page sécurisée
+        }
+        $src = $absolute . (str_contains($absolute, '?') ? '&' : '?') . 'apercu=' . time();
+        $origin = (string) (parse_url($absolute, PHP_URL_SCHEME) . '://' . parse_url($absolute, PHP_URL_HOST) . (parse_url($absolute, PHP_URL_PORT) ? ':' . parse_url($absolute, PHP_URL_PORT) : ''));
+        $r = self::page($ctx, 'site/phone', ['src' => $src, 'blocked' => $blocked, 'url' => $absolute, 'device' => Req::query('appareil', 10) === 'tablette' ? 'tablette' : 'telephone'], 'Aperçu sur téléphone');
+        // Cette page seulement : le cadre peut afficher le site du client.
+        $r->headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'self' " . $origin . "; frame-ancestors 'self'; form-action 'self'; base-uri 'none'; object-src 'none'";
+        return $r;
+    }
 }

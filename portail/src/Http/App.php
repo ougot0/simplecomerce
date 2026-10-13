@@ -80,6 +80,7 @@ final class App
             ['POST', "$s/historique/annuler", [SiteController::class, 'revert']],
             ['GET', "$s/sauvegarde", [SiteController::class, 'backup']],
             ['GET', "$s/sauvegardes/(?<name>\d{8}-\d{6}-[a-z]{4,5}\.zip)", [SettingsController::class, 'downloadBackup']],
+            ['GET', "$s/telephone", [SiteController::class, 'phone']],
             ['GET', "$s/commandes", [ShopController::class, 'orders']],
             ['GET', "$s/commandes\.csv", [ShopController::class, 'ordersCsv']],
             ['POST', "$s/commandes/etat", [ShopController::class, 'orderStatus']],

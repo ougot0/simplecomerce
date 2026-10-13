@@ -20,6 +20,7 @@ include dirname(__DIR__) . '/partials/assist.php';
             <a href="<?= e($base) ?>" class="site-name"><?= e($site['name']) ?></a>
             <?php if ($site['public_url']): ?>
             <a class="site-link" href="<?= e($site['public_url']) ?>" target="_blank" rel="noopener noreferrer"><?= icon('eye') ?> Voir mon site</a>
+            <a class="site-link site-link-quiet" href="<?= e($base) ?>/telephone"><?= icon('phone') ?> Sur téléphone</a>
             <?php endif ?>
         </div>
         <button type="button" class="btn btn-small menu-toggle" data-menu-toggle aria-expanded="false"><?= icon('menu') ?> Menu</button>

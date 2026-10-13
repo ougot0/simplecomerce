@@ -2098,3 +2098,17 @@ input.short {
   .plain-main { padding: 0 !important; max-width: none !important; }
   .doc { border: 0; padding: 0; max-width: none; }
 }
+
+/* Aperçu sur téléphone */
+.site-link-quiet { opacity: .85; }
+.device-wrap { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+.device { position: relative; background: #141210; border-radius: 44px; padding: 14px; box-shadow: 0 20px 50px rgba(20,18,16,.18); flex: none; }
+.device iframe { display: block; border: 0; border-radius: 32px; background: #fff; }
+.device-telephone iframe { width: 375px; height: 740px; }
+.device-tablette { border-radius: 30px; }
+.device-tablette iframe { width: 768px; height: 900px; border-radius: 18px; }
+.device-notch { position: absolute; top: 14px; left: 50%; width: 80px; height: 12px; margin-left: -40px; background: #141210; border-radius: 0 0 14px 14px; z-index: 1; }
+.device-tablette .device-notch { display: none; }
+.device-side { display: grid; gap: 10px; max-width: 260px; }
+@media (max-width: 520px) { .device-telephone iframe { width: calc(100vw - 72px); height: 70vh; } }
+@media (max-width: 900px) { .device-tablette iframe { width: calc(100vw - 72px); } }
