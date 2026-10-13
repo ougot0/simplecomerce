@@ -46,7 +46,7 @@ final class BillingController
             throw Halt::notFound();
         }
         try {
-            return Response::redirect(Billing::checkoutUrl($v['user']));
+            return Response::redirect(Billing::checkoutUrl($v['user'], Req::str('plan', 4)));
         } catch (\Throwable $e) {
             Session::flash(AdapterError::userMessageFor($e), 'error');
             return Response::redirect('/compte/abonnement');
@@ -112,33 +112,56 @@ final class BillingController
             Session::flash('Compte mis à jour.');
             return Response::redirect('/admin/abonnements#comptes');
         }
-        $priceId = Req::str('priceId', 120);
-        $key = Req::raw('secretKey');
-        $hook = Req::raw('webhookSecret');
-        if ($priceId !== '' && !preg_match('/^price_[A-Za-z0-9]{6,}$/', $priceId)) {
-            return self::admin([], ['error' => 'L\'identifiant du prix commence par « price_ » (Stripe → Catalogue de produits → votre produit → le prix).']);
+        if (Req::str('intent') === 'eteindre' || Req::str('intent') === 'allumer') {
+            $on = Req::str('intent') === 'allumer';
+            if ($on && !Billing::ready()) {
+                return self::admin([], ['error' => 'Préparez d\'abord Stripe ci-dessous.']);
+            }
+            Billing::saveSettings(['enabled' => $on]);
+            Repo::log($v['user']['id'], null, null, 'billing_settings', ['enabled' => $on]);
+            Session::flash($on ? 'Abonnements activés.' : 'Abonnements éteints : tout le monde publie librement.');
+            return Response::redirect('/admin/abonnements');
         }
-        if ($key !== '' && !preg_match('/^(sk|rk)_(live|test)_[A-Za-z0-9]{10,}$/', trim($key))) {
-            return self::admin([], ['error' => 'La clé secrète commence par « sk_live_ » (ou « rk_live_ » pour une clé limitée). Stripe → Développeurs → Clés API.']);
+        $key = trim(Req::raw('secretKey'));
+        if ($key !== '' && !preg_match('/^(sk|rk)_(live|test)_[A-Za-z0-9]{10,}$/', $key)) {
+            return self::admin([], ['error' => 'La clé secrète commence par « sk_live_ » (ou « sk_test_ » pour faire un essai). Stripe → Développeurs → Clés API → Clé secrète → Révéler.']);
         }
-        if ($hook !== '' && !preg_match('/^whsec_[A-Za-z0-9]{10,}$/', trim($hook))) {
-            return self::admin([], ['error' => 'Le secret du webhook commence par « whsec_ ».']);
+        if ($key === '' && Billing::fingerprint('secretKey') === '') {
+            return self::admin([], ['error' => 'Collez votre clé secrète Stripe.']);
         }
-        $patch = ['priceId' => $priceId, 'priceLabel' => Req::str('priceLabel', 60), 'trialDays' => max(0, min(365, (int) Req::str('trialDays', 4))),
-            'enabled' => Req::str('enabled') === '1'];
-        if (trim($key) !== '') {
-            $patch['secretKey'] = trim($key);
+        $num = fn (string $k, float $def) => max(0, min(9999, (float) str_replace(',', '.', Req::str($k, 10) !== '' ? Req::str($k, 10) : (string) $def)));
+        $monthly = $num('monthly', 9);
+        $yearly = $num('yearly', 90);
+        if ($monthly <= 0 && $yearly <= 0) {
+            return self::admin([], ['error' => 'Indiquez au moins un prix (par mois ou par an).']);
         }
-        if (trim($hook) !== '') {
-            $patch['webhookSecret'] = trim($hook);
+        $patch = ['trialDays' => max(0, min(365, (int) Req::str('trialDays', 4)))];
+        if ($key !== '') {
+            $old = Billing::settings();
+            // Nouvelle clé (autre compte Stripe, ou passage de l'essai au réel) : tout est à recréer de ce côté.
+            $patch += ['secretKey' => $key, 'productId' => '', 'priceId' => '', 'priceIdYear' => '', 'webhookId' => '', 'webhookSecret' => ''];
         }
         Billing::saveSettings($patch);
-        if ($patch['enabled'] && !Billing::ready()) {
-            Billing::saveSettings(['enabled' => false]);
-            return self::admin([], ['error' => 'Réglages enregistrés, mais les abonnements restent éteints : il manque la clé secrète ou l\'identifiant du prix.']);
+        try {
+            $done = Billing::setupStripe($monthly, $yearly);
+        } catch (\Throwable $e) {
+            $detail = $e instanceof AdapterError ? (string) $e->detail : '';
+            return self::admin([], ['error' => 'Stripe a refusé : ' . ($detail !== '' ? $detail : 'vérifiez la clé et votre connexion.')]);
         }
-        Repo::log($v['user']['id'], null, null, 'billing_settings', ['enabled' => $patch['enabled']]);
-        Session::flash($patch['enabled'] ? 'Abonnements activés. Chaque client a maintenant ' . $patch['trialDays'] . ' jours d\'essai gratuit.' : 'Réglages enregistrés. Les abonnements sont éteints : tout le monde publie librement.');
+        $promo = Req::str('promoCode', 30);
+        if ($promo !== '') {
+            try {
+                $done[] = 'code promo « ' . Billing::setupPromo($promo) . ' » (0 €) prêt';
+            } catch (\Throwable $e) {
+                $detail = $e instanceof AdapterError ? ($e->detail ?: $e->userMessage) : '';
+                return self::admin([], ['error' => 'Prix enregistrés, mais le code promo a été refusé : ' . $detail]);
+            }
+        }
+        Billing::saveSettings(['enabled' => true]);
+        Repo::log($v['user']['id'], null, null, 'billing_settings', ['enabled' => true, 'done' => $done]);
+        $hookMissing = Billing::fingerprint('webhookSecret') === '';
+        Session::flash('Abonnements activés' . ($done ? ' (' . implode(', ', $done) . ')' : '') . '. Chaque client a ' . $patch['trialDays'] . ' jours d\'essai gratuit, puis doit s\'abonner pour publier.'
+            . ($hookMissing ? ' Attention : les avis de paiement n\'ont pas pu être branchés (adresse du portail sans https).' : ''), $hookMissing ? 'warn' : 'ok');
         return Response::redirect('/admin/abonnements');
     }
 }

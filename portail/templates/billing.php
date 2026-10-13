@@ -7,7 +7,6 @@ use SimpleCommerce\Support\Text;
 <?php if ($off): ?>
 <div class="panel"><p>Rien à payer : vous utilisez Simple Commerce librement.</p></div>
 <?php else:
-    $price = $settings['priceLabel'] !== '' ? $settings['priceLabel'] : 'l\'abonnement';
     $days = Billing::daysLeft($row); ?>
 <div class="panel billing-card">
     <p class="muted small">Votre situation</p>
@@ -27,10 +26,16 @@ use SimpleCommerce\Support\Text;
     <?php endif ?>
 
     <?php if (in_array($row['status'], ['essai', 'termine'], true)): ?>
-    <form method="post" action="/compte/abonnement/payer" class="mt-12"><?= csrf_field() ?>
-        <button class="btn btn-primary" type="submit" data-busy="Ouverture de la page de paiement…"<?= $viewer['assist'] ? ' disabled' : '' ?>>S'abonner<?= $settings['priceLabel'] !== '' ? ' — ' . e($settings['priceLabel']) : '' ?></button>
-    </form>
-    <p class="help mt-6">Le paiement se fait sur la page sécurisée de Stripe. Simple Commerce ne voit jamais votre carte. Sans engagement : vous arrêtez quand vous voulez.</p>
+    <div class="plan-choices">
+        <?php foreach (Billing::plans() as $key => $plan): ?>
+        <form method="post" action="/compte/abonnement/payer" class="plan-choice"><?= csrf_field() ?><input type="hidden" name="plan" value="<?= e($key) ?>">
+            <span class="plan-price"><?= e($plan['label']) ?></span>
+            <?php if ($key === 'an' && isset(Billing::plans()['mois']) && $plan['amount'] < Billing::plans()['mois']['amount'] * 12): ?><span class="muted small"><?= e(Billing::euros(Billing::plans()['mois']['amount'] * 12 - $plan['amount'])) ?> d'économie par an</span><?php endif ?>
+            <button class="btn btn-primary" type="submit" data-busy="Ouverture de la page de paiement…"<?= $viewer['assist'] ? ' disabled' : '' ?>>Choisir <?= $key === 'an' ? 'l\'année' : 'le mois' ?></button>
+        </form>
+        <?php endforeach ?>
+    </div>
+    <p class="help mt-6">Le paiement se fait par carte sur la page sécurisée de Stripe. Simple Commerce ne voit jamais votre carte. Sans engagement : vous arrêtez quand vous voulez.</p>
     <?php endif ?>
     <?php if ($row['customer_id'] && $row['status'] !== 'gratuit'): ?>
     <form method="post" action="/compte/abonnement/gerer" class="mt-12"><?= csrf_field() ?>

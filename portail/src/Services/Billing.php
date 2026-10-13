@@ -22,7 +22,8 @@ use SimpleCommerce\Support\Vault;
 final class Billing
 {
     private const AD = 'simplecommerce-billing';
-    private const API = 'https://api.stripe.com/v1';
+    public const EVENTS = ['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'];
+    public const PLANS = ['mois' => 'priceId', 'an' => 'priceIdYear'];
     public const LABELS = ['essai' => 'Essai gratuit', 'actif' => 'Abonné', 'impaye' => 'Paiement en retard', 'termine' => 'Abonnement arrêté', 'gratuit' => 'Offert'];
 
     /** Mis à vrai pendant les actions automatiques (commande d'un client, fermeture programmée) : jamais bloquées. */
@@ -33,7 +34,32 @@ final class Billing
     public static function settings(): array
     {
         $s = json_decode((string) Repo::meta('billing_settings', '{}'), true) ?: [];
-        return $s + ['enabled' => false, 'priceId' => '', 'priceLabel' => '', 'trialDays' => 14, 'secretKey' => '', 'webhookSecret' => ''];
+        return $s + ['enabled' => false, 'priceId' => '', 'priceIdYear' => '', 'monthly' => 9, 'yearly' => 90, 'productId' => '', 'webhookId' => '',
+            'priceLabel' => '', 'trialDays' => 7, 'promoCode' => '', 'promoId' => '', 'secretKey' => '', 'webhookSecret' => ''];
+    }
+
+    private static function api(): string
+    {
+        return rtrim((string) (getenv('SC_STRIPE_API') ?: 'https://api.stripe.com'), '/') . '/v1';
+    }
+
+    public static function euros(float $n): string
+    {
+        return \SimpleCommerce\Support\Text::price($n);
+    }
+
+    /** Formules proposées aux clients. @return array<string, array{label: string, amount: float, priceId: string}> */
+    public static function plans(): array
+    {
+        $s = self::settings();
+        $out = [];
+        if ($s['priceId'] !== '') {
+            $out['mois'] = ['label' => self::euros((float) $s['monthly']) . ' par mois', 'amount' => (float) $s['monthly'], 'priceId' => $s['priceId']];
+        }
+        if ($s['priceIdYear'] !== '') {
+            $out['an'] = ['label' => self::euros((float) $s['yearly']) . ' par an', 'amount' => (float) $s['yearly'], 'priceId' => $s['priceIdYear']];
+        }
+        return $out;
     }
 
     public static function saveSettings(array $patch): void
@@ -69,7 +95,7 @@ final class Billing
     public static function ready(): bool
     {
         $s = self::settings();
-        return $s['priceId'] !== '' && self::secret('secretKey') !== '';
+        return ($s['priceId'] !== '' || $s['priceIdYear'] !== '') && self::secret('secretKey') !== '';
     }
 
     public static function enabled(): bool
@@ -162,15 +188,16 @@ final class Billing
         }
         $data = json_decode($res['body'], true);
         if ($res['status'] >= 400 || !is_array($data)) {
-            Log::warn('Stripe', ['status' => $res['status'], 'error' => is_array($data) ? ($data['error']['message'] ?? '') : substr($res['body'], 0, 200)]);
-            throw new AdapterError('remote', 'Le paiement est indisponible pour le moment. Réessayez dans quelques minutes.', 'Stripe HTTP ' . $res['status']);
+            $msg = is_array($data) ? (string) ($data['error']['message'] ?? '') : substr($res['body'], 0, 200);
+            Log::warn('Stripe', ['status' => $res['status'], 'error' => $msg]);
+            throw new AdapterError('remote', 'Le paiement est indisponible pour le moment. Réessayez dans quelques minutes.', ($res['status'] === 401 ? 'clé refusée — ' : '') . $msg);
         }
         return $data;
     }
 
     private static function send(string $method, string $path, array $form): array
     {
-        return Http::request($method, self::API . $path, [
+        return Http::request($method, self::api() . $path, [
             'Authorization' => 'Bearer ' . self::secret('secretKey'),
             'Content-Type' => 'application/x-www-form-urlencoded',
             'Stripe-Version' => '2024-06-20',
@@ -178,17 +205,23 @@ final class Billing
     }
 
     /** Adresse de la page de paiement Stripe pour s'abonner. */
-    public static function checkoutUrl(array $user): string
+    public static function checkoutUrl(array $user, string $plan = 'mois'): string
     {
         $r = self::row($user);
+        $plans = self::plans();
+        $chosen = $plans[$plan] ?? reset($plans);
+        if (!$chosen) {
+            throw new AdapterError('invalid', 'Aucune formule d\'abonnement n\'est prête.');
+        }
         $form = [
             'mode' => 'subscription',
-            'line_items' => [['price' => self::settings()['priceId'], 'quantity' => 1]],
+            'line_items' => [['price' => $chosen['priceId'], 'quantity' => 1]],
             'client_reference_id' => $user['id'],
             'success_url' => Config::url('/compte/abonnement?retour={CHECKOUT_SESSION_ID}'),
             'cancel_url' => Config::url('/compte/abonnement'),
             'locale' => 'fr',
             'allow_promotion_codes' => 'true',
+            'payment_method_collection' => 'if_required', // avec un code à 100 %, pas de carte demandée
             'subscription_data' => ['metadata' => ['user_id' => $user['id']]],
         ];
         if ($r['customer_id']) {
@@ -222,6 +255,75 @@ final class Billing
             self::update($user['id'], ['status' => 'actif']);
         }
         return true;
+    }
+
+    /**
+     * Prépare tout chez Stripe à partir de la seule clé secrète : le produit « Simple Commerce », un prix mensuel,
+     * un prix annuel et l'adresse d'avis (webhook). Un prix Stripe ne se modifie pas : si le montant change, un
+     * nouveau prix est créé (les abonnés existants gardent l'ancien). @return string[] ce qui a été fait
+     */
+    public static function setupStripe(float $monthly, float $yearly): array
+    {
+        $s = self::settings();
+        $done = [];
+        $productId = $s['productId'];
+        if ($productId === '') {
+            $productId = (string) self::stripe('POST', '/products', ['name' => 'Simple Commerce', 'description' => 'Abonnement au portail Simple Commerce'])['id'];
+            $done[] = 'produit « Simple Commerce » créé';
+        }
+        $patch = ['productId' => $productId, 'monthly' => $monthly, 'yearly' => $yearly];
+        foreach ([['priceId', $monthly, (float) $s['monthly'], 'month', 'Mensuel'], ['priceIdYear', $yearly, (float) $s['yearly'], 'year', 'Annuel']] as [$k, $amount, $old, $interval, $nick]) {
+            if ($amount <= 0) {
+                $patch[$k] = '';
+                continue;
+            }
+            if ($s[$k] !== '' && abs($amount - $old) < 0.001 && $s['productId'] === $productId) {
+                continue;
+            }
+            $patch[$k] = (string) self::stripe('POST', '/prices', ['product' => $productId, 'currency' => 'eur', 'unit_amount' => (int) round($amount * 100),
+                'recurring' => ['interval' => $interval], 'nickname' => $nick])['id'];
+            $done[] = 'prix ' . self::euros($amount) . ($interval === 'month' ? ' par mois' : ' par an') . ' créé';
+        }
+        $url = Config::url('/stripe/webhook');
+        if (str_starts_with($url, 'https://') && ($s['webhookId'] === '' || self::secret('webhookSecret') === '')) {
+            // L'ancien avis de la même adresse (s'il existe) est remplacé : son secret ne peut plus être relu.
+            foreach ((array) (self::stripe('GET', '/webhook_endpoints?limit=100')['data'] ?? []) as $w) {
+                if (($w['url'] ?? '') === $url) {
+                    self::stripe('DELETE', '/webhook_endpoints/' . $w['id']);
+                }
+            }
+            $w = self::stripe('POST', '/webhook_endpoints', ['url' => $url, 'enabled_events' => self::EVENTS, 'description' => 'Simple Commerce']);
+            $patch['webhookId'] = (string) $w['id'];
+            $patch['webhookSecret'] = (string) $w['secret'];
+            $done[] = 'avis de paiement branchés';
+        }
+        self::saveSettings($patch);
+        return $done;
+    }
+
+    /**
+     * Code promo « 100 % de réduction, pour toujours » (tests, amis) : un coupon Stripe + un code que l'on tape
+     * sur la page de paiement (« Ajouter un code promotionnel »). Avec ce code, l'abonnement coûte 0 €.
+     */
+    public static function setupPromo(string $code): string
+    {
+        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $code));
+        if ($code === '' || strlen($code) < 4) {
+            throw new AdapterError('invalid', 'Le code promo doit faire au moins 4 lettres ou chiffres.');
+        }
+        $s = self::settings();
+        if ($s['promoCode'] === $code && $s['promoId'] !== '') {
+            return $code;
+        }
+        $existing = (array) (self::stripe('GET', '/promotion_codes?code=' . rawurlencode($code) . '&limit=1')['data'] ?? []);
+        if ($existing) {
+            $id = (string) $existing[0]['id'];
+        } else {
+            $coupon = self::stripe('POST', '/coupons', ['percent_off' => 100, 'duration' => 'forever', 'name' => 'Gratuit (100 %)']);
+            $id = (string) self::stripe('POST', '/promotion_codes', ['coupon' => $coupon['id'], 'code' => $code])['id'];
+        }
+        self::saveSettings(['promoCode' => $code, 'promoId' => $id]);
+        return $code;
     }
 
     /** Adresse de l'espace Stripe où le client change sa carte, voit ses factures ou arrête. */

@@ -11,6 +11,17 @@ use SimpleCommerce\Adapters\Catalog;
     <form method="post" action="/admin/inscriptions" class="inline"<?= $signupOpen ? '' : ' data-confirm="Ouvrir les inscriptions à tout le monde ?"' ?>><?= csrf_field() ?><input type="hidden" name="open" value="<?= $signupOpen ? '0' : '1' ?>">
         <button class="btn btn-small" type="submit"><?= $signupOpen ? 'Rendre le portail privé' : 'Ouvrir les inscriptions' ?></button></form>
 </div>
+<div class="panel mb-12">
+    <p><strong>Version du portail : <?= e(SC_VERSION) ?></strong></p>
+    <p class="small">Où trouver les nouveautés :</p>
+    <ul class="small">
+        <li><strong>Abonnements</strong> (prix, clé Stripe, code promo) : <a href="/admin/abonnements">Administration → Abonnements</a>.</li>
+        <li><strong>Sauvegarde complète du portail</strong> : le bouton juste en dessous.</li>
+        <li><strong>Dans chaque site relié</strong> (cliquez sur le nom du site, menu de gauche) : <strong>Boutique</strong> → Avis clients, Statistiques (et Commandes pour un catalogue hébergé) ; <strong>Réglages</strong> → onglets Boutique, Horaires, Fermeture, Sauvegardes.</li>
+        <li><strong>Modifier plusieurs produits d'un coup</strong> : dans une liste de produits, les cases à cocher.</li>
+    </ul>
+    <?php if (!$sites): ?><p class="small muted">Vous n'avez encore relié aucun site : ces menus apparaîtront dès le premier.</p><?php endif ?>
+</div>
 <p class="mb-12"><a class="btn btn-small" href="/admin/sauvegarde"><?= icon('download') ?> Télécharger une sauvegarde complète du portail</a> <span class="muted small">Comptes, sites reliés et réglages. Gardez-la en lieu sûr : elle contient la clé des accès.</span></p>
 <div class="stats">
     <div class="stat"><span class="stat-num"><?= (int) $stats['sites'] ?></span><span class="muted small"><?= $stats['sites'] > 1 ? 'sites reliés' : 'site relié' ?></span></div>

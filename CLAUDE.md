@@ -276,6 +276,12 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (midi) : abonnements simplifiés à la demande : **9 €/mois ou 90 €/an**, **essai 7 jours**, l'admin colle
+  seulement sa clé Stripe → `Billing::setupStripe` crée produit, 2 prix et webhook (si https) ; **code promo 100 %**
+  (`setupPromo`, défaut `GRATUIT100`, `payment_method_collection=if_required` → 0 € sans carte). `SC_STRIPE_API` pour
+  tester contre une imitation. **Version affichée** (`SC_VERSION`, Administration + Aide) car le propriétaire ne voyait
+  aucune nouveauté chez OVH (ni « Boutique » dans Réglages, ni sauvegarde dans l'admin) : mise à jour mal envoyée,
+  à vérifier avec lui (dossier `/home/coumaoq/simplecommerce/public/`).
 - 13/10/2026 (matin) : après la restauration OVH (« tout marche »), **onze nouvelles fonctions** (décision 18), une par
   commit : sauvegardes automatiques (+ sauvegarde complète du portail dans l'administration), alerte de stock bas,
   modification en lot (`FileSiteAdapter::changeMany`, `Changes::publishBatch`), horaires + congés programmés

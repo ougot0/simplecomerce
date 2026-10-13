@@ -80,3 +80,4 @@ foreach ($c['produits'] as $p) { /* afficher $p['nom'], $p['prix'], $p['photo']‚
     <p>Le guide complet (sch√©ma de contenu, API sur mesure) est dans le dossier <code>docs/</code> du projet.</p>
 </section>
 </div>
+<p class="muted small mt-12">Version du portail : <?= e(SC_VERSION) ?></p>
