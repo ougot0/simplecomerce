@@ -82,6 +82,14 @@ final class CatalogueController
         return new Response($raw['content'], 200, ['Content-Type' => $mime, 'Cache-Control' => 'public, max-age=86400', 'Access-Control-Allow-Origin' => '*']);
     }
 
+    /** Horaires d'ouverture, pour tout site (ligne à coller donnée dans Réglages → Horaires). */
+    public static function hours(array $p): Response
+    {
+        $site = \SimpleCommerce\Services\Sites::byPublicKey($p['key']);
+        $js = $site ? \SimpleCommerce\Services\Hours::script($site) : '';
+        return new Response($js, $site ? 200 : 404, ['Content-Type' => 'application/javascript; charset=utf-8', 'Cache-Control' => 'public, max-age=300', 'Access-Control-Allow-Origin' => '*']);
+    }
+
     /** La ligne à coller dans le site. */
     public static function embedLine(array $site): string
     {

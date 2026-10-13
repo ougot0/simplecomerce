@@ -149,6 +149,9 @@ final class App
             if (preg_match('#^/catalogue/(?<key>[a-f0-9]{24})/photos/(?<file>[\w.-]{1,120}\.(?:webp|png|jpe?g))$#', $path, $m)) {
                 return CatalogueController::photo($m);
             }
+            if (preg_match('#^/horaires/(?<key>[a-f0-9]{24})\.js$#', $path, $m)) {
+                return CatalogueController::hours($m);
+            }
         }
         Demo::ensure();
         Schema::migrate();

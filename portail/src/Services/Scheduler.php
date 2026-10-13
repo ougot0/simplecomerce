@@ -60,6 +60,11 @@ final class Scheduler
             Log::error('publication programmée', ['err' => $e]);
         }
         try {
+            Hours::tick();
+        } catch (\Throwable $e) {
+            Log::error('fermetures programmées', ['err' => $e]);
+        }
+        try {
             Backups::nightly(PHP_SAPI === 'cli' ? 50 : 1);
         } catch (\Throwable $e) {
             Log::error('sauvegardes de la nuit', ['err' => $e]);

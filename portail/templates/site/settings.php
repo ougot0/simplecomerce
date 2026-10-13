@@ -12,7 +12,7 @@ $viewer = $ctx['viewer'];
     </div>
 </div>
 <nav class="tabs" aria-label="Sections des réglages">
-    <a href="#equipe">Équipe</a><a href="#boutique">Boutique</a><a href="#fermeture">Fermeture</a><a href="#sauvegardes">Sauvegardes</a><a href="#rubriques">Rubriques</a><a href="#connexion">Connexion</a><?= $role === 'admin' ? '<a href="#schema">Schéma</a>' : '' ?><a href="#retirer">Retirer</a>
+    <a href="#equipe">Équipe</a><a href="#boutique">Boutique</a><a href="#horaires">Horaires</a><a href="#fermeture">Fermeture</a><a href="#sauvegardes">Sauvegardes</a><a href="#rubriques">Rubriques</a><a href="#connexion">Connexion</a><?= $role === 'admin' ? '<a href="#schema">Schéma</a>' : '' ?><a href="#retirer">Retirer</a>
 </nav>
 
 <section id="equipe" class="section-block first">
@@ -67,21 +67,51 @@ $viewer = $ctx['viewer'];
     </form>
 </section>
 
+<section id="horaires" class="section-block">
+    <h2>Horaires d'ouverture</h2>
+    <p class="muted">Écrivez vos horaires comme vous les diriez (« 9 h – 13 h, 15 h – 19 h »). Laissez vide les jours de fermeture.</p>
+    <?php $week = \SimpleCommerce\Services\Hours::week($site) ?>
+    <form method="post" action="<?= e($base) ?>/reglages/horaires" class="form panel">
+        <?= csrf_field() ?>
+        <?php foreach (\SimpleCommerce\Services\Hours::DAYS as $i => $dayName): ?>
+        <div class="field hours-row"><label for="hours-<?= $i ?>"><?= e($dayName) ?></label>
+            <input id="hours-<?= $i ?>" name="hours[<?= $i ?>]" maxlength="80" class="medium" placeholder="Fermé" value="<?= e($week[$i]) ?>"></div>
+        <?php endforeach ?>
+        <div class="actions"><button class="btn btn-primary" type="submit">Enregistrer les horaires</button></div>
+    </form>
+    <?php if (\SimpleCommerce\Services\Hours::hasHours($site)): ?>
+    <div class="panel mt-6">
+        <p><strong>Pour les afficher sur votre site</strong>, collez cette ligne une seule fois à l'endroit voulu (ou demandez-le à la personne qui s'occupe de votre site). Ensuite, chaque changement ici apparaît tout seul.</p>
+        <div class="copy-row"><input type="text" readonly value="<?= e('<script src="' . \SimpleCommerce\Config::url('/horaires/' . Sites::publicKey($site) . '.js') . '"></script>') ?>" class="code" aria-label="Ligne à coller dans votre site" data-select><button type="button" class="btn btn-small" data-copy><?= icon('copy') ?> Copier</button></div>
+    </div>
+    <?php endif ?>
+</section>
+
 <section id="fermeture" class="section-block">
     <h2>Fermer le site temporairement</h2>
     <p class="muted">Pour des congés ou des travaux : votre site affiche un message à la place de son contenu, puis vous le rouvrez en un clic.</p>
     <?php if (is_array($closure)): ?>
+    <?php $plan = Sites::extras($site)['plannedClosure'] ?? null ?>
+    <?php if (is_array($plan) && !$closure['closed']): ?>
+    <form method="post" action="<?= e($base) ?>/reglages/annuler-fermeture" class="notice notice-warn mb-12"><?= csrf_field() ?>
+        <p><strong>Fermeture prévue le <?= e(Text::date($plan['from'], false, true)) ?></strong><?= !empty($plan['until']) ? ', réouverture automatique le ' . e(Text::date($plan['until'], false, true)) : '' ?>. Message : « <?= e($plan['message']) ?> »</p>
+        <button class="btn btn-small" type="submit">Annuler cette fermeture prévue</button></form>
+    <?php endif ?>
     <form method="post" action="<?= e($base) ?>/reglages/fermeture" class="form panel">
         <?= csrf_field() ?>
         <?php if (!empty($closureError)): ?><div class="notice notice-error" role="alert"><?= e($closureError) ?></div><?php endif ?>
         <?php if ($closure['closed']): ?>
-        <div class="notice notice-warn"><p><strong>Votre site est fermé.</strong> Vos visiteurs voient : « <?= e($closure['message']) ?> »<?= $closure['reopenOn'] ? ' — réouverture le ' . e(Text::date($closure['reopenOn'], false, true)) : '' ?>.</p></div>
+        <div class="notice notice-warn"><p><strong>Votre site est fermé.</strong> Vos visiteurs voient : « <?= e($closure['message']) ?> »<?= $closure['reopenOn'] ? ' — réouverture le ' . e(Text::date($closure['reopenOn'], false, true)) : '' ?>.<?= !empty(Sites::extras($site)['autoReopen']) ? ' Il se rouvrira tout seul ce jour-là.' : '' ?></p></div>
         <div class="actions"><button class="btn btn-primary" type="submit" name="intent" value="open">Rouvrir le site</button></div>
         <?php else: ?>
         <div class="field"><label for="closure-message">Message pour vos visiteurs</label>
             <textarea id="closure-message" name="message" maxlength="300" rows="3"><?= e($closure['message'] ?: 'Nous sommes en congés. Merci de votre patience, à très bientôt !') ?></textarea></div>
         <div class="field"><label for="closure-date">Date de réouverture <span class="optional">(facultatif)</span></label>
-            <input id="closure-date" name="reopenOn" type="date" class="medium" min="<?= e(date('Y-m-d')) ?>" value="<?= e($closure['reopenOn'] ?? '') ?>"></div>
+            <input id="closure-date" name="reopenOn" type="date" class="medium" min="<?= e(date('Y-m-d')) ?>" value="<?= e($closure['reopenOn'] ?? '') ?>">
+            <label class="checkbox mt-6"><input type="checkbox" name="autoReopen" value="1" checked><span>Rouvrir automatiquement ce jour-là</span></label></div>
+        <div class="field"><label for="closure-from">Fermer à partir du <span class="optional">(facultatif, sinon tout de suite)</span></label>
+            <input id="closure-from" name="closeFrom" type="date" class="medium" min="<?= e(date('Y-m-d')) ?>">
+            <span class="help">Choisissez une date à venir pour programmer vos congés : le site se fermera tout seul ce jour-là.</span></div>
         <div class="actions"><button class="btn btn-danger" type="submit" name="intent" value="close"><?= icon('lock') ?> Fermer le site temporairement</button></div>
         <p class="help">Vos produits et vos textes ne sont pas effacés. <?= e(Sites::delayText($site)) ?></p>
         <?php endif ?>

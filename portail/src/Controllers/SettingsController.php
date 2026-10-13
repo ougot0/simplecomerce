@@ -18,9 +18,11 @@ use SimpleCommerce\Repo;
 use SimpleCommerce\Services\Access;
 use SimpleCommerce\Services\Backups;
 use SimpleCommerce\Services\Changes;
+use SimpleCommerce\Services\Hours;
 use SimpleCommerce\Services\Sites;
 use SimpleCommerce\Support\Mailer;
 use SimpleCommerce\Support\Session;
+use SimpleCommerce\Support\Text;
 
 /** Réglages d'un site (propriétaire ou administrateur). */
 final class SettingsController
@@ -166,16 +168,47 @@ final class SettingsController
                 if ($close && $message === '') {
                     return self::show($p, ['closureError' => 'Écrivez le message que verront vos visiteurs.']);
                 }
-                if ($close && $reopen && $reopen < date('Y-m-d')) {
+                if ($close && $reopen && $reopen < Hours::today()) {
                     return self::show($p, ['closureError' => 'La date de réouverture est déjà passée.']);
+                }
+                $from = Req::str('closeFrom', 10);
+                $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) ? $from : '';
+                if ($close && $from !== '' && $from > Hours::today()) {
+                    // Fermeture prévue : le site se fermera tout seul ce jour-là.
+                    if ($reopen && $reopen <= $from) {
+                        return self::show($p, ['closureError' => 'La date de réouverture doit être après la date de fermeture.']);
+                    }
+                    Sites::setExtras($site, ['plannedClosure' => ['from' => $from, 'until' => $reopen, 'message' => $message]]);
+                    Access::audit($v, 'closure_planned', ['from' => $from, 'until' => $reopen], $site['id']);
+                    Session::flash('C\'est noté : votre site se fermera tout seul le ' . Text::date($from, false, true)
+                        . ($reopen ? ' et se rouvrira le ' . Text::date($reopen, false, true) : '') . '.');
+                    return Response::redirect($back . '#fermeture');
                 }
                 $r = Changes::setClosure($v, $site, $close ? ['closed' => true, 'message' => $message, 'reopenOn' => $reopen] : ['closed' => false, 'message' => '', 'reopenOn' => null]);
                 if (!$r['ok']) {
                     return self::show($p, ['closureError' => $r['error']]);
                 }
+                Sites::setExtras($site, ['autoReopen' => $close && $reopen && Req::str('autoReopen') === '1' ? $reopen : null]);
                 Access::audit($v, $close ? 'site_closed' : 'site_reopened', $close ? ['reopenOn' => $reopen] : [], $site['id']);
                 Session::flash(($close ? 'Votre site est fermé temporairement. Vos visiteurs voient votre message. ' : 'Votre site est de nouveau ouvert. ') . Sites::delayText($site));
                 return Response::redirect($back . '#fermeture');
+
+            case 'annuler-fermeture':
+                Sites::setExtras($site, ['plannedClosure' => null]);
+                Access::audit($v, 'closure_unplanned', [], $site['id']);
+                Session::flash('La fermeture prévue est annulée.');
+                return Response::redirect($back . '#fermeture');
+
+            case 'horaires':
+                $lines = Req::arr('hours');
+                $hours = [];
+                for ($i = 0; $i < 7; $i++) {
+                    $hours[] = is_string($lines[$i] ?? null) ? mb_substr(trim(preg_replace('/\s+/u', ' ', $lines[$i])), 0, 80) : '';
+                }
+                Sites::setExtras($site, ['hours' => $hours]);
+                Access::audit($v, 'hours_updated', [], $site['id']);
+                Session::flash('Horaires enregistrés. Ils sont déjà à jour sur votre site si vous avez collé la ligne.');
+                return Response::redirect($back . '#horaires');
 
             case 'boutique':
                 Sites::setExtras($site, ['stockAlert' => max(0, min(999, (int) Req::str('stockAlert', 4)))]);
