@@ -16,6 +16,7 @@ use SimpleCommerce\Http\Response;
 use SimpleCommerce\Http\View;
 use SimpleCommerce\Repo;
 use SimpleCommerce\Services\Access;
+use SimpleCommerce\Services\Backups;
 use SimpleCommerce\Services\Changes;
 use SimpleCommerce\Services\Sites;
 use SimpleCommerce\Support\Mailer;
@@ -55,6 +56,7 @@ final class SettingsController
             'errors' => [],
             'report' => null,
             'inviteLink' => null,
+            'backups' => Backups::list($site['id']),
         ], 'Réglages', array_filter($state, fn ($v, $k) => $v && (str_ends_with($k, 'Error') || $k === 'errors'), ARRAY_FILTER_USE_BOTH) ? 422 : 200);
     }
 
@@ -175,6 +177,26 @@ final class SettingsController
                 Session::flash(($close ? 'Votre site est fermé temporairement. Vos visiteurs voient votre message. ' : 'Votre site est de nouveau ouvert. ') . Sites::delayText($site));
                 return Response::redirect($back . '#fermeture');
 
+            case 'sauvegarder':
+                try {
+                    $b = Backups::make($site, 'main');
+                    Access::audit($v, 'backup_made', ['files' => $b['files']], $site['id']);
+                    Session::flash('Sauvegarde faite (' . \SimpleCommerce\Support\Text::plural($b['files'], 'fichier') . ').');
+                } catch (\Throwable $e) {
+                    Session::flash('La sauvegarde a échoué : ' . AdapterError::userMessageFor($e), 'error');
+                }
+                return Response::redirect($back . '#sauvegardes');
+
+            case 'remettre':
+                try {
+                    $n = Backups::restore($site, Req::str('name', 40));
+                    Access::audit($v, 'backup_restored', ['name' => Req::str('name', 40), 'files' => $n], $site['id']);
+                    Session::flash($n ? 'Votre site a été remis comme à cette date (' . \SimpleCommerce\Support\Text::plural($n, 'fichier') . ' remis). L\'état d\'avant a été sauvegardé, au cas où.' : 'Rien à remettre : votre site est déjà identique à cette sauvegarde.');
+                } catch (\Throwable $e) {
+                    Session::flash('Remise impossible : ' . ($e instanceof \RuntimeException && !$e instanceof AdapterError ? $e->getMessage() : AdapterError::userMessageFor($e)), 'error');
+                }
+                return Response::redirect($back . '#sauvegardes');
+
             case 'retirer-site':
                 if (Req::str('confirm', 200) !== $site['name']) {
                     return self::show($p, ['deleteError' => "Pour confirmer, recopiez exactement : {$site['name']}"]);
@@ -185,6 +207,17 @@ final class SettingsController
                 return Response::redirect('/sites?liste=1');
         }
         throw Halt::notFound();
+    }
+
+    public static function downloadBackup(array $p): Response
+    {
+        $ctx = Access::site($p['slug'], 'owner');
+        $file = Backups::path($ctx['site']['id'], $p['name']);
+        if (!$file) {
+            throw Halt::notFound();
+        }
+        Access::audit($ctx['viewer'], 'backup_downloaded', ['name' => $p['name']], $ctx['site']['id']);
+        return Response::file((string) file_get_contents($file), 'application/zip', 'sauvegarde-' . $ctx['site']['slug'] . '-' . substr($p['name'], 0, 15) . '.zip', 'no-store');
     }
 
     private static function connection(array $p, array $ctx): Response

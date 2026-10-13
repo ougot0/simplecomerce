@@ -39,6 +39,14 @@ final class AdminController
         return Response::page('admin/index', ['signupOpen' => Repo::meta('signup_open', '0') === '1', 'viewer' => $v, 'sites' => $sites, 'users' => $users, 'members' => $members, 'count' => $count, 'stats' => $stats, 'wide' => true, 'title' => 'Administration'], 'plain');
     }
 
+    /** Sauvegarde complète du portail (base + config.php), à garder en lieu sûr. */
+    public static function portalBackup(): Response
+    {
+        $v = Access::requireAdmin();
+        Repo::log($v['user']['id'], null, null, 'portal_backup');
+        return Response::file(\SimpleCommerce\Services\Backups::portal(), 'application/zip', 'simplecommerce-sauvegarde-complete-' . date('Y-m-d') . '.zip', 'no-store');
+    }
+
     public static function journal(): Response
     {
         $v = Access::requireAdmin();

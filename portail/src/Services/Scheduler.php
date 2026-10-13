@@ -58,6 +58,11 @@ final class Scheduler
             }
         } catch (\Throwable $e) {
             Log::error('publication programmée', ['err' => $e]);
+        }
+        try {
+            Backups::nightly(PHP_SAPI === 'cli' ? 50 : 1);
+        } catch (\Throwable $e) {
+            Log::error('sauvegardes de la nuit', ['err' => $e]);
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);

@@ -12,7 +12,7 @@ $viewer = $ctx['viewer'];
     </div>
 </div>
 <nav class="tabs" aria-label="Sections des réglages">
-    <a href="#equipe">Équipe</a><a href="#fermeture">Fermeture</a><a href="#rubriques">Rubriques</a><a href="#connexion">Connexion</a><?= $role === 'admin' ? '<a href="#schema">Schéma</a>' : '' ?><a href="#retirer">Retirer</a>
+    <a href="#equipe">Équipe</a><a href="#fermeture">Fermeture</a><a href="#sauvegardes">Sauvegardes</a><a href="#rubriques">Rubriques</a><a href="#connexion">Connexion</a><?= $role === 'admin' ? '<a href="#schema">Schéma</a>' : '' ?><a href="#retirer">Retirer</a>
 </nav>
 
 <section id="equipe" class="section-block first">
@@ -80,6 +80,31 @@ $viewer = $ctx['viewer'];
     <?php else: ?>
     <div class="notice"><p><?= e(Catalog::CLOSE_ELSEWHERE[$site['connector']] ?? 'Ce type de site se ferme depuis sa propre administration.') ?></p></div>
     <?php endif ?>
+</section>
+
+<section id="sauvegardes" class="section-block">
+    <h2>Sauvegardes</h2>
+    <p class="muted">Chaque nuit, Simple Commerce garde une copie de votre site (les 14 dernières nuits). Si quelque chose est effacé par erreur, vous le remettez en un clic.</p>
+    <form method="post" action="<?= e($base) ?>/reglages/sauvegarder" class="mb-12"><?= csrf_field() ?><button class="btn" type="submit" data-busy="Sauvegarde en cours…"><?= icon('download') ?> Faire une sauvegarde maintenant</button></form>
+    <?php if (!$backups): ?>
+    <p class="muted">Pas encore de sauvegarde. La première sera faite cette nuit.</p>
+    <?php else: ?>
+    <ul class="lines narrow-block">
+        <?php foreach ($backups as $b): ?>
+        <li>
+            <div class="line-main">
+                <span class="line-title"><?= e(when($b['date'])) ?></span>
+                <div class="muted small"><?= ['auto' => 'Sauvegarde de la nuit', 'main' => 'Faite à la main', 'avant' => 'Avant une remise en place'][$b['kind']] ?> · <?= e(Text::plural($b['files'], 'fichier')) ?></div>
+            </div>
+            <a class="btn btn-small btn-quiet" href="<?= e($base) ?>/sauvegardes/<?= e($b['name']) ?>"><?= icon('download') ?> Télécharger</a>
+            <?php if ($b['mode'] === 'fichiers'): ?>
+            <form method="post" action="<?= e($base) ?>/reglages/remettre" class="inline" data-confirm="Remettre votre site comme le <?= e(when($b['date'])) ?> ? L'état actuel sera sauvegardé avant."><?= csrf_field() ?><input type="hidden" name="name" value="<?= e($b['name']) ?>"><button class="btn btn-small" type="submit" data-busy="Remise en place…"><?= icon('undo') ?> Remettre</button></form>
+            <?php endif ?>
+        </li>
+        <?php endforeach ?>
+    </ul>
+    <?php endif ?>
+    <p class="help mt-6">Sont sauvegardés : les pages, les textes, les listes de produits et les réglages de votre site. Les photos et les fichiers techniques ne le sont pas.</p>
 </section>
 
 <section id="rubriques" class="section-block">

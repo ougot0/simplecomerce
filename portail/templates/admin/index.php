@@ -11,6 +11,7 @@ use SimpleCommerce\Adapters\Catalog;
     <form method="post" action="/admin/inscriptions" class="inline"<?= $signupOpen ? '' : ' data-confirm="Ouvrir les inscriptions à tout le monde ?"' ?>><?= csrf_field() ?><input type="hidden" name="open" value="<?= $signupOpen ? '0' : '1' ?>">
         <button class="btn btn-small" type="submit"><?= $signupOpen ? 'Rendre le portail privé' : 'Ouvrir les inscriptions' ?></button></form>
 </div>
+<p class="mb-12"><a class="btn btn-small" href="/admin/sauvegarde"><?= icon('download') ?> Télécharger une sauvegarde complète du portail</a> <span class="muted small">Comptes, sites reliés et réglages. Gardez-la en lieu sûr : elle contient la clé des accès.</span></p>
 <div class="stats">
     <div class="stat"><span class="stat-num"><?= (int) $stats['sites'] ?></span><span class="muted small"><?= $stats['sites'] > 1 ? 'sites reliés' : 'site relié' ?></span></div>
     <div class="stat"><span class="stat-num"><?= (int) $stats['users'] ?></span><span class="muted small">compte<?= $stats['users'] > 1 ? 's' : '' ?></span></div>

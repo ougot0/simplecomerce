@@ -68,6 +68,7 @@ final class App
             ['GET', "$s/historique", [SiteController::class, 'history']],
             ['POST', "$s/historique/annuler", [SiteController::class, 'revert']],
             ['GET', "$s/sauvegarde", [SiteController::class, 'backup']],
+            ['GET', "$s/sauvegardes/(?<name>\d{8}-\d{6}-[a-z]{4,5}\.zip)", [SettingsController::class, 'downloadBackup']],
             ['GET', "$s/reglages", [SettingsController::class, 'show']],
             ['POST', "$s/reglages/(?<action>[a-z-]{2,30})", [SettingsController::class, 'action']],
 
@@ -82,6 +83,7 @@ final class App
             ['POST', '/admin/fin-assistance', [AdminController::class, 'stopAssist']],
             ['POST', '/admin/suspendre', [AdminController::class, 'setStatus']],
             ['POST', '/admin/inscriptions', [AdminController::class, 'setSignup']],
+            ['GET', '/admin/sauvegarde', [AdminController::class, 'portalBackup']],
         ];
     }
 
