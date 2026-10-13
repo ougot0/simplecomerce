@@ -170,4 +170,42 @@ final class AdminController
         Session::flash("Adresse de {$u['email']} confirmée.");
         return Response::redirect('/admin');
     }
+
+    // --- Rédaction automatique (Claude) ---
+
+    public static function writer(array $p = [], array $state = []): Response
+    {
+        $v = Access::requireAdmin();
+        $key = \SimpleCommerce\Services\Writer::key();
+        return Response::page('admin/writer', $state + ['viewer' => $v, 'keyHint' => $key !== '' ? \SimpleCommerce\Support\Vault::fingerprint($key) : '',
+            'title' => 'Rédaction automatique'], 'plain');
+    }
+
+    public static function saveWriter(): Response
+    {
+        $v = Access::requireAdmin();
+        if (Req::str('intent') === 'retirer') {
+            \SimpleCommerce\Services\Writer::saveKey('');
+            Repo::log($v['user']['id'], null, null, 'ai_settings', ['on' => false]);
+            Session::flash('Rédaction automatique désactivée : les boutons « Écrire pour moi » disparaissent.');
+            return Response::redirect('/admin/redaction');
+        }
+        if (Req::str('intent') === 'test') {
+            try {
+                $t = \SimpleCommerce\Services\Writer::ask('Réponds en une phrase courte, en français.', 'Dis bonjour aux commerçants qui utilisent Simple Commerce.', 200);
+                Session::flash('Ça marche. Réponse : « ' . mb_substr($t, 0, 200) . ' »');
+            } catch (\RuntimeException $e) {
+                Session::flash($e->getMessage(), 'error');
+            }
+            return Response::redirect('/admin/redaction');
+        }
+        $key = trim(Req::raw('apiKey'));
+        if (!preg_match('/^sk-ant-[A-Za-z0-9_-]{20,}$/', $key)) {
+            return self::writer([], ['error' => 'La clé commence par « sk-ant- ». Copiez-la depuis platform.claude.com → API keys.']);
+        }
+        \SimpleCommerce\Services\Writer::saveKey($key);
+        Repo::log($v['user']['id'], null, null, 'ai_settings', ['on' => true]);
+        Session::flash('Clé enregistrée. Cliquez sur « Tester » pour vérifier.');
+        return Response::redirect('/admin/redaction');
+    }
 }

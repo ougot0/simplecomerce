@@ -2112,3 +2112,8 @@ input.short {
 .device-side { display: grid; gap: 10px; max-width: 260px; }
 @media (max-width: 520px) { .device-telephone iframe { width: calc(100vw - 72px); height: 70vh; } }
 @media (max-width: 900px) { .device-tablette iframe { width: calc(100vw - 72px); } }
+
+/* « Écrire pour moi » */
+.ai-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; }
+.ai-tools .help { margin: 0; }
+.ai-tools .icon { width: 15px; height: 15px; }

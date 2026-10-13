@@ -452,4 +452,40 @@ final class EditorController
         }
         return Response::json(['token' => Values::MEDIA_PREFIX . $m['id'], 'url' => '/media/' . $m['id']]);
     }
+
+    /** « Écrire pour moi » : propose un texte pour un champ de description (rien n'est publié). */
+    public static function write(array $p): Response
+    {
+        $ctx = Access::site($p['slug']);
+        $uid = $ctx['viewer']['user']['id'];
+        if (!\SimpleCommerce\Services\Writer::enabled()) {
+            return Response::json(['error' => 'La rédaction automatique n\'est pas activée sur ce portail.'], 404);
+        }
+        if (Repo::tooManyAttempts("ia:$uid", \SimpleCommerce\Services\Writer::PER_DAY, 86400)) {
+            return Response::json(['error' => 'Vous avez beaucoup utilisé « Écrire pour moi » aujourd\'hui. Réessayez demain.'], 429);
+        }
+        $facts = [];
+        foreach ((array) Req::arr('facts') as $label => $value) {
+            if (is_string($label) && is_string($value) && trim($value) !== '' && count($facts) < 15) {
+                $facts[mb_substr(trim($label), 0, 60)] = mb_substr(trim(strip_tags($value)), 0, 300);
+            }
+        }
+        $current = trim(Req::str('current', 6000));
+        $rich = Req::str('rich', 1) === '1';
+        if ($rich) {
+            $current = trim(html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '</li>'], ["\n\n", "\n", "\n"], $current)), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        }
+        if (!$facts && $current === '') {
+            return Response::json(['error' => 'Remplissez d\'abord le nom (et si possible le prix ou quelques mots), puis recommencez.'], 422);
+        }
+        Repo::recordAttempt("ia:$uid");
+        try {
+            $text = \SimpleCommerce\Services\Writer::describe($ctx['site']['name'], Req::str('label', 80) ?: 'Description', $facts, $current,
+                Req::str('mode', 12), max(0, min(20000, (int) Req::str('maxLength', 6))), $rich);
+        } catch (\RuntimeException $e) {
+            return Response::json(['error' => $e->getMessage()], 502);
+        }
+        Access::audit($ctx['viewer'], 'ai_write', [], $ctx['site']['id']);
+        return Response::json(['text' => $text]);
+    }
 }

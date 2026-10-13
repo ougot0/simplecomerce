@@ -598,6 +598,77 @@
     apply(true);
   });
 
+  // ---------------------------------------------------------------- « Écrire pour moi » (rédaction automatique)
+  $$("[data-ai]").forEach(function (box) {
+    var ta = document.getElementById(box.getAttribute("data-ai-for"));
+    if (!ta) return;
+    var rich = box.hasAttribute("data-ai-rich");
+    var status = box.querySelector("[data-ai-status]");
+    var main = box.querySelector("[data-ai-main]");
+    var short = box.querySelector('[data-ai-mode="raccourcir"]');
+    var before = null;
+    box.hidden = false;
+    function textOf() { return rich ? ta.value.replace(/<[^>]*>/g, " ").trim() : ta.value.trim(); }
+    function refresh() {
+      var has = textOf() !== "";
+      main.textContent = has ? "Améliorer le texte" : "Écrire pour moi";
+      short.hidden = !has;
+    }
+    ta.addEventListener("input", refresh);
+    refresh();
+    function put(value) {
+      ta.value = value;
+      var rbox = ta.closest("[data-richtext]");
+      var area = rbox && rbox.querySelector(".richtext-area");
+      if (area) area.innerHTML = clean(new DOMParser().parseFromString("<body>" + value + "</body>", "text/html").body) || "<p><br></p>";
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    function say(msg, undo) {
+      status.textContent = msg;
+      if (undo) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "linklike";
+        b.textContent = "Revenir au texte d'avant";
+        b.addEventListener("click", function () { put(before); say("Texte d'avant remis."); });
+        status.appendChild(document.createTextNode(" "));
+        status.appendChild(b);
+      }
+    }
+    $$("[data-ai-mode]", box).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var form = ta.form;
+        var fd = new FormData();
+        fd.append("label", box.getAttribute("data-ai-label") || "");
+        fd.append("maxLength", box.getAttribute("data-ai-max") || "0");
+        fd.append("rich", rich ? "1" : "0");
+        var mode = btn.getAttribute("data-ai-mode");
+        fd.append("mode", mode === "ecrire" && textOf() !== "" ? "ameliorer" : mode);
+        fd.append("current", ta.value);
+        if (form) {
+          $$("input[data-key], select[data-key], textarea[data-key]", form).forEach(function (el) {
+            if (el === ta || el.type === "hidden" || el.type === "checkbox") return;
+            var v = el.tagName === "SELECT" ? (el.options[el.selectedIndex] || {}).text || "" : el.value;
+            v = String(v || "").replace(/<[^>]*>/g, " ").trim();
+            if (!v || v === "—") return;
+            var lab = form.querySelector('label[for="' + el.id + '"]');
+            var name = lab ? lab.textContent.replace(/\(obligatoire\)/, "").trim() : el.getAttribute("data-key");
+            fd.append("facts[" + name + "]", el.hasAttribute("data-price") ? v + " €" : v);
+          });
+        }
+        $$("button", box).forEach(function (b) { b.disabled = true; });
+        say("Rédaction en cours… (quelques secondes)");
+        post(box.getAttribute("data-ai"), fd).then(function (r) {
+          $$("button", box).forEach(function (b) { b.disabled = false; });
+          if (r.error) { say(r.error); return; }
+          before = ta.value;
+          put(r.text);
+          say("Texte proposé : relisez-le et corrigez-le si besoin avant de publier.", true);
+        });
+      });
+    });
+  });
+
   // ---------------------------------------------------------------- mise en route
   function enhance(root) {
     counters(root);

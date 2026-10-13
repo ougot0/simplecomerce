@@ -41,6 +41,21 @@ if (!function_exists('sc_field')) {
             . '<button type="button" class="btn btn-small btn-quiet" data-remove aria-label="Retirer">' . icon('x') . '</button></div></div>';
     }
 
+    /** Boutons « Écrire pour moi » sous un champ de description (si la rédaction automatique est activée). */
+    function sc_ai(array $f, string $id, array $ctx, bool $rich): string
+    {
+        static $on = null;
+        $on ??= \SimpleCommerce\Services\Writer::enabled();
+        if (!$on || empty($ctx['slug'])) {
+            return '';
+        }
+        return '<div class="ai-tools" data-ai="/s/' . e($ctx['slug']) . '/ecrire" data-ai-for="' . e($id) . '" data-ai-label="' . e($f['label']) . '"'
+            . ' data-ai-max="' . (int) ($f['maxLength'] ?? 0) . '"' . ($rich ? ' data-ai-rich' : '') . ' hidden>'
+            . '<button type="button" class="btn btn-small btn-quiet" data-ai-mode="ecrire">' . icon('pen') . ' <span data-ai-main>Écrire pour moi</span></button>'
+            . '<button type="button" class="btn btn-small btn-quiet" data-ai-mode="raccourcir">Raccourcir</button>'
+            . '<span class="help" data-ai-status role="status"></span></div>';
+    }
+
     /** @param array{errors: array, base: string, slug: string} $ctx */
     function sc_field(array $f, mixed $value, string $name, string $path, array $ctx): string
     {
@@ -70,11 +85,12 @@ if (!function_exists('sc_field')) {
                 $rows = min(14, max(4, (int) ceil(mb_strlen($str) / 70)));
                 return '<div class="' . $cls . '">' . sc_label($f, $id) . '<textarea id="' . e($id) . '" name="' . e($name) . '" rows="' . $rows . '"'
                     . (!empty($f['maxLength']) ? ' data-max="' . (int) $f['maxLength'] . '"' : '') . $preview . '>' . e($str) . '</textarea>' . sc_counter($f)
+                    . sc_ai($f, $id, $ctx, false)
                     . ($f['type'] === 'markdown' ? '<span class="help">Mise en forme : **gras**, *italique*, une ligne vide entre deux paragraphes, « - » en début de ligne pour une liste.</span>' : '')
                     . sc_foot($f, $errors, $path) . '</div>';
             case 'richtext':
                 return '<div class="' . $cls . '">' . sc_label($f, $id) . '<div class="richtext" data-richtext><textarea id="' . e($id) . '" name="' . e($name) . '" rows="6"' . $preview . '>' . e($str) . '</textarea></div>'
-                    . sc_foot($f, $errors, $path) . '</div>';
+                    . sc_ai($f, $id, $ctx, true) . sc_foot($f, $errors, $path) . '</div>';
             case 'price':
                 $n = Price::toNumber($f, $value);
                 $shown = $n === null ? (is_string($value) ? $value : '') : number_format($n, floor($n) == $n ? 0 : 2, ',', '');
