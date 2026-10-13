@@ -47,9 +47,14 @@ final class CatalogueController
                 'ancienPrix' => is_numeric($p['ancienPrix'] ?? null) ? (float) $p['ancienPrix'] : null,
                 'description' => (string) ($p['description'] ?? ''),
                 'epuise' => isset($p['stock']) && is_numeric($p['stock']) && (int) $p['stock'] <= 0,
+                'pastille' => mb_substr(trim((string) ($p['pastille'] ?? '')), 0, 24),
+                'enAvant' => ($p['enAvant'] ?? false) === true,
                 'lien' => is_string($p['lien'] ?? null) && preg_match('#^https?://#i', $p['lien']) ? $p['lien'] : '',
             ];
         }
+        // Produits mis en avant d'abord, sans changer l'ordre des autres.
+        $featured = array_values(array_filter($products, fn ($p) => $p['enAvant']));
+        $products = array_merge($featured, array_values(array_filter($products, fn ($p) => !$p['enAvant'])));
         return ['produits' => $products, 'ferme' => !empty($closed['closed']), 'message' => (string) ($closed['message'] ?? '')];
     }
 

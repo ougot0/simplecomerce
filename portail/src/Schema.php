@@ -10,7 +10,7 @@ namespace SimpleCommerce;
 final class Schema
 {
     /** 2 : liste d'attente, commandes, avis, statistiques, abonnements (12/10/2026). */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     /** @return string[] */
     public static function statements(string $driver): array
@@ -133,6 +133,14 @@ final class Schema
         $done = true;
         if ((int) (Db::value("SELECT value FROM sc_meta WHERE name = 'schema_version'") ?? 0) < self::VERSION) {
             self::install();
+            // Catalogues hébergés créés avant l'arrivée de nouveaux champs : on les ajoute.
+            foreach (Repo::sites() as $site) {
+                $schema = $site['connector'] === 'catalogue' ? Repo::schema($site['id']) : null;
+                $up = $schema ? \SimpleCommerce\Adapters\Files\DbBackend::upgradeSchema($schema) : null;
+                if ($up) {
+                    Repo::saveSchema($site['id'], $up, null);
+                }
+            }
         }
     }
 

@@ -183,7 +183,7 @@ final class Repo
         return $r ? self::dj($r['definition']) : null;
     }
 
-    public static function saveSchema(string $siteId, array $definition, string $by): void
+    public static function saveSchema(string $siteId, array $definition, ?string $by): void
     {
         $version = (int) Db::value('SELECT MAX(version) FROM sc_schemas WHERE site_id = ?', [$siteId]) + 1;
         Db::insert('sc_schemas', ['id' => Db::uuid(), 'site_id' => $siteId, 'version' => $version, 'definition' => self::j($definition), 'created_by' => $by, 'created_at' => Db::now()]);

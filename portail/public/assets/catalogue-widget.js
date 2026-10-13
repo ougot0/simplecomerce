@@ -28,6 +28,8 @@ style.textContent = [
   '.sc-card{display:flex;flex-direction:column;gap:8px;min-width:0}',
   '.sc-photo{position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:rgba(127,127,127,.12)}',
   '.sc-photo img{width:100%;height:100%;object-fit:cover;display:block}',
+  '.sc-badge{position:absolute;top:10px;left:10px;padding:3px 10px;border-radius:999px;background:#141210;color:#fff;font-size:.78em;font-weight:600;letter-spacing:.01em}',
+  '.sc-badge-out{background:#fff;color:#141210}',
   '.sc-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:6px}',
   '.sc-dots button{width:8px;height:8px;border-radius:50%;border:0;padding:0;background:#fff;opacity:.55;cursor:pointer}',
   '.sc-dots button[aria-current=true]{opacity:1}',
@@ -59,6 +61,9 @@ D.produits.forEach(function (p) {
     img.alt = p.nom;
     img.loading = 'lazy';
     box.appendChild(img);
+    if (p.pastille || p.epuise) {
+      box.appendChild(el('span', p.epuise ? 'sc-badge sc-badge-out' : 'sc-badge', p.epuise ? 'Épuisé' : p.pastille));
+    }
     if (p.photos.length > 1) {
       var dots = el('div', 'sc-dots');
       p.photos.forEach(function (src, i) {
@@ -76,6 +81,7 @@ D.produits.forEach(function (p) {
     }
     card.appendChild(box);
   }
+  if (!p.photos.length && p.pastille) { card.appendChild(el('span', 'sc-tag', p.pastille)); }
   card.appendChild(el('h3', 'sc-name', p.nom));
   if (p.prix !== null || p.epuise) {
     var pr = el('div', 'sc-price');

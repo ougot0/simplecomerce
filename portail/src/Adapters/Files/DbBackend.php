@@ -37,6 +37,32 @@ final class DbBackend implements FileBackend
         self::$ready = true;
     }
 
+    /** Ajoute aux catalogues déjà créés les champs apparus depuis (pastille, mise en avant…). Null si rien à changer. */
+    public static function upgradeSchema(array $schema): ?array
+    {
+        $model = \SimpleCommerce\Content\ContentSchema::parse(json_decode(self::defaults()[self::SCHEMA], true));
+        $ref = current(array_filter($model['sections'], fn ($s) => $s['key'] === 'produits'));
+        $changed = false;
+        foreach ($schema['sections'] as &$sec) {
+            if ($sec['key'] !== 'produits') {
+                continue;
+            }
+            $have = array_column($sec['fields'], 'key');
+            foreach ($ref['fields'] as $i => $f) {
+                if (in_array($f['key'], $have, true)) {
+                    continue;
+                }
+                // On le place après le champ qui le précède dans le modèle.
+                $prev = $i > 0 ? array_search($ref['fields'][$i - 1]['key'], array_column($sec['fields'], 'key'), true) : false;
+                array_splice($sec['fields'], $prev === false ? count($sec['fields']) : $prev + 1, 0, [$f]);
+                $have = array_column($sec['fields'], 'key');
+                $changed = true;
+            }
+        }
+        unset($sec);
+        return $changed ? $schema : null;
+    }
+
     /** Contenu de départ d'un catalogue neuf (rien n'est écrit tant que le client n'a rien enregistré). */
     public static function defaults(): array
     {
@@ -52,6 +78,8 @@ final class DbBackend implements FileBackend
                     ['key' => 'ancienPrix', 'label' => 'Ancien prix (barré)', 'type' => 'price', 'priceFormat' => $price, 'help' => 'Seulement pour une promotion. Laissez vide sinon.'],
                     ['key' => 'description', 'label' => 'Description', 'type' => 'textarea', 'maxLength' => 800],
                     ['key' => 'stock', 'label' => 'Stock', 'type' => 'number', 'min' => 0, 'help' => 'Laissez vide si vous ne comptez pas. À 0, le produit est affiché « Épuisé ».'],
+                    ['key' => 'pastille', 'label' => 'Pastille', 'type' => 'text', 'maxLength' => 24, 'help' => 'Petit mot affiché sur la photo : « Nouveau », « Promo », « Coup de cœur »… Laissez vide sinon.'],
+                    ['key' => 'enAvant', 'label' => 'Mettre en avant', 'type' => 'boolean', 'help' => 'Le produit est affiché en premier sur votre site.'],
                     ['key' => 'lien', 'label' => 'Lien pour commander', 'type' => 'url', 'help' => 'Facultatif : page de paiement, formulaire de contact… Un bouton « Commander » y mènera.'],
                     ['key' => 'disponible', 'label' => 'Visible sur mon site', 'type' => 'boolean', 'help' => 'Décochez pour cacher le produit sans l\'effacer.'],
                 ]],
