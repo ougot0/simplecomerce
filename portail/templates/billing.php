@@ -28,7 +28,9 @@ use SimpleCommerce\Support\Text;
     <p>Votre abonnement vous est offert. Rien à faire.</p>
     <?php endif ?>
 
-    <?php if (in_array($row['status'], ['essai', 'termine'], true)): ?>
+    <?php if (\SimpleCommerce\Http\Req::inApp()): ?>
+    <p class="help mt-6">L'abonnement ne se gère pas depuis l'application.</p>
+    <?php elseif (in_array($row['status'], ['essai', 'termine'], true)): ?>
     <div class="plan-choices">
         <?php foreach (Billing::plans() as $key => $plan): ?>
         <form method="post" action="/compte/abonnement/payer" class="plan-choice"><?= csrf_field() ?><input type="hidden" name="plan" value="<?= e($key) ?>">
@@ -40,7 +42,7 @@ use SimpleCommerce\Support\Text;
     </div>
     <p class="help mt-6">Le paiement se fait par carte sur la page sécurisée de Stripe. Simple Commerce ne voit jamais votre carte. Sans engagement : vous arrêtez quand vous voulez. En vous abonnant, vous acceptez les <a href="/conditions-generales-vente">conditions générales de vente</a>.</p>
     <?php endif ?>
-    <?php if ($row['customer_id'] && $row['status'] !== 'gratuit'): ?>
+    <?php if ($row['customer_id'] && $row['status'] !== 'gratuit' && !\SimpleCommerce\Http\Req::inApp()): ?>
     <form method="post" action="/compte/abonnement/gerer" class="mt-12"><?= csrf_field() ?>
         <button class="btn" type="submit"<?= $viewer['assist'] ? ' disabled' : '' ?>>Changer de carte, voir mes factures ou arrêter</button>
     </form>

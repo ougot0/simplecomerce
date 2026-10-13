@@ -23,6 +23,9 @@ final class AuthController
         if (!Config::demo() && !Repo::users()) {
             return Response::redirect('/inscription'); // tout premier passage : création du compte administrateur
         }
+        if (Req::inApp()) {
+            return Response::redirect('/connexion'); // l'application ouvre directement la connexion (la page de présentation parle des prix)
+        }
         // Page de présentation publique, la seule que les moteurs de recherche peuvent afficher.
         // C'est une vraie page (public/accueil.html), créée une fois à partir du modèle : on peut donc la relier
         // au portail comme n'importe quel site et la modifier (textes, étapes, logo). Les mises à jour ne l'écrasent pas.
@@ -217,6 +220,7 @@ final class AuthController
     public static function account(array $p, array $state = []): Response
     {
         $v = Access::requireViewer();
+        $state += ['deletePlan' => \SimpleCommerce\Services\AccountDeletion::plan($v['user']['id'])];
         return Response::page('account', $state + ['viewer' => $v, 'resetHint' => Req::query('nouveau-mot-de-passe') === '1'], 'plain');
     }
 
@@ -258,6 +262,26 @@ final class AuthController
                 Access::audit($v, 'password_changed');
                 Session::flash('Mot de passe modifié.');
                 break;
+            case 'delete':
+                if ($problem = \SimpleCommerce\Services\AccountDeletion::problem($v['user'])) {
+                    return self::account($p, ['error' => $problem]);
+                }
+                if (mb_strtoupper(trim(Req::str('confirm', 40))) !== 'SUPPRIMER') {
+                    return self::account($p, ['deleteError' => 'Pour confirmer, écrivez SUPPRIMER dans la case.']);
+                }
+                $viaLink = (int) Session::get('magic_at') > time() - 1800;
+                if (!$viaLink && !password_verify(Req::raw('current'), (string) $v['user']['password_hash'])) {
+                    return self::account($p, ['deleteError' => 'Mot de passe incorrect.']);
+                }
+                try {
+                    \SimpleCommerce\Services\AccountDeletion::delete($v['user']);
+                } catch (\Throwable $e) {
+                    \SimpleCommerce\Support\Log::warn('Suppression de compte impossible', ['err' => $e->getMessage()]);
+                    return self::account($p, ['deleteError' => "La suppression n'a pas pu se faire (l'arrêt de votre abonnement n'a pas répondu). Rien n'a été effacé. Réessayez dans quelques minutes."]);
+                }
+                Repo::log(null, null, null, 'account_deleted');
+                Auth::logout();
+                return Response::page('message', ['title' => 'Compte supprimé', 'text' => "Votre compte Simple Commerce a été supprimé. Vos sites, eux, n'ont pas été touchés.", 'link' => ['/connexion', 'Retour à la connexion']], 'auth');
         }
         return Response::redirect('/compte');
     }

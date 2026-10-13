@@ -1,0 +1,149 @@
+# Application iPhone de Simple Commerce : construite sur un Mac de GitHub (aucun Mac nécessaire chez soi).
+# - À chaque modification de application-iphone/ : construction d'essai pour le simulateur (fichier « apercu-iphone »
+#   à télécharger dans l'onglet Actions, utilisable sur appetize.io pour cliquer dans l'application depuis un navigateur).
+# - Bouton « Run workflow » avec « Envoyer à Apple » coché : construction signée envoyée sur App Store Connect (TestFlight).
+#   Nécessite les secrets APPLE_TEAM_ID, APPLE_CLE_ID, APPLE_EMETTEUR_ID, APPLE_CLE_P8 (voir application-iphone/README.md).
+name: Application iPhone
+
+on:
+  push:
+    paths:
+      - 'application-iphone/**'
+      - '.github/workflows/application-iphone.yml'
+  workflow_dispatch:
+    inputs:
+      envoyer_a_apple:
+        description: 'Envoyer à Apple (TestFlight / App Store)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: application-iphone-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apercu:
+    name: Construction d'essai (simulateur)
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: application-iphone
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Choisir le Xcode le plus récent
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Xcode utilisé : $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Fabriquer le projet Xcode
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Construire pour le simulateur
+        run: |
+          xcodebuild -project SimpleCommerce.xcodeproj -scheme SimpleCommerce -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build > journal.txt 2>&1 \
+            || { grep -E "error:" -A3 journal.txt | head -150; tail -n 40 journal.txt; exit 1; }
+          tail -n 15 journal.txt
+
+      - name: Préparer le fichier d'aperçu
+        run: |
+          cd build/Build/Products/Release-iphonesimulator
+          ditto -c -k --sequesterRsrc --keepParent SimpleCommerce.app "$GITHUB_WORKSPACE/apercu-iphone.zip"
+
+      - name: Lancer l'application sur un iPhone virtuel et la photographier
+        continue-on-error: true
+        run: |
+          ID=$(xcrun simctl list -j devices available | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k in sorted(d, reverse=True) if 'iOS' in k for x in d[k] if x['name'].startswith('iPhone')))")
+          xcrun simctl boot "$ID"
+          xcrun simctl bootstatus "$ID" -b
+          xcrun simctl install "$ID" build/Build/Products/Release-iphonesimulator/SimpleCommerce.app
+          xcrun simctl launch "$ID" com.simplecommercess.app
+          sleep 20
+          mkdir -p "$GITHUB_WORKSPACE/photos"
+          xcrun simctl io "$ID" screenshot "$GITHUB_WORKSPACE/photos/application-ouverte.png"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apercu-iphone
+          path: apercu-iphone.zip
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: photo-application
+          path: photos/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  envoyer:
+    name: Envoi à Apple (TestFlight)
+    needs: apercu
+    if: github.event_name == 'workflow_dispatch' && inputs.envoyer_a_apple
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: application-iphone
+    env:
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      CLE_ID: ${{ secrets.APPLE_CLE_ID }}
+      EMETTEUR_ID: ${{ secrets.APPLE_EMETTEUR_ID }}
+      CLE_P8: ${{ secrets.APPLE_CLE_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier les accès Apple
+        run: |
+          for v in TEAM_ID CLE_ID EMETTEUR_ID CLE_P8; do
+            if [ -z "${!v}" ]; then echo "::error::Secret manquant ($v). Voir application-iphone/README.md, étape « Relier GitHub à Apple »."; exit 1; fi
+          done
+
+      - name: Choisir le Xcode le plus récent
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)" && xcodebuild -version
+
+      - name: Fabriquer le projet Xcode
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Installer la clé App Store Connect
+        run: |
+          mkdir -p "$RUNNER_TEMP/cles"
+          printf '%s\n' "$CLE_P8" > "$RUNNER_TEMP/cles/AuthKey_$CLE_ID.p8"
+          plutil -replace teamID -string "$TEAM_ID" ExportOptions.plist
+
+      - name: Construire et signer
+        run: |
+          xcodebuild -project SimpleCommerce.xcodeproj -scheme SimpleCommerce -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/SimpleCommerce.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/cles/AuthKey_$CLE_ID.p8" \
+            -authenticationKeyID "$CLE_ID" -authenticationKeyIssuerID "$EMETTEUR_ID" \
+            archive > journal.txt 2>&1 \
+            || { grep -E "error:" -A3 journal.txt | head -150; tail -n 60 journal.txt; exit 1; }
+          tail -n 15 journal.txt
+
+      - name: Envoyer sur App Store Connect
+        run: |
+          xcodebuild -exportArchive -archivePath build/SimpleCommerce.xcarchive \
+            -exportOptionsPlist ExportOptions.plist -exportPath build/envoi \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/cles/AuthKey_$CLE_ID.p8" \
+            -authenticationKeyID "$CLE_ID" -authenticationKeyIssuerID "$EMETTEUR_ID" > envoi.txt 2>&1 \
+            || { tail -n 80 envoi.txt; exit 1; }
+          tail -n 20 envoi.txt
+
+      - name: Effacer la clé
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/cles"

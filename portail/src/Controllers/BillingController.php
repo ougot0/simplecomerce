@@ -42,7 +42,7 @@ final class BillingController
     public static function pay(): Response
     {
         $v = Access::requireViewer();
-        if ($v['assist'] || !Billing::enabled()) {
+        if ($v['assist'] || !Billing::enabled() || Req::inApp()) {
             throw Halt::notFound();
         }
         try {
@@ -56,7 +56,7 @@ final class BillingController
     public static function manage(): Response
     {
         $v = Access::requireViewer();
-        if ($v['assist'] || !Billing::enabled()) {
+        if ($v['assist'] || !Billing::enabled() || Req::inApp()) {
             throw Halt::notFound();
         }
         try {
