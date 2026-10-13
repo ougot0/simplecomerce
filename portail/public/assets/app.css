@@ -2117,3 +2117,8 @@ input.short {
 .ai-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; }
 .ai-tools .help { margin: 0; }
 .ai-tools .icon { width: 15px; height: 15px; }
+
+/* Version anglaise : progression */
+.progress { margin: 12px 0; }
+.progress-bar { height: 8px; border-radius: 999px; background: var(--beige, #ebe3d5); overflow: hidden; }
+.progress-bar span { display: block; height: 100%; width: 0; background: var(--ink, #141210); transition: width .3s ease; }

@@ -85,6 +85,8 @@ final class App
             ['GET', "$s/sauvegarde", [SiteController::class, 'backup']],
             ['GET', "$s/sauvegardes/(?<name>\d{8}-\d{6}-[a-z]{4,5}\.zip)", [SettingsController::class, 'downloadBackup']],
             ['GET', "$s/telephone", [SiteController::class, 'phone']],
+            ['GET', "$s/anglais", [\SimpleCommerce\Controllers\TranslationController::class, 'page']],
+            ['POST', "$s/anglais", [\SimpleCommerce\Controllers\TranslationController::class, 'action']],
             ['GET', "$s/rendez-vous", [BookingController::class, 'page']],
             ['POST', "$s/rendez-vous/action", [BookingController::class, 'action']],
             ['GET', "$s/commandes", [ShopController::class, 'orders']],

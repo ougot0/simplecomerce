@@ -32,6 +32,9 @@ include dirname(__DIR__) . '/partials/assist.php';
                     <?php foreach ($ctx['sections'] as $s): ?>
                         <?= $navItem("$base/r/{$s['key']}", $s['label'], ($s['kind'] ?? '') === 'collection' ? 'list' : 'text') ?>
                     <?php endforeach ?>
+                    <?php if ($ctx['role'] !== 'editor' && \SimpleCommerce\Services\Translation::supported($site) && (\SimpleCommerce\Services\Writer::enabled() || \SimpleCommerce\Services\Translation::state($site)['on'])): ?>
+                        <?= $navItem("$base/anglais", 'Version anglaise', 'globe') ?>
+                    <?php endif ?>
                 </ul>
             </nav>
             <?php $shop = \SimpleCommerce\Services\Shop::summary($site); ?>

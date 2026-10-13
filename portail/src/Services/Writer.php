@@ -61,7 +61,7 @@ final class Writer
      * Une demande simple à Claude ; renvoie le texte de la réponse.
      * @throws \RuntimeException avec un message à montrer tel quel
      */
-    public static function ask(string $system, string $prompt, int $maxTokens = 4000, string $effort = 'low'): string
+    public static function ask(string $system, string $prompt, int $maxTokens = 4000, string $effort = 'low', ?array $schema = null): string
     {
         if (!self::enabled()) {
             throw new \RuntimeException('La rédaction automatique n\'est pas activée sur ce portail.');
@@ -72,7 +72,7 @@ final class Writer
                 maxTokens: $maxTokens,
                 system: $system,
                 messages: [['role' => 'user', 'content' => $prompt]],
-                outputConfig: ['effort' => $effort],
+                outputConfig: ['effort' => $effort] + ($schema ? ['format' => ['type' => 'json_schema', 'schema' => $schema]] : []),
                 fallbacks: 'default',
                 betas: ['server-side-fallback-2026-07-01'],
             );
@@ -138,5 +138,26 @@ final class Writer
             $text = implode('', array_map(fn ($p) => '<p>' . nl2br(htmlspecialchars($p, ENT_QUOTES | ENT_HTML5, 'UTF-8'), false) . '</p>', $paras));
         }
         return $text;
+    }
+
+    /**
+     * Traduit une liste de textes d'un site du français vers l'anglais, dans le même ordre.
+     * @param string[] $texts @return string[]
+     */
+    public static function translate(array $texts, string $siteName): array
+    {
+        $system = 'You translate the website of a small French shop or craftsperson from French into natural, warm English for international '
+            . 'visitors. The items are fragments of web pages in reading order (menus, headings, paragraphs, buttons, image descriptions); '
+            . 'a fragment can be part of a sentence split by bold or links, so translate it so that it still reads well in place. '
+            . 'Keep brand names, product names that are proper nouns, people, places, prices, phone numbers, e-mail and web addresses unchanged. '
+            . 'Keep the same leading or trailing punctuation. Write prices like 4,50 € as €4.50. Return exactly one translation per item, same order.';
+        $prompt = "Website: $siteName\nItems (JSON array):\n" . json_encode(array_values($texts), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $schema = ['type' => 'object', 'properties' => ['t' => ['type' => 'array', 'items' => ['type' => 'string']]], 'required' => ['t'], 'additionalProperties' => false];
+        $data = json_decode(self::ask($system, $prompt, 16000, 'medium', $schema), true);
+        $out = is_array($data['t'] ?? null) ? $data['t'] : [];
+        if (count($out) !== count($texts)) {
+            throw new \RuntimeException('La traduction est revenue incomplète. Relancez : ce qui est déjà traduit est gardé.');
+        }
+        return array_map(fn ($t) => is_string($t) ? $t : '', $out);
     }
 }

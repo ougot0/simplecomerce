@@ -244,5 +244,22 @@ test('sécurité (audit du 13/10)', function () {
     check(throws(fn () => \SimpleCommerce\Content\HtmlCards::copyPage('<?php echo \'<h1>A</h1>\'; ?>', 'A', 'B', null)), 'page PHP jamais recopiée');
 });
 
+test('Version anglaise', function () {
+    $T = \SimpleCommerce\Content\HtmlTranslate::class;
+    $html = "<!doctype html><html lang=\"fr\"><head><meta charset=\"utf-8\"><title>Pâtisserie</title><meta name=\"description\" content=\"Gâteaux maison\"></head>"
+        . "<body><h1>Nos gâteaux</h1><p>Tarte <strong>au citron</strong></p><img src=\"a.jpg\" alt=\"Une tarte\"><a href=\"contact.html#x\">Contact</a>"
+        . "<script>var x = 'Bonjour';</script></body></html>";
+    $segs = $T::segments($html);
+    check(in_array('Nos gâteaux', $segs, true) && in_array('Une tarte', $segs, true) && in_array('Gâteaux maison', $segs, true), 'textes, alt et description relevés');
+    check(!in_array("var x = 'Bonjour';", $segs, true), 'scripts jamais traduits');
+    $out = $T::render($html, ['Nos gâteaux' => 'Our cakes', 'Une tarte' => 'A tart'], fn ($h) => $h === 'contact.html#x' ? 'contact-en.html#x' : null, 'index.html');
+    check(str_contains($out, 'Our cakes') && str_contains($out, 'alt="A tart"') && str_contains($out, 'lang="en"'), 'page anglaise fabriquée');
+    check(str_contains($out, 'href="contact-en.html#x"') && str_contains($out, 'hreflang="fr"') && $T::isOurs($out), 'liens et bouton « Français »');
+    check(!str_contains($out, '<?xml') && str_contains($out, 'Pâtisserie'), 'accents écrits en clair');
+    $fr = $T::markFrench($html, 'index-en.html');
+    check(str_contains($fr, 'English') && $T::markFrench($fr, null) === $html, 'bouton « English » ajouté puis retiré sans trace');
+    check($T::enPath('dossier/projet.html') === 'dossier/projet-en.html', 'nom des pages anglaises');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

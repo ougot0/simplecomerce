@@ -34,7 +34,7 @@ final class FileSiteAdapter implements Adapter
     private ?array $scanFiles = null;
     /** Page d'accueil d'un site (index.html, ou accueil.html / home.html). */
     private const HOME_PAGE = '#(^|/)(index|accueil|home)\.(html?|php)$#i';
-    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$#i';
+    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$|-en\.html?$#i';
     /** @var array<string, ?string> versions lues pendant une opération */
     private array $versions = [];
     /** @var array<string, ?array> fichiers lus pendant une opération */
@@ -634,6 +634,29 @@ final class FileSiteAdapter implements Adapter
             $this->backend->commit($writes, "$summary\n\nvia Simple Commerce", $expected);
         }
         return ['changed' => count($writes), 'pages' => count($pages)];
+    }
+
+    /** Pages HTML du site (sans les pages anglaises fabriquées par le portail). @return string[] */
+    public function pagePaths(): array
+    {
+        $this->init();
+        return $this->htmlPages();
+    }
+
+    /** @return array{content: string, version: string}|null */
+    public function readFile(string $path): ?array
+    {
+        $this->init();
+        return $this->backend->read($path);
+    }
+
+    /** Écrit (ou supprime, contenu null) plusieurs fichiers en une fois. @param array<int, array{path: string, content: ?string}> $writes */
+    public function writeFiles(array $writes, array $expected, string $summary): void
+    {
+        $this->init();
+        if ($writes) {
+            $this->backend->commit($writes, "$summary\n\nvia Simple Commerce", $expected);
+        }
     }
 
     /** Chemin d'un lien de page, depuis le fichier qui le contient. */

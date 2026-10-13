@@ -669,6 +669,56 @@
     });
   });
 
+  // ---------------------------------------------------------------- version anglaise, pas à pas
+  $$("[data-english]").forEach(function (form) {
+    var box = form.querySelector("[data-english-progress]");
+    var bar = form.querySelector("[data-english-bar]");
+    var status = form.querySelector("[data-english-status]");
+    var btn = form.querySelector('button[type="submit"]');
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      btn.disabled = true;
+      box.hidden = false;
+      var total = 0;
+      function call(what) {
+        var fd = new FormData();
+        fd.append("do", what);
+        return post(form.action, fd);
+      }
+      function fail(r) {
+        status.textContent = r.error + " Vous pouvez relancer : ce qui est déjà traduit est gardé.";
+        btn.disabled = false;
+      }
+      function show(done, msg) {
+        bar.style.width = Math.round(done * 100) + "%";
+        status.textContent = msg;
+      }
+      function next() {
+        call("etape").then(function (r) {
+          if (r.error) return fail(r);
+          if (r.steps > 0) {
+            show((total - r.steps) / (total + 1), "Traduction en cours : étape " + (total - r.steps + 1) + " sur " + total + "…");
+            return next();
+          }
+          show(total / (total + 1), "Écriture des pages anglaises sur votre site…");
+          call("publier").then(function (p) {
+            if (p.error) return fail(p);
+            show(1, "Terminé.");
+            window.location.href = p.redirect;
+          });
+        });
+      }
+      show(0.02, "Lecture des pages de votre site…");
+      call("preparer").then(function (r) {
+        if (r.error) return fail(r);
+        total = r.steps;
+        if (!total) { show(0.5, "Rien de nouveau à traduire. Écriture des pages…"); }
+        else { show(1 / (total + 1) / 2, r.pages + " page" + (r.pages > 1 ? "s" : "") + " trouvée" + (r.pages > 1 ? "s" : "") + ". Traduction en cours : étape 1 sur " + total + "…"); }
+        next();
+      });
+    });
+  });
+
   // ---------------------------------------------------------------- mise en route
   function enhance(root) {
     counters(root);
