@@ -9,7 +9,15 @@ DirectoryIndex index.php
     RewriteRule ^ index.php [QSA,L]
 </IfModule>
 
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+</IfModule>
+
 <IfModule mod_headers.c>
+    <Files "sw.js">
+        Header set Cache-Control "no-cache"
+        Header set Service-Worker-Allowed "/"
+    </Files>
     <FilesMatch "\.(css|js|svg|woff2)$">
         Header set Cache-Control "public, max-age=604800"
     </FilesMatch>

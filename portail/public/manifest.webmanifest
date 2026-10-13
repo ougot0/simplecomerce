@@ -1,0 +1,16 @@
+{
+  "name": "Simple Commerce",
+  "short_name": "Simple Commerce",
+  "description": "Modifiez votre site vous-même : produits, prix, stocks, photos, textes.",
+  "lang": "fr",
+  "start_url": "/sites?depuis=application",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4efe6",
+  "theme_color": "#141210",
+  "icons": [
+    { "src": "/assets/logo-96.png", "sizes": "96x96", "type": "image/png" },
+    { "src": "/assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/assets/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

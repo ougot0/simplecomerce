@@ -620,3 +620,10 @@
   });
   refresh();
 })();
+
+/* Application installable : enregistre le petit programme qui permet d'ajouter Simple Commerce à l'écran d'accueil. */
+(function () {
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () { /* pas grave */ }); });
+  }
+})();

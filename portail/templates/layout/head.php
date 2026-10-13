@@ -24,6 +24,11 @@ $v = @filemtime(SC_ROOT . '/public/assets/app.css') . @filemtime(SC_ROOT . '/pub
 <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="/assets/logo-96.png" type="image/png" sizes="96x96">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Simple Commerce">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="/assets/app.css?v=<?= e(substr(md5($v), 0, 8)) ?>">
 <script src="/assets/app.js?v=<?= e(substr(md5($v), 0, 8)) ?>" defer></script>
 </head>

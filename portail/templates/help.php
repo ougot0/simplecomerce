@@ -1,6 +1,6 @@
 <div class="page-head"><div><h1>Aide</h1><p class="page-intro">Tout ce qu'il faut savoir pour mettre à jour votre site. Une question qui n'est pas ici ? Écrivez à la personne qui a créé votre site.</p></div></div>
 <nav class="tabs" aria-label="Sommaire">
-    <a href="#modifier">Modifier</a><a href="#photos">Photos</a><a href="#brouillons">Brouillons</a><a href="#annuler">Annuler</a><a href="#fermer">Fermer le site</a><a href="#equipe">Équipe</a><a href="#hebergeurs">Hébergeurs</a><a href="#preparer">Préparer un site</a>
+    <a href="#modifier">Modifier</a><a href="#photos">Photos</a><a href="#brouillons">Brouillons</a><a href="#annuler">Annuler</a><a href="#fermer">Fermer le site</a><a href="#boutique">Boutique</a><a href="#telephone">Téléphone</a><a href="#equipe">Équipe</a><a href="#hebergeurs">Hébergeurs</a><a href="#preparer">Préparer un site</a>
 </nav>
 <div class="prose">
 <section id="modifier">
@@ -34,6 +34,22 @@
     <h2>Fermer le site temporairement</h2>
     <p>Dans <strong>Réglages → Fermer le site temporairement</strong> : écrivez un message (« Nous sommes en congés jusqu'au 2 novembre ») et, si vous voulez, une date de réouverture. Vos visiteurs voient ce message à la place du site. Rien n'est effacé ; « Rouvrir le site » remet tout comme avant.</p>
     <p>Pour Shopify, WordPress et Webflow, la fermeture se fait dans leur propre administration : Simple Commerce vous indique exactement où cliquer.</p>
+</section>
+<section id="boutique">
+    <h2>Commandes, avis, statistiques</h2>
+    <p><strong>Commandes</strong> (catalogue hébergé) : dans <strong>Réglages → Boutique</strong>, cochez « Recevoir des commandes ». Vos visiteurs remplissent un panier et vous envoient leur commande ; vous la recevez par e-mail et dans <strong>Commandes</strong>, où vous la marquez préparée, remise ou annulée (le stock est remis). Quand un produit est épuisé, ils peuvent laisser leur e-mail : ils sont prévenus tout seuls quand vous remettez du stock.</p>
+    <p><strong>Avis clients</strong> : ouvrez les avis, collez la ligne donnée dans votre site. Chaque avis arrive d'abord chez vous ; vous choisissez de l'afficher et pouvez y répondre.</p>
+    <p><strong>Statistiques</strong> : un clic ajoute un petit compteur à vos pages. Vous voyez le nombre de visites, les pages regardées et d'où viennent vos visiteurs (Google, Instagram…). Sans Google Analytics et sans cookie : pas de bandeau à afficher.</p>
+    <p><strong>Horaires et congés</strong> : dans <strong>Réglages → Horaires</strong>, écrivez vos horaires (une ligne à coller les affiche sur votre site). Dans « Fermer le site temporairement », choisissez une date à venir : le site se fermera et se rouvrira tout seul.</p>
+</section>
+<section id="telephone">
+    <h2>Simple Commerce sur votre téléphone</h2>
+    <p>Ajoutez Simple Commerce à l'écran d'accueil de votre téléphone, comme une application :</p>
+    <ul>
+        <li><strong>iPhone</strong> : ouvrez le portail dans Safari, touchez le bouton <strong>Partager</strong> (le carré avec une flèche), puis <strong>Sur l'écran d'accueil</strong>.</li>
+        <li><strong>Android</strong> : ouvrez le portail dans Chrome, touchez les <strong>trois points</strong> en haut à droite, puis <strong>Installer l'application</strong> (ou « Ajouter à l'écran d'accueil »).</li>
+    </ul>
+    <p>Une icône Simple Commerce apparaît ; vous restez connecté.</p>
 </section>
 <section id="equipe">
     <h2>Travailler à plusieurs</h2>
