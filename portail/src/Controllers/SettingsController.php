@@ -177,6 +177,12 @@ final class SettingsController
                 Session::flash(($close ? 'Votre site est fermé temporairement. Vos visiteurs voient votre message. ' : 'Votre site est de nouveau ouvert. ') . Sites::delayText($site));
                 return Response::redirect($back . '#fermeture');
 
+            case 'boutique':
+                Sites::setExtras($site, ['stockAlert' => max(0, min(999, (int) Req::str('stockAlert', 4)))]);
+                Access::audit($v, 'shop_settings', [], $site['id']);
+                Session::flash('Réglages de la boutique enregistrés.');
+                return Response::redirect($back . '#boutique');
+
             case 'sauvegarder':
                 try {
                     $b = Backups::make($site, 'main');

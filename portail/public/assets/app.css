@@ -1958,3 +1958,15 @@ section[id] { scroll-margin-top: 70px; }
   margin: 0;
   color: inherit;
 }
+
+/* Champ court suivi d'un texte (« 3 pièces ou moins ») */
+.inline-fields {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+input.short {
+  width: 6.5em;
+}

@@ -98,6 +98,13 @@ final class Changes
                 self::rememberMedia($data, $result['after']);
             }
             $change = array_merge($change, $patch);
+            if (in_array($op['type'], ['create', 'update'], true)) {
+                try {
+                    Shop::afterChange($site, $op['section'], $result['before'] ?? null, $result['after'] ?? null, $patch['entry_id']);
+                } catch (\Throwable $e) {
+                    Log::warn('alerte de stock', ['err' => $e]);
+                }
+            }
             if (!empty($result['pageCreated']) || (in_array($op['type'], ['create', 'delete'], true) && ($op['section']['source']['format'] ?? '') === 'html')) {
                 // Une page de projet a pu apparaître ou se détacher : ses textes s'ajoutent ou disparaissent des rubriques.
                 Sites::rediscover($site, $viewer['user']['id']);

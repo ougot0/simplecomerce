@@ -12,7 +12,7 @@ $viewer = $ctx['viewer'];
     </div>
 </div>
 <nav class="tabs" aria-label="Sections des réglages">
-    <a href="#equipe">Équipe</a><a href="#fermeture">Fermeture</a><a href="#sauvegardes">Sauvegardes</a><a href="#rubriques">Rubriques</a><a href="#connexion">Connexion</a><?= $role === 'admin' ? '<a href="#schema">Schéma</a>' : '' ?><a href="#retirer">Retirer</a>
+    <a href="#equipe">Équipe</a><a href="#boutique">Boutique</a><a href="#fermeture">Fermeture</a><a href="#sauvegardes">Sauvegardes</a><a href="#rubriques">Rubriques</a><a href="#connexion">Connexion</a><?= $role === 'admin' ? '<a href="#schema">Schéma</a>' : '' ?><a href="#retirer">Retirer</a>
 </nav>
 
 <section id="equipe" class="section-block first">
@@ -53,6 +53,17 @@ $viewer = $ctx['viewer'];
             <label class="checkbox"><input type="radio" name="role" value="owner"><span>Tout gérer<br><span class="help">En plus : les accès au site, l'équipe et la fermeture.</span></span></label>
         </fieldset>
         <div class="actions"><button class="btn btn-primary" type="submit"><?= icon('users') ?> Inviter</button></div>
+    </form>
+</section>
+
+<section id="boutique" class="section-block">
+    <h2>Boutique</h2>
+    <form method="post" action="<?= e($base) ?>/reglages/boutique" class="form panel">
+        <?= csrf_field() ?>
+        <div class="field"><label for="stock-alert">Me prévenir quand il reste</label>
+            <div class="inline-fields"><input id="stock-alert" name="stockAlert" type="number" min="0" max="999" class="short" value="<?= e((string) \SimpleCommerce\Services\Shop::threshold($site)) ?>"><span>pièces ou moins d'un produit</span></div>
+            <span class="help">Un e-mail est envoyé quand un produit descend à ce niveau, puis quand il est épuisé. Mettez 0 pour ne pas être prévenu.</span></div>
+        <div class="actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
     </form>
 </section>
 

@@ -15,9 +15,10 @@ $thumb = function (array $e) use ($imageKey, $site) {
     $v = $imageKey ? ($e['data'][$imageKey] ?? null) : null;
     return image_src(is_array($v) ? ($v[0] ?? null) : $v, $site['public_url']);
 };
-$state = function (array $e) use ($draftFor, $visKey) {
-    if (isset($draftFor[$e['id']])) { return tag('draft', $draftFor[$e['id']]['publish_at'] ? 'Programmé' : 'Brouillon'); }
-    return $visKey && ($e['data'][$visKey] ?? null) === false ? tag('off', 'Masqué') : tag('live', 'En ligne');
+$state = function (array $e) use ($draftFor, $visKey, $site, $section) {
+    $stock = \SimpleCommerce\Services\Shop::stockTag($site, $section, $e['data']);
+    if (isset($draftFor[$e['id']])) { return tag('draft', $draftFor[$e['id']]['publish_at'] ? 'Programmé' : 'Brouillon') . $stock; }
+    return ($visKey && ($e['data'][$visKey] ?? null) === false ? tag('off', 'Masqué') : tag('live', 'En ligne')) . $stock;
 };
 $href = fn (array $e) => "$sbase/e/" . rawurlencode((string) $e['id']) . (isset($draftFor[$e['id']]) ? '?brouillon=' . $draftFor[$e['id']]['id'] : '');
 $toggle = function (array $e) use ($visKey, $base, $section) {
