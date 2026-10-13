@@ -219,6 +219,41 @@ final class Orders
         return ['ok' => true];
     }
 
+    /**
+     * Numéro de facture : attribué la première fois que la facture est affichée, puis toujours le même,
+     * à la suite pour chaque boutique (AAAA-0001, AAAA-0002…), comme l'exige la loi (numérotation continue).
+     */
+    public static function invoiceNumber(array $site, array $order): string
+    {
+        $key = 'invoice:' . $order['id'];
+        $existing = Repo::meta($key);
+        if ($existing !== null) {
+            return $existing;
+        }
+        $lock = @fopen(SC_STORAGE . '/facture-' . preg_replace('/[^a-f0-9-]/', '', $site['id']) . '.lock', 'c');
+        if ($lock) {
+            flock($lock, LOCK_EX);
+        }
+        try {
+            $existing = Repo::meta($key);
+            if ($existing !== null) {
+                return $existing;
+            }
+            $year = date('Y');
+            $seq = (int) (Repo::meta('invoiceSeq:' . $site['id'] . ':' . $year) ?? 0) + 1;
+            Repo::setMeta('invoiceSeq:' . $site['id'] . ':' . $year, (string) $seq);
+            $number = $year . '-' . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+            Repo::setMeta($key, $number);
+            Repo::setMeta('invoiceDate:' . $order['id'], date('Y-m-d'));
+            return $number;
+        } finally {
+            if ($lock) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+        }
+    }
+
     /** Commandes en CSV (pour un tableur). */
     public static function csv(string $siteId): string
     {

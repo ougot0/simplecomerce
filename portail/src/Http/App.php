@@ -83,6 +83,7 @@ final class App
             ['GET', "$s/commandes", [ShopController::class, 'orders']],
             ['GET', "$s/commandes\.csv", [ShopController::class, 'ordersCsv']],
             ['POST', "$s/commandes/etat", [ShopController::class, 'orderStatus']],
+            ['GET', "$s/commandes/(?<id>[a-f0-9-]{36})/(?<doc>bon|facture)", [ShopController::class, 'orderDocument']],
             ['GET', "$s/avis", [ShopController::class, 'reviews']],
             ['POST', "$s/avis/action", [ShopController::class, 'reviewAction']],
             ['GET', "$s/statistiques", [ShopController::class, 'stats']],

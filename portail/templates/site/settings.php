@@ -66,6 +66,12 @@ $viewer = $ctx['viewer'];
         <label class="checkbox"><input type="checkbox" name="weeklyDigest" value="1" <?= (Sites::extras($site)['weeklyDigest'] ?? true) ? 'checked' : '' ?>><span>Recevoir le résumé du lundi par e-mail<br><span class="help">Chaque lundi matin : visites, commandes, rendez-vous, avis et modifications de la semaine.</span></span></label>
         <?php if ($site['connector'] === 'catalogue'): $x = Sites::extras($site) ?>
         <label class="checkbox"><input type="checkbox" name="orders" value="1" <?= !empty($x['orders']) ? 'checked' : '' ?>><span>Recevoir des commandes depuis mon site<br><span class="help">Vos visiteurs ajoutent des produits à un panier et vous envoient leur commande. Vous la recevez par e-mail et dans « Commandes ». Le paiement se règle directement avec le client (sur place, virement…).</span></span></label>
+        <fieldset class="fieldset-plain"><legend>Vos informations pour les factures</legend>
+            <div class="field"><label for="m-name">Nom de la boutique ou de l'entreprise</label><input id="m-name" name="legalName" type="text" maxlength="120" value="<?= e((string) ($x['legalName'] ?? $site['name'])) ?>"></div>
+            <div class="field"><label for="m-address">Adresse</label><textarea id="m-address" name="legalAddress" rows="2" maxlength="300"><?= e((string) ($x['legalAddress'] ?? '')) ?></textarea></div>
+            <div class="field"><label for="m-siret">SIRET</label><input id="m-siret" name="legalSiret" type="text" maxlength="40" value="<?= e((string) ($x['legalSiret'] ?? '')) ?>"></div>
+            <div class="field"><label for="m-tva">Mention TVA</label><input id="m-tva" name="legalTva" type="text" maxlength="160" value="<?= e((string) ($x['legalTva'] ?? '')) ?>" placeholder="TVA non applicable, article 293 B du CGI"><span class="help">Si vous êtes en micro-entreprise : « TVA non applicable, article 293 B du CGI ». Sinon : votre numéro de TVA.</span></div>
+        </fieldset>
         <div class="field"><label for="order-note">Message affiché sous le panier <span class="optional">(facultatif)</span></label>
             <textarea id="order-note" name="orderNote" rows="2" maxlength="300" placeholder="Exemple : Retrait en boutique sous 48 h, paiement sur place."><?= e((string) ($x['orderNote'] ?? '')) ?></textarea></div>
         <?php endif ?>

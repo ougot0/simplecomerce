@@ -33,6 +33,7 @@ $next = ['nouvelle' => ['preparee', 'Marquer préparée'], 'preparee' => ['envoy
             <ul class="order-items">
                 <?php foreach ($o['items'] as $i): ?><li><?= (int) $i['qte'] ?> × <?= e($i['nom']) ?><?= $i['prix'] !== null ? ' — ' . e(Text::price($i['prix'] * $i['qte'])) : '' ?></li><?php endforeach ?>
             </ul>
+            <div class="small mt-6"><a href="<?= e($base) ?>/commandes/<?= e($o['id']) ?>/bon" target="_blank" rel="noopener">Bon de commande</a><?php if ($o['status'] !== 'annulee'): ?> · <a href="<?= e($base) ?>/commandes/<?= e($o['id']) ?>/facture" target="_blank" rel="noopener">Facture</a><?php endif ?></div>
             <?php if ($o['address']): ?><div class="small"><span class="muted">Adresse :</span> <?= nl2br(e($o['address'])) ?></div><?php endif ?>
             <?php if ($o['note']): ?><div class="small"><span class="muted">Message :</span> <?= nl2br(e($o['note'])) ?></div><?php endif ?>
         </div>

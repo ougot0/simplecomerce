@@ -213,7 +213,8 @@ final class SettingsController
             case 'boutique':
                 $patch = ['stockAlert' => max(0, min(999, (int) Req::str('stockAlert', 4))), 'weeklyDigest' => Req::str('weeklyDigest') === '1'];
                 if ($site['connector'] === 'catalogue') {
-                    $patch += ['orders' => Req::str('orders') === '1', 'orderNote' => Req::str('orderNote', 300)];
+                    $patch += ['orders' => Req::str('orders') === '1', 'orderNote' => Req::str('orderNote', 300),
+                        'legalName' => Req::str('legalName', 120), 'legalAddress' => Req::str('legalAddress', 300), 'legalSiret' => Req::str('legalSiret', 40), 'legalTva' => Req::str('legalTva', 160)];
                 }
                 Sites::setExtras($site, $patch);
                 Access::audit($v, 'shop_settings', [], $site['id']);

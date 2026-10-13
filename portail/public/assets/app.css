@@ -2075,3 +2075,26 @@ input.short {
 .legal ul { padding-left: 20px; }
 .legal-tabs { position: static; }
 .btn-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; font-weight: 600; }
+
+/* Bon de commande et facture (imprimables) */
+.doc-actions { max-width: 820px; margin: 0 auto 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.doc { max-width: 820px; margin: 0 auto; background: #fff; color: #141210; padding: 48px; border: 1px solid var(--line); border-radius: var(--radius); }
+.doc-head { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 36px; }
+.doc-seller { font-size: 20px; }
+.doc-title { text-align: right; }
+.doc-title h1 { font-size: 28px; margin: 0 0 6px; }
+.doc-client { margin-bottom: 28px; }
+.doc-table { width: 100%; border-collapse: collapse; }
+.doc-table th, .doc-table td { padding: 10px 8px; border-bottom: 1px solid #e4dccf; text-align: left; }
+.doc-table .num { text-align: right; white-space: nowrap; }
+.doc-table tfoot td { font-weight: 700; border-bottom: 0; font-size: 18px; }
+.doc-note { margin-top: 20px; }
+.doc-foot { margin-top: 36px; color: #4b453e; }
+.fieldset-plain { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px 4px; margin: 0 0 16px; }
+.fieldset-plain legend { font-weight: 600; padding: 0 6px; }
+@media print {
+  body { background: #fff !important; }
+  .no-print, .demo-bar { display: none !important; }
+  .plain-main { padding: 0 !important; max-width: none !important; }
+  .doc { border: 0; padding: 0; max-width: none; }
+}

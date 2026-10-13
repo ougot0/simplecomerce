@@ -639,3 +639,10 @@
     window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () { /* pas grave */ }); });
   }
 })();
+
+/* Bon de commande / facture : bouton « Imprimer ou enregistrer en PDF ». */
+(function () {
+  document.querySelectorAll("[data-print]").forEach(function (b) {
+    b.addEventListener("click", function () { window.print(); });
+  });
+})();

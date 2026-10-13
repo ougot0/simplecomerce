@@ -51,6 +51,26 @@ final class ShopController
         return Response::redirect("/s/{$site['slug']}/commandes" . (isset(Orders::STATUSES[$back]) ? "?etat=$back" : ''));
     }
 
+    /** Bon de commande ou facture d'une commande, prêt à imprimer ou à enregistrer en PDF. */
+    public static function orderDocument(array $p): Response
+    {
+        $ctx = Access::site($p['slug']);
+        $site = $ctx['site'];
+        $o = \SimpleCommerce\Db::one('SELECT * FROM sc_orders WHERE id = ? AND site_id = ?', [$p['id'], $site['id']]);
+        if (!$o || $site['connector'] !== 'catalogue') {
+            throw Halt::notFound();
+        }
+        $o['items'] = json_decode((string) $o['items'], true) ?: [];
+        $invoice = $p['doc'] === 'facture';
+        if ($invoice && $o['status'] === 'annulee') {
+            Session::flash('Une commande annulée n\'a pas de facture.', 'error');
+            return Response::redirect("/s/{$site['slug']}/commandes");
+        }
+        $number = $invoice ? Orders::invoiceNumber($site, $o) : null;
+        return Response::page('site/order-document', ['site' => $site, 'order' => $o, 'invoice' => $invoice, 'number' => $number,
+            'x' => Sites::extras($site), 'title' => ($invoice ? 'Facture ' . $number : 'Bon de commande n° ' . $o['number'])], 'bare');
+    }
+
     public static function ordersCsv(array $p): Response
     {
         // Fichier avec les coordonnées de tous les clients : réservé à qui gère tout le site.
