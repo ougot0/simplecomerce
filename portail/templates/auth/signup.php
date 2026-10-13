@@ -5,6 +5,7 @@
 <form method="post" action="/inscription" class="form panel" novalidate>
     <?= csrf_field() ?>
     <input type="hidden" name="next" value="<?= e($next) ?>">
+    <?php if (!empty($parrain)): ?><input type="hidden" name="parrain" value="<?= e($parrain) ?>"><div class="notice notice-ok"><p>Vous avez été invité par un client de Simple Commerce : bienvenue !</p></div><?php endif ?>
     <?php if (!empty($error)): ?><div class="notice notice-error" role="alert"><?= e($error) ?></div><?php endif ?>
     <div class="field<?= invalid($errors, 'email') ?>">
         <label for="email">Adresse e-mail</label>

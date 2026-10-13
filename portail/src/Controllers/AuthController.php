@@ -9,6 +9,7 @@ use SimpleCommerce\Http\Response;
 use SimpleCommerce\Repo;
 use SimpleCommerce\Services\Access;
 use SimpleCommerce\Services\Auth;
+use SimpleCommerce\Services\Referral;
 use SimpleCommerce\Support\Session;
 
 /** Comptes : connexion, inscription, lien par e-mail, mon compte, invitations. */
@@ -100,7 +101,7 @@ final class AuthController
         if (!self::signupOpen() && !self::invitationFor($next)) {
             return Response::page('message', ['title' => 'Inscriptions sur invitation', 'text' => "Pour l'instant, on ne peut créer un compte qu'avec une invitation. Demandez-la à la personne qui gère Simple Commerce, ou connectez-vous si vous avez déjà un compte.", 'link' => ['/connexion', 'Se connecter']], 'auth', 403);
         }
-        return Response::page('auth/signup', $state + ['next' => $next, 'values' => ['email' => Req::query('email', 200), 'name' => ''], 'errors' => [], 'firstAccount' => !Config::demo() && !Repo::users()], 'auth', $state ? 422 : 200);
+        return Response::page('auth/signup', $state + ['next' => $next, 'parrain' => preg_replace('/[^A-Za-z0-9]/', '', Req::query('parrain', 20) ?: Req::str('parrain', 20)), 'values' => ['email' => Req::query('email', 200), 'name' => ''], 'errors' => [], 'firstAccount' => !Config::demo() && !Repo::users()], 'auth', $state ? 422 : 200);
     }
 
     public static function signup(array $p): Response
@@ -147,6 +148,7 @@ final class AuthController
             Auth::markUnverified($user['id']);
             $demoLink = Auth::sendVerification($user);
         }
+        Referral::attach($user['id'], Req::str('parrain', 20));
         Repo::log($user['id'], null, null, 'signup', ['conditions_acceptees' => \SimpleCommerce\Services\Legal::UPDATED]);
         if ($first && !Config::demo()) {
             // Le propriétaire du portail vient de créer son compte : la suite des inscriptions reste à son choix.

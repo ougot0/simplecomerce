@@ -6,6 +6,16 @@
 <p class="mb-12"><a class="btn" href="/compte/abonnement">Mon abonnement</a></p>
 <?php endif ?>
 <div class="stack-40">
+    <?php if (\SimpleCommerce\Services\Billing::enabled() && !$viewer['effective']['is_admin'] && !$viewer['assist']): $ref = \SimpleCommerce\Services\Referral::stats($u); ?>
+    <section>
+        <h2 class="mb-14">Parrainage : un mois offert</h2>
+        <div class="panel">
+            <p>Partagez ce lien avec un commerçant ou un artisan. Quand il paie son abonnement pour la première fois, <strong>vous gagnez un mois gratuit</strong>, déduit de votre prochain paiement. Sans limite.</p>
+            <div class="copy-row"><input type="text" readonly value="<?= e(\SimpleCommerce\Services\Referral::link($u)) ?>" class="code" aria-label="Votre lien de parrainage" data-select><button type="button" class="btn btn-small" data-copy><?= icon('copy') ?> Copier</button></div>
+            <p class="muted small mt-6"><?= e(\SimpleCommerce\Support\Text::plural($ref['count'], 'personne inscrite', 'personnes inscrites')) ?> avec votre lien · <?= e(\SimpleCommerce\Support\Text::plural($ref['months'], 'mois gagné', 'mois gagnés')) ?></p>
+        </div>
+    </section>
+    <?php endif ?>
     <section>
         <h2 class="mb-14">Votre nom</h2>
         <form method="post" class="form panel"><?= csrf_field() ?><input type="hidden" name="intent" value="name">

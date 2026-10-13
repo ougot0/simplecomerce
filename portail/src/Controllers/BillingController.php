@@ -164,4 +164,24 @@ final class BillingController
             . ($hookMissing ? ' Attention : les avis de paiement n\'ont pas pu être branchés (adresse du portail sans https).' : ''), $hookMissing ? 'warn' : 'ok');
         return Response::redirect('/admin/abonnements');
     }
+
+    public static function revenue(): Response
+    {
+        $v = Access::requireAdmin();
+        $report = null;
+        $error = null;
+        if (Billing::ready()) {
+            try {
+                $report = Billing::revenue();
+            } catch (\Throwable $e) {
+                $error = 'Stripe ne répond pas pour le moment. Réessayez dans quelques minutes.';
+            }
+        }
+        $local = [];
+        foreach (Db::all('SELECT status, COUNT(*) AS n FROM sc_billing GROUP BY status') as $r) {
+            $local[$r['status']] = (int) $r['n'];
+        }
+        return Response::page('admin/revenue', ['viewer' => $v, 'report' => $report, 'error' => $error, 'local' => $local, 'users' => count(Repo::users()),
+            'ready' => Billing::ready(), 'title' => 'Revenus', 'wide' => true], 'plain');
+    }
 }

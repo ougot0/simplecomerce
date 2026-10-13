@@ -91,6 +91,8 @@ final class App
             ['POST', "$s/reglages/(?<action>[a-z-]{2,30})", [SettingsController::class, 'action']],
 
             ['GET', '/aide', [MiscController::class, 'help']],
+            ['GET', '/aide/contact', [MiscController::class, 'helpForm']],
+            ['POST', '/aide/contact', [MiscController::class, 'helpSend']],
             ['GET', '/media/(?<id>[0-9a-f-]{36})', [MiscController::class, 'media']],
             ['GET', '/cron', [MiscController::class, 'cron']],
             ['GET', '/demo-sites/(?<site>[a-z-]+)(?<rest>/.*)?', [MiscController::class, 'demoSite']],
@@ -107,6 +109,7 @@ final class App
             ['POST', '/admin/confirmer-email', [AdminController::class, 'confirmEmail']],
             ['GET', '/admin/emails', [AdminController::class, 'emails']],
             ['POST', '/admin/emails', [AdminController::class, 'saveEmails']],
+            ['GET', '/admin/revenus', [BillingController::class, 'revenue']],
             ['GET', '/admin/abonnements', [BillingController::class, 'admin']],
             ['POST', '/admin/abonnements', [BillingController::class, 'saveAdmin']],
         ];

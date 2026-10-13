@@ -22,6 +22,36 @@ final class MiscController
         return Response::page('help', ['viewer' => $v, 'title' => 'Aide'], $v ? 'plain' : 'auth');
     }
 
+    /** « Besoin d'aide ? » : un message envoyé directement à l'équipe de Simple Commerce. */
+    public static function helpForm(array $p = [], array $state = []): Response
+    {
+        $v = Access::requireViewer();
+        return Response::page('help-contact', $state + ['viewer' => $v, 'title' => 'Besoin d\'aide ?', 'from' => \SimpleCommerce\Http\Req::safeNext(\SimpleCommerce\Http\Req::query('depuis', 300)) ?: '/sites'], 'plain');
+    }
+
+    public static function helpSend(): Response
+    {
+        $v = Access::requireViewer();
+        $msg = trim(\SimpleCommerce\Http\Req::str('message', 4000));
+        $from = \SimpleCommerce\Http\Req::safeNext(\SimpleCommerce\Http\Req::str('from', 300)) ?: '/sites';
+        if (mb_strlen($msg) < 5) {
+            return self::helpForm([], ['error' => 'Écrivez votre question en quelques mots.', 'message' => $msg]);
+        }
+        $bucket = 'help:' . $v['user']['id'];
+        if (\SimpleCommerce\Repo::tooManyAttempts($bucket, 5, 3600)) {
+            return self::helpForm([], ['error' => 'Vous avez déjà envoyé plusieurs messages : nous vous répondons au plus vite.', 'message' => $msg]);
+        }
+        \SimpleCommerce\Repo::recordAttempt($bucket);
+        $u = $v['effective'];
+        $ok = \SimpleCommerce\Support\Mailer::send(\SimpleCommerce\Config::contactEmail(), 'Demande d\'aide de ' . ($u['name'] ?: $u['email']),
+            "Message de {$u['name']} <{$u['email']}> :\n\n$msg\n\n---\nPage : " . \SimpleCommerce\Config::url($from)
+            . ($v['assist'] ? "\n(envoyé par l'administrateur en assistance)" : '') . "\nRépondez simplement à cet e-mail pour lui écrire.", $u['email']);
+        \SimpleCommerce\Repo::log($v['user']['id'], null, null, 'help_request', ['page' => $from, 'sent' => $ok]);
+        \SimpleCommerce\Support\Session::flash($ok ? 'Message envoyé ! Nous vous répondons par e-mail à ' . $u['email'] . ', en général dans la journée.'
+            : 'Le message n\'a pas pu partir. Écrivez-nous directement à ' . \SimpleCommerce\Config::contactEmail() . '.', $ok ? 'ok' : 'error');
+        return \SimpleCommerce\Http\Response::redirect($from);
+    }
+
     /** Photo en attente : visible seulement par les personnes du site concerné. */
     public static function media(array $p): Response
     {

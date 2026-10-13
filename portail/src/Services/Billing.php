@@ -23,7 +23,7 @@ use SimpleCommerce\Support\Vault;
 final class Billing
 {
     private const AD = 'simplecommerce-billing';
-    public const EVENTS = ['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'];
+    public const EVENTS = ['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.paid'];
     public const PLANS = ['mois' => 'priceId', 'an' => 'priceIdYear'];
     public const LABELS = ['essai' => 'Pas encore abonné', 'actif' => 'Abonné', 'impaye' => 'Paiement en retard', 'termine' => 'Abonnement arrêté', 'gratuit' => 'Offert'];
 
@@ -335,6 +335,12 @@ final class Billing
             $patch['webhookId'] = (string) $w['id'];
             $patch['webhookSecret'] = (string) $w['secret'];
             $done[] = 'avis de paiement branchés';
+        } elseif ($s['webhookId'] !== '') {
+            // Avis déjà branchés : on s'assure qu'ils comprennent les nouveaux évènements (paiements pour le parrainage).
+            try {
+                self::stripe('POST', '/webhook_endpoints/' . rawurlencode($s['webhookId']), ['enabled_events' => self::EVENTS]);
+            } catch (\Throwable) {
+            }
         }
         self::saveSettings($patch);
         return $done;
@@ -383,6 +389,73 @@ final class Billing
         return (string) self::stripe('POST', '/billing_portal/sessions', ['customer' => $r['customer_id'], 'return_url' => Config::url('/compte/abonnement')])['url'];
     }
 
+    /** Avoir (montant négatif sur le solde du client Stripe) : déduit de ses prochaines factures. */
+    public static function addCredit(string $customerId, int $cents, string $why): void
+    {
+        self::stripe('POST', '/customers/' . rawurlencode($customerId) . '/balance_transactions', ['amount' => -abs($cents), 'currency' => 'eur', 'description' => $why]);
+    }
+
+    /** Liste complète d'une ressource Stripe (pages de 100, au plus 1 000 éléments). */
+    private static function stripeAll(string $path): array
+    {
+        $out = [];
+        $after = null;
+        for ($i = 0; $i < 10; $i++) {
+            $page = self::stripe('GET', $path . (str_contains($path, '?') ? '&' : '?') . 'limit=100' . ($after ? '&starting_after=' . rawurlencode($after) : ''));
+            $data = (array) ($page['data'] ?? []);
+            $out = array_merge($out, $data);
+            if (empty($page['has_more']) || !$data) {
+                break;
+            }
+            $after = (string) end($data)['id'];
+        }
+        return $out;
+    }
+
+    /**
+     * Tableau des revenus pour l'administrateur, lu chez Stripe : abonnés, revenu mensuel régulier,
+     * ce qui arrivera après les périodes gratuites, encaissé sur 30 jours et depuis le 1er janvier, arrêts.
+     */
+    public static function revenue(): array
+    {
+        $subs = self::stripeAll('/subscriptions?status=all');
+        $monthly = fn (array $s) => array_sum(array_map(function ($it) {
+            $p = $it['price'] ?? [];
+            $amount = ((int) ($p['unit_amount'] ?? 0)) * ((int) ($it['quantity'] ?? 1)) / 100;
+            return ($p['recurring']['interval'] ?? 'month') === 'year' ? $amount / 12 : $amount;
+        }, (array) ($s['items']['data'] ?? [])));
+        $r = ['active' => 0, 'trialing' => 0, 'late' => 0, 'canceled30' => 0, 'mrr' => 0.0, 'futureMrr' => 0.0, 'monthlyPlans' => 0, 'yearlyPlans' => 0, 'trialEnds' => []];
+        $since = time() - 30 * 86400;
+        foreach ($subs as $s) {
+            $status = (string) ($s['status'] ?? '');
+            $yearly = ($s['items']['data'][0]['price']['recurring']['interval'] ?? '') === 'year';
+            if ($status === 'active') {
+                $r['active']++;
+                $r['mrr'] += $monthly($s);
+                $r[$yearly ? 'yearlyPlans' : 'monthlyPlans']++;
+            } elseif ($status === 'trialing') {
+                $r['trialing']++;
+                $r['futureMrr'] += $monthly($s);
+                $r[$yearly ? 'yearlyPlans' : 'monthlyPlans']++;
+                if (is_numeric($s['trial_end'] ?? null)) {
+                    $m = gmdate('Y-m', (int) $s['trial_end']);
+                    $r['trialEnds'][$m] = ($r['trialEnds'][$m] ?? 0) + 1;
+                }
+            } elseif (in_array($status, ['past_due', 'unpaid'], true)) {
+                $r['late']++;
+            } elseif ($status === 'canceled' && (int) ($s['canceled_at'] ?? 0) >= $since) {
+                $r['canceled30']++;
+            }
+        }
+        ksort($r['trialEnds']);
+        $paid = fn (int $from) => array_sum(array_map(fn ($inv) => (int) ($inv['amount_paid'] ?? 0), self::stripeAll('/invoices?status=paid&created[gte]=' . $from))) / 100;
+        $r['paid30'] = $paid($since);
+        $r['paidYear'] = $paid((int) (new \DateTimeImmutable(date('Y') . '-01-01 00:00:00', new \DateTimeZone('Europe/Paris')))->format('U'));
+        $r['mrr'] = round($r['mrr'], 2);
+        $r['futureMrr'] = round($r['futureMrr'], 2);
+        return $r;
+    }
+
     /** Met à jour un compte d'après un abonnement Stripe. */
     public static function applySubscription(array $sub): void
     {
@@ -409,10 +482,14 @@ final class Billing
         if ($row['status'] === 'gratuit') {
             $status = 'gratuit'; // offert par l'administrateur : on garde
         }
+        $applyCredits = empty($row['customer_id']) && !empty($sub['customer']);
         self::update($row['user_id'], ['status' => $status, 'subscription_id' => (string) $sub['id'], 'customer_id' => (string) ($sub['customer'] ?? $row['customer_id']),
             'period_end' => is_numeric($end) ? gmdate('Y-m-d\TH:i:s\Z', (int) $end) : $row['period_end'],
             'trial_ends_at' => $trialEnd ?? ($status === 'actif' ? Db::now() : $row['trial_ends_at'])]);
         Repo::log($row['user_id'], null, null, 'billing_' . $status, ['sub' => substr((string) $sub['id'], -6)]);
+        if ($applyCredits || (int) (Repo::meta('refPending:' . $row['user_id']) ?? 0) > 0) {
+            Referral::applyPending((string) $row['user_id']);
+        }
     }
 
     /** Avis envoyé par Stripe (signature vérifiée). @return bool vrai si l'avis est authentique */
@@ -439,6 +516,12 @@ final class Billing
             case 'customer.subscription.updated':
             case 'customer.subscription.deleted':
                 self::applySubscription($obj);
+                break;
+            case 'invoice.paid':
+                // Premier vrai paiement (montant > 0) : le parrain éventuel gagne un mois.
+                if ((int) ($obj['amount_paid'] ?? 0) > 0 && ($row = Db::one('SELECT user_id FROM sc_billing WHERE customer_id = ?', [(string) ($obj['customer'] ?? '')]))) {
+                    Referral::onFirstPayment((string) $row['user_id']);
+                }
                 break;
         }
         return true;
