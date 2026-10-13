@@ -276,6 +276,11 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (soir) : **adresse de contact de Simple Commerce : `simplecommercess@gmail.com`** (`Config::contactEmail()`,
+  surchargeable par `'contact_email'` dans config.php) : Reply-To des e-mails du portail, page d'aide, pied de la page
+  d'accueil (modèle seulement : son `public/accueil.html` déjà créé n'est pas réécrit). Expéditeur (`mail_from`) inchangé
+  (adresse du domaine, sinon indésirables). Stripe : nom public, logo (logo-512.png, < 512 Ko), secteur « Logiciels/SaaS »
+  réglés par lui dans Stripe. Version D.
 - 13/10/2026 (après-midi) : le propriétaire a testé en réel (sa clé Stripe, code promo) et s'est abonné **sans carte** : venait
   de `payment_method_collection=if_required` + essai côté portail. Demande : **il faut s'abonner avec sa carte pour avoir les
   7 jours gratuits**, puis prélèvement. Donc : plus d'essai sans abonnement (nouveau compte = « Pas encore abonné », lecture

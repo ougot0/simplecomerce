@@ -50,6 +50,12 @@ final class Config
         return (bool) (self::$values['demo'] ?? false);
     }
 
+    /** Adresse où les clients écrivent à Simple Commerce (réponses aux e-mails, page d'aide, page d'accueil). */
+    public static function contactEmail(): string
+    {
+        return (string) (self::get('contact_email') ?: 'simplecommercess@gmail.com');
+    }
+
     public static function get(string $key, mixed $default = null): mixed
     {
         return self::$values[$key] ?? $default;

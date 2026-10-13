@@ -1,4 +1,4 @@
-<div class="page-head"><div><h1>Aide</h1><p class="page-intro">Tout ce qu'il faut savoir pour mettre à jour votre site. Une question qui n'est pas ici ? Écrivez à la personne qui a créé votre site.</p></div></div>
+<div class="page-head"><div><h1>Aide</h1><p class="page-intro">Tout ce qu'il faut savoir pour mettre à jour votre site. Une question qui n'est pas ici ? Écrivez-nous à <a href="mailto:<?= e(\SimpleCommerce\Config::contactEmail()) ?>"><?= e(\SimpleCommerce\Config::contactEmail()) ?></a>.</p></div></div>
 <nav class="tabs" aria-label="Sommaire">
     <a href="#modifier">Modifier</a><a href="#photos">Photos</a><a href="#brouillons">Brouillons</a><a href="#annuler">Annuler</a><a href="#fermer">Fermer le site</a><a href="#boutique">Boutique</a><a href="#telephone">Téléphone</a><a href="#equipe">Équipe</a><a href="#hebergeurs">Hébergeurs</a><a href="#preparer">Préparer un site</a>
 </nav>

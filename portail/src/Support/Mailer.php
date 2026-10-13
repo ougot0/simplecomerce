@@ -27,7 +27,7 @@ final class Mailer
         }
         $headers = [
             'From' => 'Simple Commerce <' . $from . '>',
-            'Reply-To' => $replyTo && filter_var($replyTo, FILTER_VALIDATE_EMAIL) ? $replyTo : $from,
+            'Reply-To' => $replyTo && filter_var($replyTo, FILTER_VALIDATE_EMAIL) ? $replyTo : Config::contactEmail(),
             'MIME-Version' => '1.0',
             'Content-Type' => 'text/plain; charset=UTF-8',
             'Content-Transfer-Encoding' => '8bit',
