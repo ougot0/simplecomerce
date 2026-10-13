@@ -69,6 +69,13 @@ portail/
 └── README.md               ← guide de mise en ligne OVH pas à pas (tenu à jour)
 ```
 
+**Application iPhone** : dossier `application-iphone/` à la racine (hors du zip OVH) — Swift/UIKit + WKWebView qui ouvre
+`https://simplecommercess.com` (`Reglages.swift`), projet décrit par `project.yml` (XcodeGen, `.xcodeproj` non commité),
+construit par GitHub Actions (`.github/workflows/application-iphone.yml`, Mac `macos-15`, Xcode le plus récent = 26.x) :
+aperçu simulateur + photo à chaque push, envoi TestFlight via « Run workflow » + secrets `APPLE_TEAM_ID`, `APPLE_CLE_ID`,
+`APPLE_EMETTEUR_ID`, `APPLE_CLE_P8`. Guide pas à pas : `application-iphone/README.md` ; textes App Store :
+`FICHE-APP-STORE.md` ; captures 1320×2868 : `captures/`. Bundle ID `com.simplecommercess.app`.
+
 Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modifiable), `docs/API-SUR-MESURE.md`
 (contrat de l'API pour les sites avec base de données), `docs/ARCHITECTURE.md` (version Next.js),
 `examples/simplecommerce-endpoint.php` (exemple d'API sur mesure).
@@ -159,6 +166,15 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
     (Administration → Abonnements), essai gratuit puis lecture seule, les **propriétaires** paient, les actions
     automatiques (commandes, congés) ne sont jamais bloquées ; sauvegardes de la nuit dans `storage/backups/`.
 
+19. **Application iPhone, App Store seulement** (13/10/2026 : « je veux que sur Apple », pas de Play Store, pas
+    d'installation par Safari). Gratuit impossible : compte Apple Developer 99 €/an (payé le 30/09/2026, commande
+    W1829815798, **inscription bloquée** : nom du compte ≠ carte d'identité, facture au nom « Dev Dev » ; il ne veut PAS
+    de remboursement, il appelle Apple pour faire corriger). Choix : application native légère autour du portail (pas
+    Capacitor, pas de Node), construite sur GitHub (pas besoin de Mac). **Dans l'application, aucun paiement ni lien vers
+    le paiement** (règle App Store 3.1.1) : le portail reconnaît `SimpleCommerceApp/` dans l'identité du navigateur
+    (`Req::inApp()`, affichage seulement, jamais un droit). **Suppression du compte** dans « Mon compte » (exigence
+    App Store 5.1.1(v)) : `AccountDeletion`.
+
 ## 6. Sécurité — règles non négociables (demande initiale)
 
 - **Identifiants des sites chiffrés en base** (`Vault` : sodium XChaCha20-Poly1305, l'identifiant du site sert de donnée
@@ -194,6 +210,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 - **Ne pas réécrire tout un fichier de contenu** du client : toujours passer par `Formats::parse/serialize` qui conserve le style.
 - **Ne pas supprimer la version Next.js** sans accord explicite du propriétaire.
 - **Aucun « Kumao/Coumao »** dans le portail.
+- **Ne pas remettre de bouton, de prix ou de lien de paiement visible dans l'application iPhone** (`Req::inApp()`) : refus Apple.
 
 ## 8. Mettre en ligne (OVH) — résumé (détails dans `portail/README.md`)
 
@@ -227,7 +244,7 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 - Démo locale : `cd portail && SC_DEMO=1 SC_ALLOW_PRIVATE=1 php -S 127.0.0.1:8080 -t public public/index.php`
   → http://127.0.0.1:8080. Comptes : `marie@patisserie-lune.fr` / `tarte-citron-2026`, `paul@atelier-brun.fr` /
   `maison-bois-2026`, `alex@simplecommerce.demo` / `atelier-demo-2026` (admin). Effacer `storage/` remet tout à zéro.
-- Tests : `php portail/tests/run.php` (88 vérifications : sécurité, coffre, photos, formulaires, formats, moteur de
+- Tests : `php portail/tests/run.php` (96 vérifications : sécurité, coffre, photos, formulaires, formats, moteur de
   contenu sur les sites de démo, annulation). `php -l` sur chaque fichier modifié.
 - Tests navigateur : Playwright via `node_modules/playwright-core` du dépôt, Chromium `/opt/pw-browsers/chromium`.
 - Tests réels faits pendant la session (à refaire si on touche aux connecteurs) : MariaDB + installation web ;
@@ -243,6 +260,12 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 
 ## 10. Ce qui reste à faire
 
+0. **Application iPhone** : (a) le propriétaire appelle Apple (rappels programmés le 14/10 à 10 h, 12 h, 16 h) pour
+   débloquer son compte développeur ; (b) envoyer chez OVH la version du portail avec suppression de compte et
+   `inApp` ; (c) compte de démonstration pour Apple ; (d) étapes A à D du `application-iphone/README.md` (Bundle ID,
+   app dans App Store Connect, clé API → secrets GitHub, Run workflow « Envoyer à Apple », soumission). L'envoi TestFlight
+   n'a **jamais été essayé** (pas de compte Apple actif). Ensuite : notifications « nouvelle commande » (APNs), liens
+   universels (`apple-app-site-association`, Team ID nécessaire).
 1. **Accompagner l'installation sur l'OVH du propriétaire** (étapes section 8) et le premier vrai site relié ;
    lui demander des captures d'écran en cas de souci.
 2. **Tester en réel les fonctions du 13/10/2026** : abonnements avec un vrai compte Stripe (jamais testé contre Stripe :
@@ -280,6 +303,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit, 4) : **application iPhone** (décision 19). Conseils : App Store payant (99 €/an), Play Store
+  écarté par lui. Compte Apple « en attente » : diagnostic (nom ≠ pièce d'identité, facture « Dev Dev »), appel Apple
+  conseillé (developer.apple.com/contact → Program Enrollment → Phone, ou 0800 046 046). Portail : `Req::inApp`,
+  abonnement/parrainage cachés dans l'app, `/` → `/connexion` dans l'app, **Supprimer mon compte** (mot de passe +
+  « SUPPRIMER », Stripe arrêté d'abord, sites seuls retirés, sites partagés transmis, seul admin protégé). Application
+  `application-iphone/` construite avec succès par GitHub Actions (Xcode 26.3). Captures App Store faites dans la démo.
+  96 vérifications.
 - 13/10/2026 (nuit, 3) : **douze nouvelles fonctions** (« 8 9 12 13 15 17 20 21 22 24 25 26 »), version **G** :
   bon de commande / facture imprimable (n° de facture annuel, mentions du commerçant dans Réglages → Boutique) ;
   aperçu « Sur téléphone » ; **prise de rendez-vous** (`Bookings`, table `sc_bookings`, base v5, ligne `/rdv/{clé}.js`,

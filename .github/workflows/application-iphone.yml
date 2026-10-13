@@ -60,11 +60,30 @@ jobs:
           cd build/Build/Products/Release-iphonesimulator
           ditto -c -k --sequesterRsrc --keepParent SimpleCommerce.app "$GITHUB_WORKSPACE/apercu-iphone.zip"
 
+      - name: Lancer l'application sur un iPhone virtuel et la photographier
+        continue-on-error: true
+        run: |
+          ID=$(xcrun simctl list -j devices available | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k in sorted(d, reverse=True) if 'iOS' in k for x in d[k] if x['name'].startswith('iPhone')))")
+          xcrun simctl boot "$ID"
+          xcrun simctl bootstatus "$ID" -b
+          xcrun simctl install "$ID" build/Build/Products/Release-iphonesimulator/SimpleCommerce.app
+          xcrun simctl launch "$ID" com.simplecommercess.app
+          sleep 20
+          mkdir -p "$GITHUB_WORKSPACE/photos"
+          xcrun simctl io "$ID" screenshot "$GITHUB_WORKSPACE/photos/application-ouverte.png"
+
       - uses: actions/upload-artifact@v4
         with:
           name: apercu-iphone
           path: apercu-iphone.zip
           retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: photo-application
+          path: photos/
+          retention-days: 30
+          if-no-files-found: ignore
 
   envoyer:
     name: Envoi à Apple (TestFlight)
