@@ -265,7 +265,11 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
   `ougot`, `aminteriorss`, `simplecommerce`…). Restauration OVH refusée avant 7 h (« Wait until 7:00 AM ») ; accès `-snapN` en FTP
   refusé chez lui. À faire après 7 h : FTP-SSH → Restaurer une sauvegarde → la plus récente (13/10 0 h 01). Copies anciennes des
   sites données en secours (dépôts coumao/yotam + copie AM). Erreur 500 de Simple Commerce causée par `REDIRECT_STATUS` dans
-  le `.htaccess` racine (retiré). D'après les logs OVH, la racine du multisite est en fait **`simplecommerce/public`** à vérifier.
+  le `.htaccess` racine (retiré). Sites récupérés par **Cyberduck en FTP avec `coumaoq-snap1`** (sauvegarde du 12/10 0 h 01 ;
+  WinSCP échouait), puis renvoyés en SFTP. Erreur « 501 Not Implemented » même sur les images : **le `.ovhconfig` de la racine
+  `/home/coumaoq/` manquait** (non recopié) → recopié depuis le zip (PHP 8.3, stable64) → tout remarche. Disposition finale
+  confirmée : multisite → `simplecommerce/public/public`, code dans `/home/coumaoq/simplecommerce/public/`. Portail reparti de
+  zéro (nouveau compte admin, sites à relier de nouveau).
 - 12/10/2026 (nuit, 8) : **page d'accueil publique = vraie page** `public/accueil.html` (créée au premier passage depuis
   `templates/public/accueil.html`, `{{ORIGINE}}` remplacé ; ignorée par git, jamais écrasée par les mises à jour) : le propriétaire
   peut relier simplecommercess.com à son propre portail (SFTP/FTP OVH, dossier `/simplecommerce/public/public`) et modifier ses
