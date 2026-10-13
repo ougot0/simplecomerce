@@ -261,5 +261,32 @@ test('Version anglaise', function () {
     check($T::enPath('dossier/projet.html') === 'dossier/projet-en.html', 'nom des pages anglaises');
 });
 
+test('Suppression de compte', function () {
+    \SimpleCommerce\Services\Demo::ensure();
+    $R = \SimpleCommerce\Repo::class;
+    $D = \SimpleCommerce\Services\AccountDeletion::class;
+    $tag = bin2hex(random_bytes(4));
+    $a = $R::createUser("a-$tag@test.invalid", 'Alice', 'mot-de-passe-1');
+    $b = $R::createUser("b-$tag@test.invalid", 'Bruno', 'mot-de-passe-2');
+    $cfg = ['slug' => '', 'name' => '', 'public_url' => '', 'connector' => 'catalogue', 'config' => []];
+    $seul = $R::createSite(['slug' => "seul-$tag", 'name' => 'Seul'] + $cfg, $a['id']);
+    $partage = $R::createSite(['slug' => "partage-$tag", 'name' => 'Partagé'] + $cfg, $a['id']);
+    $R::addMember($partage['id'], $b['id'], 'editor');
+    $plan = array_column(array_map(fn ($p) => [$p['site']['name'], $p['fate']], $D::plan($a['id'])), 1, 0);
+    check(($plan['Seul'] ?? '') === 'retire' && ($plan['Partagé'] ?? '') === 'transmis', 'ce qui arrivera à chaque site est annoncé');
+    $D::delete($a);
+    check($R::user($a['id']) === null, 'compte effacé');
+    check($R::site($seul['id']) === null, 'site sans autre membre retiré du portail');
+    check(($R::membership($partage['id'], $b['id'])['role'] ?? '') === 'owner', 'site partagé transmis au membre restant');
+    check($D::problem(['is_admin' => 1]) !== null || (int) \SimpleCommerce\Db::value('SELECT COUNT(*) FROM sc_users WHERE is_admin = 1') > 1, 'le seul administrateur ne peut pas se supprimer');
+    $D::delete($R::user($b['id']));
+    check($R::site($partage['id']) === null, 'nettoyage');
+    $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 SimpleCommerceApp/1.0';
+    check(\SimpleCommerce\Http\Req::inApp(), "application iPhone reconnue");
+    $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Safari/604.1';
+    check(!\SimpleCommerce\Http\Req::inApp(), 'Safari ordinaire non concerné');
+    unset($_SERVER['HTTP_USER_AGENT']);
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

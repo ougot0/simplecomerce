@@ -32,7 +32,7 @@ $v = @filemtime(SC_ROOT . '/public/assets/app.css') . @filemtime(SC_ROOT . '/pub
 <link rel="stylesheet" href="/assets/app.css?v=<?= e(substr(md5($v), 0, 8)) ?>">
 <script src="/assets/app.js?v=<?= e(substr(md5($v), 0, 8)) ?>" defer></script>
 </head>
-<body>
+<body<?= \SimpleCommerce\Http\Req::inApp() ? ' class="in-app"' : '' ?>>
 <?php if (Config::demo()): ?>
 <div class="demo-bar">Démonstration : rien n'est envoyé sur Internet. Les sites des clients sont des copies locales, remises à zéro en effaçant le dossier storage/.</div>
 <?php endif ?>

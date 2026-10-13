@@ -211,6 +211,9 @@ final class Billing
 
     public static function blockedMessage(): string
     {
+        if (\SimpleCommerce\Http\Req::inApp()) {
+            return 'La publication est en pause sur ce site. Rien n\'a été effacé.';
+        }
         return 'Pour publier, le propriétaire du site doit avoir un abonnement (« Mon compte → Abonnement »).' . (self::freeSentence() !== '' ? ' ' . self::freeSentence() . '.' : '') . ' Rien n\'a été effacé.';
     }
 
@@ -387,6 +390,26 @@ final class Billing
             throw new AdapterError('invalid', 'Aucun abonnement à gérer pour le moment.');
         }
         return (string) self::stripe('POST', '/billing_portal/sessions', ['customer' => $r['customer_id'], 'return_url' => Config::url('/compte/abonnement')])['url'];
+    }
+
+    /**
+     * Compte supprimé : l'abonnement Stripe est arrêté tout de suite (plus aucun prélèvement).
+     * Lève une erreur si Stripe ne répond pas : on ne supprime pas un compte qui continuerait d'être prélevé.
+     */
+    public static function cancelForDeletion(string $userId): void
+    {
+        $r = Db::one('SELECT * FROM sc_billing WHERE user_id = ?', [$userId]);
+        $sub = (string) ($r['subscription_id'] ?? '');
+        if ($sub === '' || self::secret('secretKey') === '') {
+            return;
+        }
+        try {
+            self::stripe('DELETE', '/subscriptions/' . rawurlencode($sub));
+        } catch (AdapterError $e) {
+            if (!str_contains((string) ($e->detail ?? ''), 'No such subscription') && !str_contains((string) ($e->detail ?? ''), 'canceled')) {
+                throw $e;
+            }
+        }
     }
 
     /** Avoir (montant négatif sur le solde du client Stripe) : déduit de ses prochaines factures. */

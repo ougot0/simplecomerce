@@ -66,6 +66,15 @@ final class Req
         return $host !== '' ? (self::isHttps() ? 'https://' : 'http://') . $host : rtrim(\SimpleCommerce\Config::url(), '/');
     }
 
+    /**
+     * Page ouverte dans l'application iPhone de Simple Commerce ? (elle ajoute « SimpleCommerceApp/x » à l'identité du navigateur.)
+     * Sert seulement à adapter l'affichage (Apple interdit de proposer un paiement hors de l'App Store) : jamais à accorder un droit.
+     */
+    public static function inApp(): bool
+    {
+        return str_contains((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 'SimpleCommerceApp/');
+    }
+
     public static function isHttps(): bool
     {
         return in_array(strtolower((string) ($_SERVER['HTTPS'] ?? '')), ['on', '1'], true)

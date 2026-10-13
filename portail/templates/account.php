@@ -6,7 +6,7 @@
 <p class="mb-12"><a class="btn" href="/compte/abonnement">Mon abonnement</a></p>
 <?php endif ?>
 <div class="stack-40">
-    <?php if (\SimpleCommerce\Services\Billing::enabled() && !$viewer['effective']['is_admin'] && !$viewer['assist']): $ref = \SimpleCommerce\Services\Referral::stats($u); ?>
+    <?php if (\SimpleCommerce\Services\Billing::enabled() && !$viewer['effective']['is_admin'] && !$viewer['assist'] && !\SimpleCommerce\Http\Req::inApp()): $ref = \SimpleCommerce\Services\Referral::stats($u); ?>
     <section>
         <h2 class="mb-14">Parrainage : un mois offert</h2>
         <div class="panel">
@@ -43,4 +43,28 @@
             <div class="actions"><button class="btn" type="submit">Changer le mot de passe</button></div>
         </form>
     </section>
+    <?php if (!$viewer['assist']): $plan = $deletePlan ?? []; ?>
+    <section id="supprimer">
+        <h2 class="mb-14">Supprimer mon compte</h2>
+        <form method="post" class="form panel"><?= csrf_field() ?><input type="hidden" name="intent" value="delete">
+            <?php if (!empty($deleteError)): ?><div class="notice notice-error" role="alert"><?= e($deleteError) ?></div><?php endif ?>
+            <p>Votre compte et vos accès sont effacés de Simple Commerce. <strong>Vos sites ne sont pas touchés</strong> : ils restent en ligne tels quels.</p>
+            <?php if ($plan): ?>
+            <ul class="list-plain">
+                <?php foreach ($plan as $item): ?>
+                <li><strong><?= e($item['site']['name']) ?></strong> : <?= $item['fate'] === 'retire' ? 'retiré de Simple Commerce (personne d\'autre ne s\'en occupe)' : ($item['fate'] === 'transmis' ? 'reste géré par ' . e($item['others'][0]['user']['name'] ?: $item['others'][0]['user']['email']) . (count($item['others']) > 1 ? ' et les autres membres' : '') : 'vous le quittez, les autres membres le gardent') ?>.</li>
+                <?php endforeach ?>
+            </ul>
+            <?php endif ?>
+            <?php if (\SimpleCommerce\Services\Billing::enabled() && !$viewer['effective']['is_admin']): ?>
+            <p class="help">Si vous avez un abonnement, il est arrêté tout de suite : plus aucun prélèvement.</p>
+            <?php endif ?>
+            <?php if ((int) \SimpleCommerce\Support\Session::get('magic_at') <= time() - 1800): ?>
+            <div class="field"><label for="del-current">Votre mot de passe</label><input id="del-current" name="current" type="password" autocomplete="current-password"></div>
+            <?php endif ?>
+            <div class="field"><label for="del-confirm">Écrivez SUPPRIMER pour confirmer</label><input id="del-confirm" name="confirm" type="text" autocomplete="off" autocapitalize="characters"></div>
+            <div class="actions"><button class="btn btn-danger" type="submit">Supprimer définitivement mon compte</button></div>
+        </form>
+    </section>
+    <?php endif ?>
 </div>
