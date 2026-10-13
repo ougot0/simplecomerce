@@ -226,11 +226,11 @@ final class Backups
             }
             $zip->addFromString('base-de-donnees.json', json_encode($tables, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
-        if (is_file(SC_ROOT . '/config.php')) {
-            $zip->addFile(SC_ROOT . '/config.php', 'config.php');
+        if (is_file(\SimpleCommerce\Config::path())) {
+            $zip->addFile(\SimpleCommerce\Config::path(), 'config.php');
         }
         $zip->addFromString('LISEZ-MOI.txt', "Sauvegarde complète de Simple Commerce du " . date('d/m/Y H:i') . ".\n\n"
-            . "Pour tout remettre : renvoyez config.php à la racine du portail (à côté de src/) et storage/simplecommerce.sqlite dans storage/.\n"
+            . "Pour tout remettre : mettez config.php et le dossier storage/ dans le dossier « simplecommerce-donnees », à côté du dossier du portail.\n"
             . "ATTENTION : config.php contient la clé qui protège les accès des sites. Gardez ce fichier en lieu sûr, ne l'envoyez à personne.\n");
         $zip->close();
         $bytes = (string) file_get_contents($tmp);

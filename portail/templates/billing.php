@@ -15,7 +15,7 @@ use SimpleCommerce\Support\Text;
     <?php if ($row['status'] === 'essai' && $active): ?>
     <p>Un accès d'essai vous est offert jusqu'au <strong><?= e(Text::date($row['trial_ends_at'], true, true)) ?></strong>. Abonnez-vous quand vous voulez pour continuer ensuite.</p>
     <?php elseif ($row['status'] === 'essai'): ?>
-    <p>Pour modifier vos sites, choisissez votre abonnement.<?= $trial > 0 ? " <strong>Les $trial premiers jours sont gratuits</strong> : votre carte est demandée, mais rien n'est prélevé avant le " . e(Text::date(gmdate('Y-m-d', time() + $trial * 86400), true, true)) . '. Vous pouvez arrêter avant sans rien payer.' : '' ?></p>
+    <p>Pour modifier vos sites, choisissez votre abonnement.<?= $trial > 0 ? ' <strong>' . e(Billing::freeSentence()) . "</strong> : votre carte est demandée, mais rien n'est prélevé avant le " . e(Text::date(gmdate('Y-m-d', time() + $trial * 86400), true, true)) . '. Vous pouvez arrêter avant sans rien payer.' : '' ?></p>
     <?php elseif (Billing::inTrial($row)): ?>
     <p>Merci ! Vous profitez de vos jours gratuits jusqu'au <strong><?= e(Text::date($row['trial_ends_at'], true, true)) ?></strong>. Le premier paiement aura lieu ce jour-là, sur la carte que vous avez donnée. Vous pouvez arrêter avant sans rien payer.</p>
     <?php elseif ($row['status'] === 'actif'): ?>
@@ -38,7 +38,7 @@ use SimpleCommerce\Support\Text;
         </form>
         <?php endforeach ?>
     </div>
-    <p class="help mt-6">Le paiement se fait par carte sur la page sécurisée de Stripe. Simple Commerce ne voit jamais votre carte. Sans engagement : vous arrêtez quand vous voulez.</p>
+    <p class="help mt-6">Le paiement se fait par carte sur la page sécurisée de Stripe. Simple Commerce ne voit jamais votre carte. Sans engagement : vous arrêtez quand vous voulez. En vous abonnant, vous acceptez les <a href="/conditions-generales-vente">conditions générales de vente</a>.</p>
     <?php endif ?>
     <?php if ($row['customer_id'] && $row['status'] !== 'gratuit'): ?>
     <form method="post" action="/compte/abonnement/gerer" class="mt-12"><?= csrf_field() ?>

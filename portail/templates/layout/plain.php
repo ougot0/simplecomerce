@@ -23,6 +23,7 @@ include dirname(__DIR__) . '/partials/assist.php';
     <?php include dirname(__DIR__) . '/partials/billing-banner.php'; ?>
     <?php include dirname(__DIR__) . '/partials/flash.php'; ?>
     <?= $content ?>
+    <?php include dirname(__DIR__) . '/partials/legal-links.php'; ?>
 </main>
 </body>
 </html>

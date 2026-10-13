@@ -135,7 +135,7 @@ final class BillingController
         if ($monthly <= 0 && $yearly <= 0) {
             return self::admin([], ['error' => 'Indiquez au moins un prix (par mois ou par an).']);
         }
-        $patch = ['trialDays' => max(0, min(365, (int) Req::str('trialDays', 4)))];
+        $patch = ['trialDays' => max(0, min(730, (int) Req::str('trialDays', 4)))];
         if ($key !== '') {
             $old = Billing::settings();
             // Nouvelle clé (autre compte Stripe, ou passage de l'essai au réel) : tout est à recréer de ce côté.
@@ -160,7 +160,7 @@ final class BillingController
         Billing::saveSettings(['enabled' => true]);
         Repo::log($v['user']['id'], null, null, 'billing_settings', ['enabled' => true, 'done' => $done]);
         $hookMissing = Billing::fingerprint('webhookSecret') === '';
-        Session::flash('Abonnements activés' . ($done ? ' (' . implode(', ', $done) . ')' : '') . '. Pour publier, chaque client s\'abonne avec sa carte : ' . $patch['trialDays'] . ' jours gratuits, puis prélèvement.'
+        Session::flash('Abonnements activés' . ($done ? ' (' . implode(', ', $done) . ')' : '') . '. Pour publier, chaque client s\'abonne avec sa carte : ' . (Billing::freeLabel($patch['trialDays']) !== '' ? Billing::freeLabel($patch['trialDays']) . ' offert' . (str_starts_with(Billing::freeLabel($patch['trialDays']), 'les') ? 's' : (str_starts_with(Billing::freeLabel($patch['trialDays']), 'la') ? 'e' : '')) . ', puis prélèvement.' : 'prélèvement tout de suite.')
             . ($hookMissing ? ' Attention : les avis de paiement n\'ont pas pu être branchés (adresse du portail sans https).' : ''), $hookMissing ? 'warn' : 'ok');
         return Response::redirect('/admin/abonnements');
     }

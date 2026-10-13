@@ -117,6 +117,10 @@ final class AuthController
         if ($problem = Auth::passwordProblem($password)) {
             $errors['password'] = $problem;
         }
+        $values['terms'] = Req::str('terms') === '1';
+        if (!$values['terms']) {
+            $errors['terms'] = 'Cochez la case pour accepter les conditions.';
+        }
         if (Repo::tooManyAttempts('signup:' . Req::ip(), 10, 3600)) {
             return self::signupForm($p, ['error' => 'Trop de comptes créés depuis cette connexion. Réessayez dans une heure.', 'values' => $values]);
         }
@@ -138,7 +142,7 @@ final class AuthController
         Repo::recordAttempt('signup:' . Req::ip());
         $first = !Repo::users();
         $user = Repo::createUser($email, $name, $password, $first && !Config::demo());
-        Repo::log($user['id'], null, null, 'signup');
+        Repo::log($user['id'], null, null, 'signup', ['conditions_acceptees' => \SimpleCommerce\Services\Legal::UPDATED]);
         if ($first && !Config::demo()) {
             // Le propriétaire du portail vient de créer son compte : la suite des inscriptions reste à son choix.
             Session::flash('Bienvenue ! Vous êtes l\'administrateur de Simple Commerce. Vous pouvez maintenant relier vos sites.');

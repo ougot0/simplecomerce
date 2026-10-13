@@ -16,6 +16,7 @@
     <main class="auth-main" id="contenu">
         <?php include dirname(__DIR__) . '/partials/flash.php'; ?>
         <?= $content ?>
+        <?php include dirname(__DIR__) . '/partials/legal-links.php'; ?>
     </main>
 </div>
 </body>

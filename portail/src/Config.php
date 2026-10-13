@@ -15,7 +15,7 @@ final class Config
 
     public static function path(): string
     {
-        return SC_ROOT . '/config.php';
+        return SC_DATA . '/config.php';
     }
 
     public static function load(): void
@@ -25,6 +25,11 @@ final class Config
             $values = require $file;
             self::$values = is_array($values) ? $values : [];
             self::$installed = true;
+            // Base déménagée avec le dossier des données : on la cherche à sa nouvelle place.
+            $db = self::$values['db'] ?? null;
+            if (is_array($db) && ($db['driver'] ?? '') === 'sqlite' && !is_file((string) ($db['path'] ?? '')) && is_file(SC_STORAGE . '/' . basename((string) $db['path']))) {
+                self::$values['db']['path'] = SC_STORAGE . '/' . basename((string) $db['path']);
+            }
         }
         if (getenv('SC_DEMO') === '1') {
             self::$values['demo'] = true;

@@ -36,12 +36,37 @@ final class Billing
     {
         $s = json_decode((string) Repo::meta('billing_settings', '{}'), true) ?: [];
         return $s + ['enabled' => false, 'priceId' => '', 'priceIdYear' => '', 'monthly' => 9, 'yearly' => 90, 'productId' => '', 'webhookId' => '',
-            'priceLabel' => '', 'trialDays' => 7, 'promoCode' => '', 'promoId' => '', 'secretKey' => '', 'webhookSecret' => ''];
+            'priceLabel' => '', 'trialDays' => 365, 'promoCode' => '', 'promoId' => '', 'secretKey' => '', 'webhookSecret' => ''];
     }
 
     private static function api(): string
     {
         return rtrim((string) (getenv('SC_STRIPE_API') ?: 'https://api.stripe.com'), '/') . '/v1';
+    }
+
+    /** « la première année », « le premier mois », « les 7 premiers jours »… (0 = '') */
+    public static function freeLabel(?int $days = null): string
+    {
+        $d = $days ?? (int) self::settings()['trialDays'];
+        return match (true) {
+            $d <= 0 => '',
+            $d >= 365 && $d <= 366 => 'la première année',
+            $d === 730 => 'les deux premières années',
+            $d >= 28 && $d <= 31 => 'le premier mois',
+            $d === 1 => 'le premier jour',
+            default => "les $d premiers jours",
+        };
+    }
+
+    /** « La première année est gratuite », « Les 7 premiers jours sont gratuits »… ('' sans gratuité) */
+    public static function freeSentence(): string
+    {
+        $l = self::freeLabel();
+        if ($l === '') {
+            return '';
+        }
+        $verb = str_starts_with($l, 'les') ? ' sont gratuits' : (str_starts_with($l, 'la') ? ' est gratuite' : ' est gratuit');
+        return mb_strtoupper(mb_substr($l, 0, 1)) . mb_substr($l, 1) . $verb;
     }
 
     public static function euros(float $n): string
@@ -186,7 +211,7 @@ final class Billing
 
     public static function blockedMessage(): string
     {
-        return 'Pour publier, le propriétaire du site doit avoir un abonnement (« Mon compte → Abonnement », ' . (int) self::settings()['trialDays'] . ' jours gratuits pour commencer). Rien n\'a été effacé.';
+        return 'Pour publier, le propriétaire du site doit avoir un abonnement (« Mon compte → Abonnement »).' . (self::freeSentence() !== '' ? ' ' . self::freeSentence() . '.' : '') . ' Rien n\'a été effacé.';
     }
 
     // --- Stripe ---

@@ -22,7 +22,7 @@ final class InstallController
     /** @return array<int, array{0: string, 1: bool, 2: string}> */
     public static function checks(): array
     {
-        $writable = is_writable(SC_ROOT) || (is_file(Config::path()) && is_writable(Config::path()));
+        $writable = is_writable(SC_DATA) || (is_file(Config::path()) && is_writable(Config::path()));
         return [
             ['PHP 8.1 ou plus récent', PHP_VERSION_ID >= 80100, 'Version actuelle : ' . PHP_VERSION . '. Chez OVH : fichier .ovhconfig, ligne app.engine.version=8.3.'],
             ['Chiffrement (sodium)', function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt'), 'Extension sodium manquante : choisissez une version de PHP plus récente.'],
@@ -53,7 +53,7 @@ final class InstallController
     public static function autoInstall(): bool
     {
         if (!extension_loaded('pdo_sqlite') || PHP_VERSION_ID < 80100 || !function_exists('sodium_crypto_aead_xchacha20poly1305_ietf_encrypt')
-            || !is_dir(SC_STORAGE) || !is_writable(SC_STORAGE) || !is_writable(SC_ROOT)) {
+            || !is_dir(SC_STORAGE) || !is_writable(SC_STORAGE) || !is_writable(SC_DATA)) {
             return false;
         }
         $db = ['driver' => 'sqlite', 'path' => SC_STORAGE . '/simplecommerce.sqlite'];

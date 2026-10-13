@@ -18,6 +18,10 @@
         <?= field_error($errors, 'password') ?>
     </div>
     <label class="checkbox"><input type="checkbox" name="remember" value="1" checked><span>Rester connecté<br><span class="help">Vous restez connecté sur cet appareil jusqu'à ce que vous cliquiez sur « Se déconnecter ». Décochez sur un ordinateur partagé.</span></span></label>
+    <div class="field<?= invalid($errors, 'terms') ?>">
+        <label class="checkbox"><input type="checkbox" name="terms" value="1" required <?= !empty($values['terms']) ? 'checked' : '' ?>><span>J'accepte les <a href="/conditions-generales-utilisation" target="_blank">conditions générales d'utilisation</a> et <a href="/conditions-generales-vente" target="_blank">de vente</a>, et j'ai lu la <a href="/confidentialite" target="_blank">politique de confidentialité</a>.</span></label>
+        <?= field_error($errors, 'terms') ?>
+    </div>
     <div class="actions"><button class="btn btn-primary" type="submit">Créer mon compte</button></div>
     <p>Déjà un compte ? <a href="/connexion<?= $next !== '/sites' ? '?next=' . e(rawurlencode($next)) : '' ?>">Se connecter</a></p>
 </form>

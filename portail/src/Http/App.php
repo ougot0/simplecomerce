@@ -10,6 +10,7 @@ use SimpleCommerce\Controllers\BillingController;
 use SimpleCommerce\Controllers\CatalogueController;
 use SimpleCommerce\Controllers\EditorController;
 use SimpleCommerce\Controllers\InstallController;
+use SimpleCommerce\Controllers\LegalController;
 use SimpleCommerce\Controllers\MiscController;
 use SimpleCommerce\Controllers\PublicController;
 use SimpleCommerce\Controllers\SettingsController;
@@ -37,6 +38,7 @@ final class App
             ['GET', '/', [AuthController::class, 'home']],
             ['GET', '/robots.txt', [AuthController::class, 'robots']],
             ['GET', '/sitemap.xml', [AuthController::class, 'sitemap']],
+            ['GET', '/(?<page>mentions-legales|conditions-generales-utilisation|conditions-generales-vente|confidentialite)', [LegalController::class, 'page']],
             ['GET', '/connexion', [AuthController::class, 'loginForm']],
             ['POST', '/connexion', [AuthController::class, 'login']],
             ['GET', '/inscription', [AuthController::class, 'signupForm']],
@@ -98,6 +100,8 @@ final class App
             ['POST', '/admin/suspendre', [AdminController::class, 'setStatus']],
             ['POST', '/admin/inscriptions', [AdminController::class, 'setSignup']],
             ['GET', '/admin/sauvegarde', [AdminController::class, 'portalBackup']],
+            ['GET', '/admin/informations-legales', [LegalController::class, 'admin']],
+            ['POST', '/admin/informations-legales', [LegalController::class, 'save']],
             ['GET', '/admin/abonnements', [BillingController::class, 'admin']],
             ['POST', '/admin/abonnements', [BillingController::class, 'saveAdmin']],
         ];

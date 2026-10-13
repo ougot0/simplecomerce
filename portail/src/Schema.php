@@ -10,7 +10,7 @@ namespace SimpleCommerce;
 final class Schema
 {
     /** 2 : liste d'attente, commandes, avis, statistiques, abonnements (12/10/2026). */
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     /** @return string[] */
     public static function statements(string $driver): array
@@ -133,6 +133,12 @@ final class Schema
         $done = true;
         if ((int) (Db::value("SELECT value FROM sc_meta WHERE name = 'schema_version'") ?? 0) < self::VERSION) {
             self::install();
+            // 13/10/2026 : la première année d'abonnement devient gratuite (avant : 7 jours).
+            $billing = json_decode((string) Repo::meta('billing_settings', '{}'), true) ?: [];
+            if ($billing && (int) ($billing['trialDays'] ?? 0) < 365) {
+                $billing['trialDays'] = 365;
+                Repo::setMeta('billing_settings', json_encode($billing));
+            }
             // Catalogues hébergés créés avant l'arrivée de nouveaux champs : on les ajoute.
             foreach (Repo::sites() as $site) {
                 $schema = $site['connector'] === 'catalogue' ? Repo::schema($site['id']) : null;

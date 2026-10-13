@@ -207,7 +207,8 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 6. OVH → Plus → Tâches planifiées → `simplecommerce/bin/cron.php`, PHP 8.3, toutes les heures.
 7. Plus tard : acheter le domaine (Noms de domaine → Commander), l'ajouter au multisite (même dossier),
    changer `'url'` dans `config.php`.
-8. Mise à jour : renvoyer `src/`, `templates/`, `public/`, `vendor/`, `bin/` ; ne jamais écraser `config.php` ni `storage/`.
+8. Mise à jour : depuis la version E, remplacer tout le dossier du portail est sans risque : `config.php` et `storage/`
+   sont dans le dossier voisin `simplecommerce-donnees/` (à ne jamais supprimer ni écraser).
 
 **Nom de domaine acheté (12/10/2026) : `simplecommercess.com`** (deux « s » à la fin), SSL Let's Encrypt actif.
 **Attention, disposition réelle chez lui** : le contenu de l'archive a été envoyé DANS `/home/coumaoq/simplecommerce/public/`
@@ -276,6 +277,17 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit) : **les comptes disparaissaient à chaque envoi du zip** (il remplace tout le dossier `public/` chez OVH,
+  qui contenait `config.php` et `storage/`). Désormais **données hors du dossier du portail** : `SC_DATA` =
+  `dirname(SC_ROOT)/simplecommerce-donnees` (chez lui `/home/coumaoq/simplecommerce/simplecommerce-donnees/`), avec
+  `config.php` et `storage/` (base SQLite, sessions, photos, sauvegardes) ; déménagement automatique au 1er passage
+  (`sc_data_dir()` dans bootstrap, chemin SQLite recalé dans `Config::load`) ; démo et `SC_DATA` (variable) inchangés.
+  Testé : ancienne install → déménagement → dossier portail remplacé en entier → comptes conservés. **Pages légales**
+  publiques (`LegalController`, `templates/legal/` : mentions légales, CGU, CGV, confidentialité ; infos éditeur dans
+  Administration → Informations légales, « [à compléter] » sinon ; OVH et Stripe déjà cités), liens en bas des pages,
+  case « J'accepte les conditions » obligatoire à l'inscription (acceptation notée dans le journal). **Première année
+  gratuite** : `trialDays` 365 (migration base v4 qui passe l'ancien 7 → 365), textes via `Billing::freeSentence()`.
+  Version E. ⚠ Ne JAMAIS supprimer `simplecommerce-donnees`.
 - 13/10/2026 (soir) : **adresse de contact de Simple Commerce : `simplecommercess@gmail.com`** (`Config::contactEmail()`,
   surchargeable par `'contact_email'` dans config.php) : Reply-To des e-mails du portail, page d'aide, pied de la page
   d'accueil (modèle seulement : son `public/accueil.html` déjà créé n'est pas réécrit). Expéditeur (`mail_from`) inchangé

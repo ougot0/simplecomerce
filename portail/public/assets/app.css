@@ -2067,3 +2067,10 @@ input.short {
 .plan-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
 .plan-choice { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--bg); }
 .plan-price { font-size: 22px; font-weight: 700; }
+
+/* Pages légales */
+.legal-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-3); }
+.legal-links a { color: inherit; }
+.legal h2 { font-size: 19px; margin: 28px 0 8px; }
+.legal ul { padding-left: 20px; }
+.legal-tabs { position: static; }
