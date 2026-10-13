@@ -7,6 +7,7 @@ use SimpleCommerce\Config;
 use SimpleCommerce\Controllers\AdminController;
 use SimpleCommerce\Controllers\AuthController;
 use SimpleCommerce\Controllers\BillingController;
+use SimpleCommerce\Controllers\BookingController;
 use SimpleCommerce\Controllers\CatalogueController;
 use SimpleCommerce\Controllers\EditorController;
 use SimpleCommerce\Controllers\InstallController;
@@ -39,6 +40,8 @@ final class App
             ['GET', '/robots.txt', [AuthController::class, 'robots']],
             ['GET', '/sitemap.xml', [AuthController::class, 'sitemap']],
             ['GET', '/(?<page>mentions-legales|conditions-generales-utilisation|conditions-generales-vente|confidentialite)', [LegalController::class, 'page']],
+            ['GET', '/rdv/annuler/(?<token>[\w-]{20,64})', [BookingController::class, 'cancelPage']],
+            ['POST', '/rdv/annuler/(?<token>[\w-]{20,64})', [BookingController::class, 'cancelByCustomer']],
             ['GET', '/connexion', [AuthController::class, 'loginForm']],
             ['POST', '/connexion', [AuthController::class, 'login']],
             ['GET', '/inscription', [AuthController::class, 'signupForm']],
@@ -81,6 +84,8 @@ final class App
             ['GET', "$s/sauvegarde", [SiteController::class, 'backup']],
             ['GET', "$s/sauvegardes/(?<name>\d{8}-\d{6}-[a-z]{4,5}\.zip)", [SettingsController::class, 'downloadBackup']],
             ['GET', "$s/telephone", [SiteController::class, 'phone']],
+            ['GET', "$s/rendez-vous", [BookingController::class, 'page']],
+            ['POST', "$s/rendez-vous/action", [BookingController::class, 'action']],
             ['GET', "$s/commandes", [ShopController::class, 'orders']],
             ['GET', "$s/commandes\.csv", [ShopController::class, 'ordersCsv']],
             ['POST', "$s/commandes/etat", [ShopController::class, 'orderStatus']],
@@ -187,6 +192,12 @@ final class App
             return BillingController::webhook();
         }
         // Envois des sites des clients : « Prévenez-moi », commandes, avis, statistiques (sans session ni cookie).
+        if (preg_match('#^/rdv/(?<key>[a-f0-9]{24})$#', $path, $m) && in_array($method, ['POST', 'OPTIONS'], true)) {
+            return $method === 'OPTIONS' ? PublicController::preflight() : PublicController::book($m);
+        }
+        if (($method === 'GET' || $method === 'HEAD') && preg_match('#^/rdv/(?<key>[a-f0-9]{24})(?<js>\.js|/creneaux)$#', $path, $m)) {
+            return $m['js'] === '.js' ? PublicController::bookingScript($m) : PublicController::bookingSlots($m);
+        }
         if (preg_match('#^/(?:catalogue/(?<ckey>[a-f0-9]{24})/(?<what>alerte|commande)|avis/(?<akey>[a-f0-9]{24})|p/(?<pkey>[a-f0-9]{24}))$#', $path, $m)) {
             if ($method === 'OPTIONS') {
                 return PublicController::preflight();

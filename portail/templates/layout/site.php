@@ -41,6 +41,7 @@ include dirname(__DIR__) . '/partials/assist.php';
                     <?php if ($site['connector'] === 'catalogue'): ?>
                         <?= $navItem("$base/commandes", 'Commandes', 'bag', false, $shop['ordersToDo']) ?>
                     <?php endif ?>
+                    <?= $navItem("$base/rendez-vous", 'Rendez-vous', 'calendar') ?>
                     <?= $navItem("$base/avis", 'Avis clients', 'star', false, $shop['reviewsToCheck']) ?>
                     <?= $navItem("$base/statistiques", 'Statistiques', 'chart') ?>
                 </ul>

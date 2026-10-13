@@ -10,7 +10,7 @@ namespace SimpleCommerce;
 final class Schema
 {
     /** 2 : liste d'attente, commandes, avis, statistiques, abonnements (12/10/2026). */
-    public const VERSION = 4;
+    public const VERSION = 5;
 
     /** @return string[] */
     public static function statements(string $driver): array
@@ -92,6 +92,10 @@ final class Schema
                 user_id $id PRIMARY KEY, status VARCHAR(16) NOT NULL, trial_ends_at VARCHAR(32) NULL,
                 customer_id VARCHAR(191) NULL, subscription_id VARCHAR(191) NULL, period_end VARCHAR(32) NULL,
                 updated_at VARCHAR(32) NOT NULL)$engine",
+            "CREATE TABLE IF NOT EXISTS sc_bookings (
+                id $id PRIMARY KEY, site_id $id NOT NULL, service VARCHAR(160) NOT NULL, starts_at VARCHAR(32) NOT NULL, ends_at VARCHAR(32) NOT NULL,
+                customer_name VARCHAR(120) NOT NULL, email $key NOT NULL, phone VARCHAR(40) NOT NULL DEFAULT '', note TEXT NOT NULL,
+                status VARCHAR(16) NOT NULL, token_hash VARCHAR(64) NOT NULL, created_at VARCHAR(32) NOT NULL)$engine",
         ];
         $indexes = [
             'CREATE INDEX sc_members_user ON sc_members (user_id)',
@@ -103,6 +107,7 @@ final class Schema
             'CREATE INDEX sc_waitlist_site ON sc_waitlist (site_id, product_id)',
             'CREATE INDEX sc_orders_site ON sc_orders (site_id, created_at)',
             'CREATE INDEX sc_reviews_site ON sc_reviews (site_id, status)',
+            'CREATE INDEX sc_bookings_site ON sc_bookings (site_id, starts_at)',
         ];
         return [...$tables, ...$indexes];
     }

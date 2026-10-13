@@ -192,4 +192,59 @@ final class PublicController
         }
         return self::cors(new Response('', 204, ['Content-Type' => 'text/plain']));
     }
+
+    // --- Rendez-vous ---
+
+    private static function bookingSite(string $key): ?array
+    {
+        $s = Sites::byPublicKey($key);
+        return $s && \SimpleCommerce\Services\Bookings::settings($s)['enabled'] ? $s : null;
+    }
+
+    public static function bookingScript(array $p): Response
+    {
+        $site = self::bookingSite($p['key']);
+        if (!$site) {
+            return new Response('', 404, ['Content-Type' => 'application/javascript; charset=utf-8', 'Access-Control-Allow-Origin' => '*']);
+        }
+        $data = \SimpleCommerce\Services\Bookings::publicData($site) + ['api' => Config::url('/rdv/' . $p['key'])];
+        $js = '(function(){var D=' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) . ';'
+            . file_get_contents(SC_ROOT . '/public/assets/rdv-widget.js') . '})();';
+        return new Response($js, 200, ['Content-Type' => 'application/javascript; charset=utf-8', 'Cache-Control' => 'public, max-age=60', 'Access-Control-Allow-Origin' => '*']);
+    }
+
+    /** Jours ouverts, ou créneaux d'un jour (?jour=AAAA-MM-JJ), pour une prestation. */
+    public static function bookingSlots(array $p): Response
+    {
+        $site = self::bookingSite($p['key']);
+        if (!$site) {
+            return self::json(['error' => 'Prise de rendez-vous fermée.'], 404);
+        }
+        $i = (int) Req::query('prestation', 3);
+        $day = Req::query('jour', 10);
+        return $day !== ''
+            ? self::json(['jour' => $day, 'creneaux' => \SimpleCommerce\Services\Bookings::slots($site, $i, $day)])
+            : self::json(['jours' => \SimpleCommerce\Services\Bookings::openDays($site, $i)]);
+    }
+
+    public static function book(array $p): Response
+    {
+        $site = self::bookingSite($p['key']);
+        $d = self::body();
+        if (!$site) {
+            return self::json(['error' => 'Prise de rendez-vous fermée.'], 404);
+        }
+        if (self::str($d, 'site_web', 10) !== '') {
+            return self::json(['ok' => true, 'message' => 'Rendez-vous confirmé.']);
+        }
+        $c = ['nom' => self::str($d, 'nom', 120), 'email' => mb_strtolower(self::str($d, 'email', 200)), 'telephone' => self::str($d, 'telephone', 40), 'note' => self::str($d, 'note', 600)];
+        if ($c['nom'] === '' || !filter_var($c['email'], FILTER_VALIDATE_EMAIL)) {
+            return self::json(['error' => 'Indiquez votre nom et une adresse e-mail valide.'], 422);
+        }
+        if (self::limited('rdv', 6, 3600)) {
+            return self::json(['error' => 'Trop de demandes. Réessayez plus tard ou contactez l\'établissement.'], 429);
+        }
+        $r = \SimpleCommerce\Services\Bookings::book($site, (int) ($d['prestation'] ?? -1), self::str($d, 'jour', 10), self::str($d, 'heure', 5), $c);
+        return $r['ok'] ? self::json(['ok' => true, 'message' => "C'est noté : rendez-vous le {$r['when']}. Un e-mail de confirmation vous a été envoyé."]) : self::json(['error' => $r['error']], 409);
+    }
 }
