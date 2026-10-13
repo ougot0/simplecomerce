@@ -102,6 +102,8 @@ final class App
             ['GET', '/admin/sauvegarde', [AdminController::class, 'portalBackup']],
             ['GET', '/admin/informations-legales', [LegalController::class, 'admin']],
             ['POST', '/admin/informations-legales', [LegalController::class, 'save']],
+            ['GET', '/admin/emails', [AdminController::class, 'emails']],
+            ['POST', '/admin/emails', [AdminController::class, 'saveEmails']],
             ['GET', '/admin/abonnements', [BillingController::class, 'admin']],
             ['POST', '/admin/abonnements', [BillingController::class, 'saveAdmin']],
         ];

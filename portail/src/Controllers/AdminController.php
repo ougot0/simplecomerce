@@ -114,4 +114,46 @@ final class AdminController
         Session::flash($status === 'suspended' ? "« {$site['name']} » est suspendu : ses clients n'y ont plus accès." : "« {$site['name']} » est réactivé.");
         return Response::redirect('/admin');
     }
+
+    // --- E-mails (Brevo) ---
+
+    public static function emails(array $p = [], array $state = []): Response
+    {
+        $v = Access::requireAdmin();
+        $key = \SimpleCommerce\Support\Mailer::brevoKey();
+        return Response::page('admin/emails', $state + ['viewer' => $v, 'settings' => \SimpleCommerce\Support\Mailer::settings(),
+            'keyHint' => $key !== '' ? \SimpleCommerce\Support\Vault::fingerprint($key) : '', 'title' => 'E-mails'], 'plain');
+    }
+
+    public static function saveEmails(): Response
+    {
+        $v = Access::requireAdmin();
+        if (Req::str('intent') === 'test') {
+            $ok = \SimpleCommerce\Support\Mailer::send($v['user']['email'], 'Simple Commerce : e-mail de test',
+                "Bonjour,\n\nCet e-mail de test est bien arrivé : les e-mails de Simple Commerce fonctionnent.\n\nSimple Commerce");
+            $err = \SimpleCommerce\Support\Mailer::$lastError;
+            Session::flash($ok && $err === null ? "E-mail de test envoyé à {$v['user']['email']}. Regardez aussi dans les indésirables."
+                : ($err !== null ? 'Brevo a refusé l\'envoi : ' . $err . ($ok ? ' (envoyé quand même par l\'hébergeur)' : '') : 'L\'envoi a échoué.'), $ok && $err === null ? 'ok' : 'error');
+            return Response::redirect('/admin/emails');
+        }
+        $key = trim(Req::raw('brevoKey'));
+        $sender = mb_strtolower(Req::str('senderEmail', 200));
+        if ($key !== '' && !preg_match('/^xkeysib-[A-Za-z0-9-]{20,}$/', $key)) {
+            return self::emails([], ['error' => 'La clé Brevo commence par « xkeysib- » (Brevo → votre nom en haut à droite → SMTP et API → Clés API).']);
+        }
+        if ($sender !== '' && !filter_var($sender, FILTER_VALIDATE_EMAIL)) {
+            return self::emails([], ['error' => 'Adresse d\'expéditeur invalide.']);
+        }
+        $patch = ['senderEmail' => $sender, 'senderName' => Req::str('senderName', 80) ?: 'Simple Commerce'];
+        if ($key !== '') {
+            $patch['brevoKey'] = $key;
+        }
+        if (Req::str('intent') === 'retirer') {
+            $patch = ['brevoKey' => ''];
+        }
+        \SimpleCommerce\Support\Mailer::saveSettings($patch);
+        Repo::log($v['user']['id'], null, null, 'mail_settings');
+        Session::flash(Req::str('intent') === 'retirer' ? 'Brevo retiré : les e-mails repartent par l\'hébergeur.' : 'Réglages enregistrés. Envoyez-vous un e-mail de test.');
+        return Response::redirect('/admin/emails');
+    }
 }
