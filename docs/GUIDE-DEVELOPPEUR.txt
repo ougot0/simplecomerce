@@ -6,7 +6,7 @@
 voir docs/FICHE-TECHNIQUE.txt. Les décisions prises avec le propriétaire du
 projet, et leur historique, sont dans CLAUDE.md à la racine du projet.
 
-Mise à jour : 13 octobre 2026.
+Mise à jour : 13 octobre 2026 (soir), version G (SC_VERSION dans src/bootstrap.php).
 
 
 ================================================================================
@@ -68,9 +68,16 @@ Démonstration (2 faux sites, 3 comptes, base SQLite) :
     Effacer portail/storage/ remet la démo à zéro.
 
 Sans SC_DEMO, le premier passage installe le portail tout seul (voir 9).
+Lancer aussi avec SC_URL=http://127.0.0.1:8080 : sinon les scripts publics
+(catalogue, avis, rendez-vous…) appellent la mauvaise adresse.
+
+Variables pour tester contre des imitations des services extérieurs :
+    SC_STRIPE_API      adresse de remplacement de l'API Stripe
+    SC_BREVO_API       adresse de remplacement de l'API Brevo
+    SC_ANTHROPIC_API   adresse de remplacement de l'API Claude
 
 Tests :
-    php portail/tests/run.php        61 vérifications, sans dépendance
+    php portail/tests/run.php        88 vérifications, sans dépendance
     php -l <fichier>                 sur chaque fichier modifié
 
 Tests navigateur : Playwright (playwright-core) avec Chromium.
@@ -112,7 +119,15 @@ src/                    Code PHP, autoload PSR-4 « SimpleCommerce\ » → src/
                         connexion, schéma (admin), retirer le site
     AdminController     Administration : stats, journal, assistance, suspension
     CatalogueController Pages PUBLIQUES du catalogue hébergé (sans session)
-    MiscController      Aide, photos en attente, cron web, sites de démo
+    PublicController    Adresses PUBLIQUES appelées par les sites des clients :
+                        horaires, avis, statistiques, rendez-vous, commandes
+    ShopController      Commandes, bon de commande / facture, avis, statistiques
+    BookingController   Page « Rendez-vous » et annulation par le client
+    TranslationController  Page « Version anglaise » (pas à pas)
+    BillingController   Abonnement du client, réglages Stripe, revenus
+    LegalController     Mentions légales, CGU, CGV, confidentialité
+    MiscController      Aide, « Besoin d'aide ? », photos en attente, cron web,
+                        sites de démo
     InstallController   Installation automatique au premier passage
 
   Services/
@@ -126,6 +141,18 @@ src/                    Code PHP, autoload PSR-4 « SimpleCommerce\ » → src/
     Scheduler           Publication des brouillons programmés
     Notifier            Avis par e-mail aux autres membres
     Demo                Données de démonstration
+    Backups             Sauvegardes de la nuit + sauvegarde complète du portail
+    Shop, Waitlist      Stock bas, « Prévenez-moi »
+    Orders              Commandes (verrou, plafond 40/jour), n° de facture
+    Reviews, Stats      Avis clients, compteurs de visite
+    Hours               Horaires et congés programmés
+    Bookings            Rendez-vous : créneaux libres, réservation sous verrou
+    Digest              Résumé du lundi, rappel de fin de période gratuite
+    Billing             Abonnements Stripe (création auto des prix, webhook)
+    Referral            Parrainage (crédit d'un mois chez Stripe)
+    Legal               Informations de l'éditeur pour les pages légales
+    Writer              « Écrire pour moi » et traduction (Claude)
+    Translation         Version anglaise d'un site fait de pages HTML
 
   Content/              MOTEUR DE CONTENU (le cœur du projet, voir 6)
     ContentSchema       Validation et description des « rubriques »
@@ -133,6 +160,7 @@ src/                    Code PHP, autoload PSR-4 « SimpleCommerce\ » → src/
     Formats             Lecture / réécriture JSON, YAML, Markdown, JS, HTML
     JsLiteral           Lecture des « const PRODUITS = [ … ] » en JavaScript
     HtmlCards           Fiches répétées et textes des pages HTML
+    HtmlTranslate       Relevé des textes d'une page et copie anglaise
     Values, FormInput   Validation des valeurs, formulaire → valeurs typées
     Price, Paths        Prix au format du site, chemins sûrs
 
@@ -142,7 +170,7 @@ src/                    Code PHP, autoload PSR-4 « SimpleCommerce\ » → src/
     CustomApiAdapter, Registry (choix du connecteur), Catalog, Status
     Files/              FileSiteAdapter + « backends » de fichiers :
                         Sftp, Ftp (FTP/FTPS), GitHub, GitLab, Bitbucket,
-                        Db (catalogue hébergé), Local (démo)
+                        Netlify, Db (catalogue hébergé), Local (démo)
 
   Support/
     Vault               Chiffrement des accès des sites
@@ -150,19 +178,23 @@ src/                    Code PHP, autoload PSR-4 « SimpleCommerce\ » → src/
     Net                 Anti-SSRF (refus des adresses privées / locales)
     Http                Appels cURL sortants (sans suivre les redirections)
     Html                Nettoyage du texte enrichi (liste blanche)
-    Text, Log, Mailer   Accords et dates, journal (secrets masqués), e-mails
+    Text, Log           Accords et dates, journal (secrets masqués)
+    Mailer              E-mails : Brevo si une clé est réglée, sinon mail()
 
 templates/              Gabarits PHP
   layout/               site (menu noir), plain, auth, bare, public, head
   public/home.php       Page de présentation publique (seule indexée)
   auth/, sites/, site/, admin/, partials/
 
-bin/cron.php            Tâche planifiée : publications programmées
-storage/                Sessions, photos en attente, journal, base SQLite.
-                        Interdit d'accès web, ignoré par git.
+bin/cron.php            Tâche planifiée (voir 9)
+storage/                En démo seulement. En production, config.php et
+                        storage/ sont dans le dossier VOISIN
+                        « simplecommerce-donnees/ » (voir 9).
 demo/sites/             Modèles des 2 faux sites de démonstration
 vendor/                 Dépendances Composer COMMITÉES (phpseclib 3,
-                        symfony/yaml 6.4) car OVH n'a pas Composer.
+                        symfony/yaml 6.4, anthropic-ai/sdk, guzzlehttp/guzzle)
+                        car OVH n'a pas Composer. Le plugin php-http/discovery
+                        est désactivé (allow-plugins) : Guzzle est trouvé seul.
 tests/run.php           Lanceur de tests
 config.php              Créé à l'installation. JAMAIS commité.
 
@@ -205,6 +237,19 @@ Principales routes :
   /avis/{clé}.js, /avis/{clé}   Avis : affichage + envoi (POST public)
   /p/{clé}.js, /p/{clé}    Compteur de visites : script + envoi (POST public)
   /stripe/webhook          Avis de Stripe (signature vérifiée, sans session)
+  /rdv/{clé}.js, /rdv/{clé}/creneaux, /rdv/{clé}   Rendez-vous (script, créneaux
+                           libres, réservation POST publique)
+  /rdv/annuler/{jeton}     Annulation d'un rendez-vous par le client
+  /s/{slug}/rendez-vous    Réglages et liste des rendez-vous
+  /s/{slug}/commandes/{id}/bon|facture   Bon de commande / facture imprimable
+  /s/{slug}/telephone      Aperçu du site dans un cadre de téléphone
+  /s/{slug}/ecrire         « Écrire pour moi » (POST, réponse JSON)
+  /s/{slug}/anglais        Version anglaise (do=preparer|etape|publier|tout|retirer)
+  /admin/revenus, /admin/emails, /admin/redaction, /admin/informations-legales
+  /aide/contact            Formulaire « Besoin d'aide ? »
+  /verifier/…              Confirmation de l'adresse e-mail
+  /mentions-legales, /conditions-generales-utilisation,
+  /conditions-generales-vente, /confidentialite   Pages légales publiques
   /manifest.webmanifest, /sw.js   Application installable (téléphone)
   /cron                    Déclenchement web des publications programmées
   /robots.txt /sitemap.xml Moteurs de recherche
@@ -315,6 +360,48 @@ explique où cliquer dans leur administration.
 
 
 ================================================================================
+7 bis. FONCTIONS AJOUTÉES EN VERSION G (13 octobre 2026)
+================================================================================
+
+Rendez-vous (Services\Bookings) : réglages dans sc_sites.config['extras']
+['booking'] (prestations {nom, duree, prix}, créneaux par jour de la semaine
+ou horaires d'ouverture, délai minimum, horizon, capacité). Créneaux libres
+calculés à la demande (pas fixe 5 / 10 / 15 min), congés respectés, heure de
+Paris. Réservation revérifiée sous verrou (storage/rdv-<site>.lock), 5
+rendez-vous à venir au plus par e-mail. Widget public/assets/rdv-widget.js
+(Shadow DOM, 4 étapes).
+
+« Écrire pour moi » (Services\Writer) : bibliothèque officielle
+anthropic-ai/sdk, modèle claude-opus-5-5, effort « low », repli automatique
+côté serveur (fallbacks « default »). Boutons ajoutés par sc_ai() dans
+templates/site/fields.php sous les champs textarea, markdown et richtext ;
+le navigateur envoie les autres champs de la fiche (nom, prix…) à
+/s/{slug}/ecrire. Le texte proposé remplace le champ ; « Revenir au texte
+d'avant » annule.
+
+Version anglaise (Services\Translation + Content\HtmlTranslate) : pour les
+sites reliés par fichiers. Étapes : preparer (relevé des textes de toutes les
+pages, liste de ce qui n'est pas encore traduit), etape (un paquet de 80
+textes / 5 000 caractères au plus par appel, traduit par Claude en sortie
+structurée JSON), publier (écriture de x-en.html à côté de x.html + bouton
+de langue, en une seule écriture). Mémoire de traduction :
+storage/traductions/<site>-memoire.json. Les pages -en.html sont exclues de
+la détection du contenu (SKIP_SCAN dans FileSiteAdapter).
+
+Autres : bon de commande / facture (ShopController::orderDocument, gabarit
+site/order-document.php, mise en page « bare » imprimable) ; aperçu
+téléphone (SiteController::phone) ; résumé du lundi et rappel de fin de
+période gratuite (Services\Digest, appelés par le Scheduler) ; parrainage
+(Services\Referral, crédit Stripe au 1er paiement du filleul, avis
+invoice.paid) ; revenus (Billing::revenue, lu chez Stripe) ; Brevo
+(Support\Mailer) ; vérification de l'adresse e-mail
+(Auth::sendVerification, SitesController::verifiedOrPage).
+
+Tout cela n'a été testé que contre des imitations de Claude, Stripe et
+Brevo : à vérifier avec les vrais services.
+
+
+================================================================================
 8. BASE DE DONNÉES (préfixe sc_)
 ================================================================================
 
@@ -338,10 +425,18 @@ sc_orders         Commandes du catalogue (n°, état, client, lignes, total)
 sc_reviews        Avis clients (attente / publie / refuse, réponse)
 sc_hits           Compteurs de visites par jour (aucune IP, aucun identifiant)
 sc_billing        Abonnement Stripe de chaque compte (essai, actif…)
+sc_bookings       Rendez-vous (prestation, début, fin, client, état
+                  confirme / annule, jeton d'annulation haché)
 
-Version du schéma : Schema::VERSION (3). Schema::migrate() est appelé à chaque
+Petites données dans sc_meta (clé → valeur) : réglages Stripe, Brevo et Claude
+(clés chiffrées), informations légales, « unverified:<id> » (adresse non
+vérifiée), parrainage (refcode:, referredBy:, refPending:…), numéros de
+facture (invoiceSeq:<site>:<année>), rappels déjà envoyés.
+
+Version du schéma : Schema::VERSION (5). Schema::migrate() est appelé à chaque
 requête et par cron.php : si la base est plus ancienne, les tables manquantes
-sont créées (CREATE IF NOT EXISTS) et les catalogues reçoivent les nouveaux
+sont créées (CREATE IF NOT EXISTS), les migrations ponctuelles passent (v4 :
+période gratuite 7 → 365 jours) et les catalogues reçoivent les nouveaux
 champs (DbBackend::upgradeSchema). Réglages par site (seuil de stock,
 horaires, fermeture prévue, commandes, avis, statistiques…) : dans
 sc_sites.config['extras'] (Sites::extras / setExtras). Clé publique d'un site
@@ -361,9 +456,17 @@ passage, si config.php n'existe pas, le portail crée une base SQLite
 génère ses clés, écrit config.php et ouvre les inscriptions.
 LE PREMIER COMPTE CRÉÉ DEVIENT ADMINISTRATEUR. MySQL reste possible en secours.
 
-Fabriquer l'archive à envoyer :
+Où sont les données (depuis la version E) : config.php et storage/ (base
+SQLite, sessions, photos, sauvegardes, mémoire de traduction) sont dans le
+dossier VOISIN du portail : SC_DATA = dirname(SC_ROOT)/simplecommerce-donnees
+(sc_data_dir() dans bootstrap.php ; déménagement automatique la 1re fois).
+Chez le propriétaire : /home/coumaoq/simplecommerce/simplecommerce-donnees/.
+NE JAMAIS SUPPRIMER NI ÉCRASER CE DOSSIER.
+
+Fabriquer l'archive à envoyer (« simplecommerce-COMPLET-<version>.zip ») :
     git archive HEAD portail | tar -x -C <dossier>
-    puis retirer tests/ et zipper.
+    renommer portail → public, retirer tests/ et demo/, zipper.
+    (Environ 5 300 fichiers depuis l'ajout de la bibliothèque Claude.)
 
 Chez OVH :
   - Envoyer les fichiers par FTP / SFTP (WinSCP, FileZilla).
@@ -372,17 +475,28 @@ Chez OVH :
     web). Cocher SSL.
   - Tâches planifiées : bin/cron.php, PHP 8.3, toutes les heures.
     Elle publie les brouillons programmés, ferme / rouvre les sites aux dates
-    prévues (Services\Hours::tick) et fait les sauvegardes de la nuit entre
-    1 h et 6 h (Services\Backups::nightly, storage/backups/, 14 nuits gardées).
+    prévues (Services\Hours::tick), fait les sauvegardes de la nuit entre
+    1 h et 6 h (Services\Backups::nightly, storage/backups/, 14 nuits gardées),
+    envoie le résumé du lundi et les rappels de fin de période gratuite
+    (Services\Digest). Secours : au plus une fois par minute pendant les visites.
 
 Installation actuelle : domaine simplecommercess.com. Les fichiers ont été
 envoyés dans simplecommerce/public/ (un étage plus bas que prévu), donc le
 multisite pointe sur simplecommerce/public/public et la tâche planifiée est
 simplecommerce/public/bin/cron.php.
 
-Mise à jour : renvoyer les fichiers par-dessus (src/, templates/, public/,
-vendor/, bin/). NE JAMAIS écraser config.php ni storage/.
+Mise à jour : remplacer TOUT le dossier du portail par le nouveau (les
+données sont à côté, dans simplecommerce-donnees/). Vérifier ensuite la
+version affichée dans Administration.
 PERDRE config.php = PERDRE tous les accès enregistrés (clé de chiffrement).
+
+Réglages à faire dans l'Administration après installation :
+  Abonnements               clé secrète Stripe (sk_live_…) : produit, prix et
+                            webhook créés automatiquement (https obligatoire)
+  E-mails                   clé Brevo (xkeysib-…) + domaine validé dans Brevo
+                            (lignes à ajouter dans la zone DNS OVH)
+  Rédaction automatique     clé Claude (sk-ant-…) créée sur platform.claude.com
+  Informations légales      nom, adresse, SIRET… de l'éditeur
 
 
 ================================================================================
@@ -420,6 +534,20 @@ PERDRE config.php = PERDRE tous les accès enregistrés (clé de chiffrement).
 - Abonnements : clé Stripe et secret du webhook chiffrés (Vault, donnée
   associée « simplecommerce-billing »), avis Stripe vérifiés par signature
   HMAC (5 min de tolérance). Le portail ne voit jamais de carte bancaire.
+  Codes promo : 8 caractères minimum, 10 utilisations au plus.
+- Clés Brevo et Claude chiffrées (données associées « simplecommerce-mail »
+  et « simplecommerce-ia »), jamais renvoyées au navigateur ; Log::redact
+  masque sk_, rk_, whsec_, nfp_, sk-ant-…
+- Comptes : adresse e-mail vérifiée avant de relier un site ; changement de
+  mot de passe = ancien mot de passe demandé + autres appareils déconnectés.
+- Anti-SSRF renforcé : IPv6 contenant une IPv4 privée refusée, IP vérifiée
+  imposée à cURL (CURLOPT_RESOLVE) et aux connexions FTP / SFTP.
+- Rédaction automatique : 40 demandes par personne et par jour, traduction
+  20 fois par site et par jour ; rien n'est publié sans action du client.
+- Version anglaise : seules les pages « -en.html » portant la signature du
+  portail (meta generator) sont remplacées ou supprimées ; les pages
+  françaises ne reçoivent qu'un bloc balisé (<!-- simplecommerce-langue -->)
+  retiré sans trace.
 
 
 ================================================================================
@@ -438,6 +566,11 @@ PERDRE config.php = PERDRE tous les accès enregistrés (clé de chiffrement).
   commandes des clients et les fermetures programmées passent toujours
   (Billing::$system).
 - Supprimer la version Next.js sans l'accord du propriétaire.
+- Supprimer ou écraser le dossier simplecommerce-donnees/.
+- Mettre « RewriteCond %{ENV:REDIRECT_STATUS} » dans un .htaccess (chez OVH
+  toutes les pages passent en erreur 500).
+- Écrire « Kumao » ou « Coumao » dans le portail (site d'exemple sans
+  rapport avec Simple Commerce).
 
 
 ================================================================================
@@ -487,14 +620,17 @@ PERDRE config.php = PERDRE tous les accès enregistrés (clé de chiffrement).
 Testé en réel : installation (PHP intégré et Apache), SFTP, FTP, FTPS,
 WordPress 6.8 + WooCommerce 10.2, interface sur mesure, sites faits main
 (listes JavaScript, fiches HTML, sites vitrines avec projets et tarifs).
-Testés seulement contre des imitations de leurs API : GitHub, Shopify, Webflow.
+Testés seulement contre des imitations de leurs API : GitHub, Shopify, Webflow,
+Netlify, Stripe (sauf un abonnement réel fait par le propriétaire), Brevo,
+Claude.
 
 Reste à faire :
 - Paiement Stripe, variantes et catégories pour le catalogue hébergé.
 - Essais Shopify et Webflow avec de vrais comptes (relever chaque année
   ShopifyAdapter::API_VERSION).
 - Connecteurs Wix, Squarespace, PrestaShop.
-- Envoi des e-mails par SMTP si mail() d'OVH arrive en indésirables.
+- Essais réels de la rédaction, de la traduction, de Brevo et des
+  rendez-vous.
 
 Documents complémentaires :
   CLAUDE.md                   Mémoire du projet : décisions et journal

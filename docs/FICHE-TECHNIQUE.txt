@@ -3,8 +3,9 @@
 ================================================================================
 
 Adresse            https://simplecommercess.com
-Version            Portail PHP (dossier « portail/ » du projet)
-Mise à jour        13 octobre 2026
+Version            Portail PHP (dossier « portail/ » du projet) — version G
+Mise à jour        13 octobre 2026 (soir)
+Contact            simplecommercess@gmail.com
 
 
 --------------------------------------------------------------------------------
@@ -85,6 +86,20 @@ il est hébergé, et donne au commerçant un espace simple pour le modifier.
 - Avis clients relus avant affichage, avec réponse publique.
 - Statistiques de visite sans Google et sans cookie.
 - Installer Simple Commerce sur son téléphone comme une application.
+- Voir son site comme sur un téléphone, depuis le portail.
+- Bon de commande et facture numérotée, à imprimer ou enregistrer en PDF.
+- Prise de rendez-vous : prestations, durées, créneaux ; les clients réservent
+  depuis le site (une ligne à coller), reçoivent un e-mail avec un lien pour
+  annuler ; un créneau ne peut pas être pris deux fois.
+- Résumé de la semaine par e-mail chaque lundi (visites, commandes, avis,
+  rendez-vous).
+- « Écrire pour moi » : un texte de description proposé à partir du nom et du
+  prix (ou un texte amélioré, raccourci), à relire avant de publier.
+- Version anglaise du site en un clic : pages traduites ajoutées à côté des
+  pages françaises, bouton « English / Français », mise à jour et retrait en
+  un clic.
+- Parrainage : un lien personnel ; un mois offert quand le filleul s'abonne.
+- Bouton « Besoin d'aide ? » pour écrire directement à Simple Commerce.
 
 
 --------------------------------------------------------------------------------
@@ -120,7 +135,10 @@ Client                 Ne voit que ses propres sites.
 « Tout gérer »         Peut en plus inviter, retirer des personnes, régler le site.
 Administrateur         Le premier compte créé. Voit tous les sites, peut agir pour
                        un client (assistance), consulte le journal d'activité,
-                       suspend un site, ouvre ou ferme les inscriptions.
+                       suspend un site, ouvre ou ferme les inscriptions, règle
+                       les abonnements, voit les revenus, règle les e-mails
+                       (Brevo), la rédaction automatique (Claude) et les
+                       informations légales, confirme une adresse e-mail.
 
 
 --------------------------------------------------------------------------------
@@ -138,6 +156,10 @@ Administrateur         Le premier compte créé. Voit tous les sites, peut agir 
 - Photos vérifiées par leur contenu réel, réencodées, sans données GPS.
 - Les modifications ne réécrivent que l'élément changé, et sont refusées si
   le site a été modifié ailleurs entre-temps.
+- Adresse e-mail vérifiée avant de pouvoir relier un site.
+- Changer son mot de passe demande l'ancien et déconnecte les autres appareils.
+- Clés Stripe, Brevo et Claude chiffrées, jamais réaffichées.
+- Audit de sécurité complet le 13 octobre 2026 (corrections vérifiées).
 
 
 --------------------------------------------------------------------------------
@@ -149,15 +171,24 @@ Base de données   SQLite (installation automatique) ou MySQL / MariaDB
 Interface         HTML, CSS et JavaScript écrits à la main, sans bibliothèque
                   externe ; fonctionne même sans JavaScript (sauf photos)
 Police            Figtree, servie par le portail (aucun appel à Google)
-Dépendances       phpseclib 3 (SFTP), symfony/yaml 6.4 — fournies avec le code
+Dépendances       phpseclib 3 (SFTP), symfony/yaml 6.4, bibliothèque officielle
+                  Claude (anthropic-ai/sdk) + Guzzle — fournies avec le code
 Hébergement       Hébergement mutualisé classique (OVHcloud) : pas besoin de
                   Node.js, ni de terminal, ni de Composer sur le serveur
 Installation      Envoi des fichiers par FTP ; le portail s'installe seul à la
                   première visite ; le premier compte devient administrateur
+Données           Dans le dossier voisin « simplecommerce-donnees » (réglages,
+                  base, photos, sauvegardes) : une mise à jour remplace tout
+                  le dossier du portail sans rien perdre
 Tâche planifiée   bin/cron.php toutes les heures (publications programmées,
-                  congés programmés, sauvegardes de la nuit)
-Abonnements       Stripe (Checkout + espace client), éteints par défaut,
-                  essai gratuit réglable
+                  congés programmés, sauvegardes de la nuit, résumé du lundi,
+                  rappels de fin de période gratuite)
+Abonnements       Stripe : 9 €/mois ou 90 €/an, carte demandée à l'inscription,
+                  première année gratuite (réglable), parrainage, codes promo
+E-mails           Brevo (recommandé) ou fonction mail() de l'hébergeur
+Rédaction         Claude (Anthropic), modèle claude-opus-5-5, clé de
+                  l'administrateur, 40 textes par personne et par jour
+Pages légales     Mentions légales, CGU, CGV, confidentialité (publiques)
 
 
 --------------------------------------------------------------------------------
@@ -175,11 +206,13 @@ Icônes       Dessinées au trait, jamais d'emoji.
 11. CE QUI RESTE À FAIRE
 --------------------------------------------------------------------------------
 
+- Créer les clés Claude et Brevo, puis tester en réel la rédaction, la
+  traduction, les e-mails et les rendez-vous (seulement testés contre des
+  imitations de ces services).
 - Paiement en ligne des commandes (aujourd'hui : demande de commande, paiement
   réglé avec le commerçant), variantes et catégories pour le catalogue hébergé.
-- Tester les abonnements Stripe avec un vrai compte Stripe.
-- Tester Shopify et Webflow avec de vrais comptes.
+- Tester les abonnements Stripe de bout en bout avec de vrais clients.
+- Tester Shopify, Webflow et Netlify avec de vrais comptes.
 - Connecteurs Wix, Squarespace, PrestaShop.
-- Envoi des e-mails par SMTP si ceux d'OVH arrivent en indésirables.
 
 ================================================================================
