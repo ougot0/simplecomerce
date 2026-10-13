@@ -398,6 +398,13 @@ final class Billing
             default => 'termine',
         };
         $end = $sub['current_period_end'] ?? ($sub['items']['data'][0]['current_period_end'] ?? null);
+        // Formule choisie (mois ou an), pour les rappels et le tableau des revenus.
+        $price = (string) ($sub['items']['data'][0]['price']['id'] ?? '');
+        foreach (self::PLANS as $plan => $k) {
+            if ($price !== '' && $price === self::settings()[$k]) {
+                Repo::setMeta('plan:' . $row['user_id'], $plan);
+            }
+        }
         $trialEnd = ($sub['status'] ?? '') === 'trialing' && is_numeric($sub['trial_end'] ?? null) ? gmdate('Y-m-d\TH:i:s\Z', (int) $sub['trial_end']) : null;
         if ($row['status'] === 'gratuit') {
             $status = 'gratuit'; // offert par l'administrateur : on garde

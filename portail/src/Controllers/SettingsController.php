@@ -211,7 +211,7 @@ final class SettingsController
                 return Response::redirect($back . '#horaires');
 
             case 'boutique':
-                $patch = ['stockAlert' => max(0, min(999, (int) Req::str('stockAlert', 4)))];
+                $patch = ['stockAlert' => max(0, min(999, (int) Req::str('stockAlert', 4))), 'weeklyDigest' => Req::str('weeklyDigest') === '1'];
                 if ($site['connector'] === 'catalogue') {
                     $patch += ['orders' => Req::str('orders') === '1', 'orderNote' => Req::str('orderNote', 300)];
                 }

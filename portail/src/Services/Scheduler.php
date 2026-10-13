@@ -64,6 +64,7 @@ final class Scheduler
         } catch (\Throwable $e) {
             Log::error('fermetures programmées', ['err' => $e]);
         }
+        Digest::run();
         try {
             Backups::nightly(PHP_SAPI === 'cli' ? 50 : 1);
         } catch (\Throwable $e) {
