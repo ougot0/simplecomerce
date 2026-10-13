@@ -78,4 +78,12 @@ final class Req
     {
         return (string) ($_SERVER['REMOTE_ADDR'] ?? '?');
     }
+
+    /** Adresse pour les limites anti-abus : une adresse IPv6 compte pour tout son bloc /64 (qu'une personne a en entier). */
+    public static function ipBucket(): string
+    {
+        $ip = self::ip();
+        $bin = @inet_pton($ip);
+        return $bin !== false && strlen($bin) === 16 ? bin2hex(substr($bin, 0, 8)) . '::/64' : $ip;
+    }
 }

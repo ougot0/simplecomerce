@@ -61,7 +61,7 @@ final class PublicController
     /** Limite par IP (l'adresse n'est pas gardée en clair). */
     private static function limited(string $what, int $max, int $seconds): bool
     {
-        $bucket = "pub:$what:" . hash('sha256', Req::ip() . Config::get('secret', ''));
+        $bucket = "pub:$what:" . hash('sha256', Req::ipBucket() . Config::get('secret', ''));
         if (Repo::tooManyAttempts($bucket, $max, $seconds)) {
             return true;
         }

@@ -17,6 +17,10 @@ final class Waitlist
             return false;
         }
         $exists = Db::value('SELECT 1 FROM sc_waitlist WHERE site_id = ? AND product_id = ? AND email = ? AND notified_at IS NULL', [$site['id'], $productId, $email]);
+        // Au plus 300 personnes en attente par produit (une liste remplie d'adresses au hasard ne grossit pas sans fin).
+        if (!$exists && (int) Db::value('SELECT COUNT(*) FROM sc_waitlist WHERE site_id = ? AND product_id = ? AND notified_at IS NULL', [$site['id'], $productId]) >= 300) {
+            return true;
+        }
         if (!$exists) {
             Db::insert('sc_waitlist', ['id' => Db::uuid(), 'site_id' => $site['id'], 'product_id' => mb_substr($productId, 0, 191),
                 'product_name' => mb_substr($productName, 0, 250), 'email' => $email, 'created_at' => Db::now()]);

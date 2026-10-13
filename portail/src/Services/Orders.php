@@ -21,6 +21,7 @@ final class Orders
 {
     public const STATUSES = ['nouvelle' => 'Nouvelle', 'preparee' => 'Préparée', 'envoyee' => 'Remise ou envoyée', 'annulee' => 'Annulée'];
     public const MAX_LINES = 30;
+    public const MAX_PER_DAY = 40;
 
     public static function enabled(array $site): bool
     {
@@ -54,13 +55,44 @@ final class Orders
         if (!$section || !self::enabled($site)) {
             return ['ok' => false, 'error' => 'Les commandes ne sont pas ouvertes sur ce site.'];
         }
+        // Au plus MAX_PER_DAY commandes par boutique et par jour (fausses commandes qui videraient le stock).
+        if ((int) Db::value('SELECT COUNT(*) FROM sc_orders WHERE site_id = ? AND created_at >= ?', [$site['id'], gmdate('Y-m-d\TH:i:s\Z', time() - 86400)]) >= self::MAX_PER_DAY) {
+            return ['ok' => false, 'error' => 'La boutique reçoit beaucoup de commandes en ce moment. Contactez-la directement.'];
+        }
+        // Un même produit en plusieurs lignes compte pour une seule ligne (sinon le contrôle du stock serait contourné).
+        $wanted = [];
+        foreach (array_slice($lines, 0, self::MAX_LINES) as $l) {
+            $id = (string) ($l['id'] ?? '');
+            $q = (int) ($l['qte'] ?? 0);
+            if ($id !== '' && $q > 0) {
+                $wanted[$id] = min(99, ($wanted[$id] ?? 0) + $q);
+            }
+        }
+        // Les commandes d'une même boutique passent l'une après l'autre : le stock relu ici est le vrai,
+        // deux clients ne peuvent pas prendre le dernier exemplaire en même temps, et chaque numéro est unique.
+        $lock = @fopen(SC_STORAGE . '/commande-' . preg_replace('/[^a-f0-9-]/', '', $site['id']) . '.lock', 'c');
+        if ($lock) {
+            flock($lock, LOCK_EX);
+        }
+        try {
+            return self::createLocked($site, $section, $customer, $wanted);
+        } finally {
+            if ($lock) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+        }
+    }
+
+    /** @param array<string, int> $wanted identifiant => quantité */
+    private static function createLocked(array $site, array $section, array $customer, array $wanted): array
+    {
         $products = self::catalogue($site, $section);
         $items = [];
         $total = 0.0;
         $stock = [];
-        foreach (array_slice($lines, 0, self::MAX_LINES) as $l) {
-            $id = (string) ($l['id'] ?? '');
-            $qty = (int) ($l['qte'] ?? 0);
+        foreach ($wanted as $id => $qty) {
+            $id = (string) $id;
             $p = $products[$id] ?? null;
             if (!$p || $qty < 1 || $qty > 99 || (array_key_exists('disponible', $p) && $p['disponible'] === false)) {
                 continue;
@@ -123,7 +155,7 @@ final class Orders
     {
         $note = trim((string) (Sites::extras($site)['orderNote'] ?? ''));
         Mailer::send($o['email'], "Votre commande n° {$o['number']} chez {$site['name']}",
-            "Bonjour {$o['customer_name']},\n\nNous avons bien reçu votre commande :\n\n" . self::lines($items)
+            "Bonjour,\n\nNous avons bien reçu votre commande :\n\n" . self::lines($items)
             . "\n\nTotal : " . Text::price((float) $o['total']) . ($note !== '' ? "\n\n$note" : '')
             . "\n\nNous revenons vers vous très vite.\n\n{$site['name']}");
     }

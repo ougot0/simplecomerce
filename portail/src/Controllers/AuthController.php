@@ -121,7 +121,7 @@ final class AuthController
         if (!$values['terms']) {
             $errors['terms'] = 'Cochez la case pour accepter les conditions.';
         }
-        if (Repo::tooManyAttempts('signup:' . Req::ip(), 10, 3600)) {
+        if (Repo::tooManyAttempts('signup:' . Req::ipBucket(), 10, 3600)) {
             return self::signupForm($p, ['error' => 'Trop de comptes créés depuis cette connexion. Réessayez dans une heure.', 'values' => $values]);
         }
         if (!self::signupOpen()) {
@@ -139,7 +139,7 @@ final class AuthController
         if (Repo::userByEmail($email)) {
             return self::signupForm($p, ['error' => 'Un compte existe déjà avec cette adresse. Connectez-vous, ou demandez un lien de connexion par e-mail.', 'values' => $values]);
         }
-        Repo::recordAttempt('signup:' . Req::ip());
+        Repo::recordAttempt('signup:' . Req::ipBucket());
         $first = !Repo::users();
         $user = Repo::createUser($email, $name, $password, $first && !Config::demo());
         Repo::log($user['id'], null, null, 'signup', ['conditions_acceptees' => \SimpleCommerce\Services\Legal::UPDATED]);

@@ -91,7 +91,7 @@ final class Auth
     /** @return array{ok: bool, error?: string} */
     public static function attempt(string $email, string $password, bool $remember): array
     {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '?';
+        $ip = \SimpleCommerce\Http\Req::ipBucket();
         $bucket = 'login:' . mb_strtolower($email);
         if (Repo::tooManyAttempts($bucket, 8, 900) || Repo::tooManyAttempts("ip:$ip", 30, 900)) {
             return ['ok' => false, 'error' => 'Trop de tentatives. Patientez un quart d\'heure, ou demandez un lien de connexion par e-mail.'];

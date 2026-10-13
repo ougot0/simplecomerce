@@ -25,6 +25,13 @@ final class Stats
         $item = mb_substr($item, 0, 180);
         $n = Db::run('UPDATE sc_hits SET hits = hits + 1 WHERE site_id = ? AND day = ? AND kind = ? AND item = ?', [$siteId, $day, $kind, $item]);
         if ($n === 0) {
+            // Au plus 300 pages ou provenances différentes par jour : au-delà, regroupées (contre le remplissage volontaire).
+            if ($kind !== 'visit' && (int) Db::value('SELECT COUNT(*) FROM sc_hits WHERE site_id = ? AND day = ? AND kind = ?', [$siteId, $day, $kind]) >= 300) {
+                $item = '(autres)';
+                if (Db::run('UPDATE sc_hits SET hits = hits + 1 WHERE site_id = ? AND day = ? AND kind = ? AND item = ?', [$siteId, $day, $kind, $item]) > 0) {
+                    return;
+                }
+            }
             try {
                 Db::insert('sc_hits', ['site_id' => $siteId, 'day' => $day, 'kind' => $kind, 'item' => $item, 'hits' => 1]);
             } catch (\PDOException) {
