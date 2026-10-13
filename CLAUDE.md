@@ -78,6 +78,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 - **PHP 8.1 minimum** (testé en 8.3), extensions : pdo_mysql, sodium, curl, gd (WebP), mbstring, intl, ftp.
 - **MySQL/MariaDB** en production (OVH), **SQLite** en démonstration.
 - **Composer** (autoload PSR-4 `SimpleCommerce\` → `src/`), `vendor/` commité, `"platform": {"php": "8.1.0"}`.
+  Depuis la version G : `anthropic-ai/sdk` (bibliothèque officielle Claude) + `guzzlehttp/guzzle` (plugin `php-http/discovery` désactivé).
   Après `composer install`, supprimer les dossiers `.git`, `tests`, `Tests`, `.github` de `vendor/` (31 Mo → 4 Mo).
 - Pas de framework, pas de bundler : CSS et JS écrits à la main dans `public/assets/`, sans bibliothèque externe.
 - Le JS est une **amélioration** : les formulaires fonctionnent sans lui (noms de champs `data[cle][ligne][sous-cle]`
@@ -225,7 +226,7 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 - Démo locale : `cd portail && SC_DEMO=1 SC_ALLOW_PRIVATE=1 php -S 127.0.0.1:8080 -t public public/index.php`
   → http://127.0.0.1:8080. Comptes : `marie@patisserie-lune.fr` / `tarte-citron-2026`, `paul@atelier-brun.fr` /
   `maison-bois-2026`, `alex@simplecommerce.demo` / `atelier-demo-2026` (admin). Effacer `storage/` remet tout à zéro.
-- Tests : `php portail/tests/run.php` (81 vérifications : sécurité, coffre, photos, formulaires, formats, moteur de
+- Tests : `php portail/tests/run.php` (88 vérifications : sécurité, coffre, photos, formulaires, formats, moteur de
   contenu sur les sites de démo, annulation). `php -l` sur chaque fichier modifié.
 - Tests navigateur : Playwright via `node_modules/playwright-core` du dépôt, Chromium `/opt/pw-browsers/chromium`.
 - Tests réels faits pendant la session (à refaire si on touche aux connecteurs) : MariaDB + installation web ;
@@ -245,7 +246,8 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
    lui demander des captures d'écran en cas de souci.
 2. **Tester en réel les fonctions du 13/10/2026** : abonnements avec un vrai compte Stripe (jamais testé contre Stripe :
    seulement signature des avis et logique), e-mails de commande/avis depuis OVH, compteur de visites sur un vrai site.
-   Le propriétaire n'a pas encore envoyé ces fichiers chez OVH.
+   Le propriétaire n'a pas encore envoyé ces fichiers chez OVH. Version G (13/10, soir) jamais testée contre les vrais
+   services : Claude (rédaction, traduction — clé à créer sur platform.claude.com), Brevo, rendez-vous sur un vrai site.
 3. **« Comme Shopify, pour n'importe quel site »** — **première version construite le 12/10/2026** : type de site `catalogue`
    (« Gérer mes produits ici, puis les afficher sur mon site »), contenu gardé dans la table `sc_files` (`DbBackend`, créée à la
    demande), ligne à coller `<script src="…/catalogue/{publicKey}.js">` (widget `public/assets/catalogue-widget.js`, Shadow DOM,
@@ -277,6 +279,18 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit, 3) : **douze nouvelles fonctions** (« 8 9 12 13 15 17 20 21 22 24 25 26 »), version **G** :
+  bon de commande / facture imprimable (n° de facture annuel, mentions du commerçant dans Réglages → Boutique) ;
+  aperçu « Sur téléphone » ; **prise de rendez-vous** (`Bookings`, table `sc_bookings`, base v5, ligne `/rdv/{clé}.js`,
+  annulation par lien e-mail) ; résumé du lundi par e-mail (`Digest`) ; **parrainage** (1 mois offert, `Referral`, crédit
+  Stripe) ; **tableau des revenus** (Administration → Revenus, lu chez Stripe) ; bouton « Besoin d'aide ? » (formulaire →
+  simplecommercess@gmail.com) ; rappel avant la fin de l'année gratuite ; **vérification de l'adresse e-mail** (sites
+  reliables seulement après confirmation, l'admin peut confirmer à la main) ; **e-mails via Brevo** (Administration →
+  E-mails, clé chiffrée, repli sur `mail()`) ; **« Écrire pour moi »** (`Writer`, Claude `claude-opus-5-5` par la
+  bibliothèque officielle, clé dans Administration → Rédaction automatique, 40/jour/personne) ; **version anglaise**
+  (`Translation` + `HtmlTranslate` : pages `x-en.html` à côté des pages françaises, bouton English/Français, mémoire de
+  traduction dans `storage/traductions/`, retrait sans trace ; pages `-en.html` exclues de la détection). Tout testé dans
+  la démo contre des imitations (Claude, Stripe, Brevo). 88 vérifications.
 - 13/10/2026 (nuit, 2) : **audit de sécurité complet** (le propriétaire voulait le plugin « Security Guidance », pas activable
   dans une session en cours : audit fait par 3 agents en lecture seule, puis corrections vérifiées). Corrigé :
   commandes publiques (lignes du même produit additionnées, verrou par boutique `storage/commande-*.lock`, 40/jour, nom

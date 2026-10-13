@@ -91,20 +91,27 @@ En secours, le portail fait aussi ce travail pendant les visites, au plus une fo
 ### 7 bis. Abonnements (facultatif)
 
 Éteints par défaut : tout le monde publie librement. Pour faire payer vos clients :
-**Administration → Abonnements** — prix affiché, durée de l'essai gratuit, identifiant du prix Stripe (`price_…`),
-clé secrète Stripe (`sk_live_…`, chiffrée), puis dans Stripe → Développeurs → Webhooks une destination vers
-`https://votre-domaine/stripe/webhook` (évènements `checkout.session.completed`, `customer.subscription.updated`,
-`customer.subscription.deleted`) dont vous recopiez le secret `whsec_…`. Cochez « Activer ».
+**Administration → Abonnements** — collez votre clé secrète Stripe (`sk_live_…`, chiffrée) et les prix (9 €/mois, 90 €/an
+par défaut) : le portail crée lui-même le produit, les prix et les avis de paiement chez Stripe (adresse en https obligatoire).
+Les clients s'abonnent avec leur carte ; la période gratuite (365 jours par défaut) est gérée par Stripe.
+**Administration → Revenus** : abonnés, revenu mensuel, derniers paiements (lus chez Stripe).
 
 ### 8. E-mails
 
-Les e-mails (liens de connexion, invitations, avis de modification) partent avec la fonction `mail()` de l'hébergement.
-Indiquez à l'installation une adresse de votre domaine (ex. `ne-pas-repondre@votre-domaine.fr`) pour éviter les indésirables.
-Si un e-mail n'arrive pas, le portail affiche le lien d'invitation à copier.
+Sans réglage, les e-mails partent par la fonction `mail()` de l'hébergement (souvent en indésirables).
+Mieux : **Administration → E-mails** — compte gratuit Brevo, domaine validé dans Brevo (3 ou 4 lignes à ajouter dans la
+zone DNS OVH), clé `xkeysib-…` collée dans le portail, puis « Envoyer un e-mail de test ».
+
+### 8 bis. Rédaction automatique (facultatif)
+
+« Écrire pour moi » sous les descriptions et la « Version anglaise » des sites utilisent Claude.
+**Administration → Rédaction automatique** — clé `sk-ant-…` créée sur platform.claude.com (API keys), avec un peu de
+crédit (Billing). Sans clé, ces boutons n'apparaissent pas. 40 textes par personne et par jour au plus.
 
 ### 9. Mettre à jour plus tard
 
-Renvoyez les dossiers `src/`, `templates/`, `public/`, `vendor/` et `bin/` par FTP. Ne touchez ni à `config.php` ni à `storage/`.
+Remplacez tout le dossier du portail par la nouvelle version : les comptes, réglages et sites reliés sont dans le
+dossier voisin `simplecommerce-donnees/` (à ne jamais supprimer ni écraser).
 
 ## Acheter le nom de domaine de Simple Commerce
 
