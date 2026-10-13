@@ -17,7 +17,7 @@ use SimpleCommerce\Support\Text;
 final class Media
 {
     public const MAX_BYTES = 8 * 1024 * 1024;
-    private const MAX_PIXELS = 40_000_000;
+    private const MAX_PIXELS = 25_000_000;
 
     public static function process(string $bytes, string $originalName, int $maxWidth = 2000): array
     {

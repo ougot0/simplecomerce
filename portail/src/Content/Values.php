@@ -15,7 +15,8 @@ final class Values
     public const MEDIA_PREFIX = 'sc-media:';
     private const URL_RE = '#^(https?://\S+|/\S*|\#\S*|mailto:\S+|tel:\S+)$#i';
     private const DATE_RE = '/^\d{4}-\d{2}-\d{2}([T ][\d:.]+(Z|[+\-]\d{2}:?\d{2})?)?$/';
-    private const IMAGE_RE = '#^(https?://|/|\.{0,2}/?[\w\-./]+|sc-media:[\w\-]+$)#';
+    // Adresse de photo : pas d'espace, de guillemet, de chevron, de parenthèse ni d'antislash (elle finit parfois dans un attribut ou un style).
+    private const IMAGE_RE = '#^(https?://[^\s"\'<>()\\\\]+|/[^\s"\'<>()\\\\]*|[\w\-.]+(/[\w\-.]+)*|sc-media:[\w\-]+)$#';
 
     /** @return array{0: array, 1: array<string, string>} [données, erreurs] */
     public static function normalize(array $fields, array $input, array $current, string $prefix = ''): array
@@ -67,6 +68,11 @@ final class Values
                     return $ko('Texte attendu.');
                 }
                 $v = $f['type'] === 'text' ? preg_replace('/[\r\n]+/', ' ', $raw) : str_replace("\r\n", "\n", $raw);
+                // Pas de balise HTML dans un texte simple : certains sites l'afficheraient telle quelle et exécuteraient du code.
+                // (Un texte déjà présent sur le site et non modifié est gardé.)
+                if ($v !== $current && preg_match('/<\s*[a-z!\/?]/i', $v)) {
+                    return $ko('Les signes < et > servent au code des pages : retirez-les de ce texte.');
+                }
                 return $tooLong($v) ? $ko("{$max} caractères au maximum (actuellement " . mb_strlen($v) . ').') : $ok($v);
             case 'richtext':
                 if ($raw === null) {
@@ -123,7 +129,8 @@ final class Values
                 if ($raw === null || $raw === '') {
                     return $ok('');
                 }
-                return is_string($raw) && strlen($raw) <= 1000 && preg_match(self::IMAGE_RE, $raw) && !preg_match('/^javascript:/i', $raw) ? $ok($raw) : $ko('Image invalide.');
+                // Une photo déjà sur le site (inchangée) est gardée telle quelle, même si son nom a des espaces ou des parenthèses.
+                return is_string($raw) && ($raw === $current || (strlen($raw) <= 1000 && preg_match(self::IMAGE_RE, $raw))) && !preg_match('/^\s*javascript:/i', $raw) ? $ok($raw) : $ko('Image invalide.');
             case 'gallery':
             case 'list':
                 if ($raw === null) {
@@ -132,8 +139,9 @@ final class Values
                 if (!is_array($raw) || !array_is_list($raw) || count($raw) > 200) {
                     return $ko('Liste invalide.');
                 }
+                $known = is_array($current) ? $current : [];
                 foreach ($raw as $item) {
-                    if (!is_string($item) || strlen($item) > 1000 || ($f['type'] === 'gallery' && (!preg_match(self::IMAGE_RE, $item) || preg_match('/^javascript:/i', $item)))) {
+                    if (!is_string($item) || strlen($item) > 1000 || ($f['type'] === 'gallery' && ((!in_array($item, $known, true) && !preg_match(self::IMAGE_RE, $item)) || preg_match('/^\s*javascript:/i', $item)))) {
                         return $ko($f['type'] === 'gallery' ? 'Image invalide.' : 'Liste invalide.');
                     }
                 }

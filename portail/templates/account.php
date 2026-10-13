@@ -25,6 +25,9 @@
     <section>
         <h2 class="mb-14">Mot de passe</h2>
         <form method="post" class="form panel"><?= csrf_field() ?><input type="hidden" name="intent" value="password">
+            <?php if ((int) \SimpleCommerce\Support\Session::get('magic_at') <= time() - 1800): ?>
+            <div class="field"><label for="current">Mot de passe actuel</label><input id="current" name="current" type="password" autocomplete="current-password"></div>
+            <?php endif ?>
             <div class="field"><label for="password">Nouveau mot de passe</label><input id="password" name="password" type="password" autocomplete="new-password"><span class="help">10 caractères minimum, avec au moins un chiffre.</span></div>
             <div class="field"><label for="confirm">Encore une fois</label><input id="confirm" name="confirm" type="password" autocomplete="new-password"></div>
             <div class="actions"><button class="btn" type="submit">Changer le mot de passe</button></div>

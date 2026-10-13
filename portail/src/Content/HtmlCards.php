@@ -400,6 +400,9 @@ final class HtmlCards
      */
     public static function copyPage(string $page, string $oldName, string $newName, ?string $photo, string $desc = '', string $oldFile = '', string $newFile = ''): string
     {
+        if (str_contains($page, '<?')) {
+            throw new \InvalidArgumentException('Page avec du code : copie refusée.');
+        }
         $edits = [];
         $texts = self::texts($page);
         $heading = null;

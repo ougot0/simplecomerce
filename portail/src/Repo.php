@@ -425,6 +425,11 @@ final class Repo
         Db::run('UPDATE sc_tokens SET expires_at = ? WHERE id = ?', [gmdate('Y-m-d\\TH:i:s\\Z', time() + $seconds), $id]);
     }
 
+    public static function deleteUserTokens(string $userId, string $kind): void
+    {
+        Db::run('DELETE FROM sc_tokens WHERE user_id = ? AND kind = ?', [$userId, $kind]);
+    }
+
     public static function deleteToken(string $token): void
     {
         Db::run('DELETE FROM sc_tokens WHERE token_hash = ?', [hash('sha256', $token)]);

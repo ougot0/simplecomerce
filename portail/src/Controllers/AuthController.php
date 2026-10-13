@@ -142,6 +142,9 @@ final class AuthController
         Repo::recordAttempt('signup:' . Req::ipBucket());
         $first = !Repo::users();
         $user = Repo::createUser($email, $name, $password, $first && !Config::demo());
+        if (!$first) {
+            Auth::markUnverified($user['id']);
+        }
         Repo::log($user['id'], null, null, 'signup', ['conditions_acceptees' => \SimpleCommerce\Services\Legal::UPDATED]);
         if ($first && !Config::demo()) {
             // Le propriétaire du portail vient de créer son compte : la suite des inscriptions reste à son choix.
@@ -217,7 +220,13 @@ final class AuthController
                 if ($pw !== Req::raw('confirm')) {
                     return self::account($p, ['error' => 'Les deux mots de passe ne sont pas identiques.']);
                 }
-                Repo::updateUser($uid, ['password_hash' => password_hash($pw, PASSWORD_DEFAULT)]);
+                // Mot de passe actuel demandé, sauf juste après un lien de connexion reçu par e-mail (mot de passe oublié).
+                $viaLink = (int) Session::get('magic_at') > time() - 1800;
+                if (!$viaLink && !password_verify(Req::raw('current'), (string) $v['user']['password_hash'])) {
+                    return self::account($p, ['error' => 'Mot de passe actuel incorrect.']);
+                }
+                Auth::changePassword($uid, $pw);
+                Session::forget('magic_at');
                 Access::audit($v, 'password_changed');
                 Session::flash('Mot de passe modifié.');
                 break;

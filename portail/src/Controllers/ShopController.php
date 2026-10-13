@@ -53,7 +53,8 @@ final class ShopController
 
     public static function ordersCsv(array $p): Response
     {
-        $ctx = Access::site($p['slug']);
+        // Fichier avec les coordonnées de tous les clients : réservé à qui gère tout le site.
+        $ctx = Access::site($p['slug'], 'owner');
         if ($ctx['site']['connector'] !== 'catalogue') {
             throw Halt::notFound();
         }

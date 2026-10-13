@@ -19,6 +19,17 @@ final class Http
     public static function request(string $method, string $url, array $headers = [], string|array|null $body = null, int $timeout = 25): array
     {
         $ch = curl_init($url);
+        // L'adresse IP est vérifiée (pas de réseau interne) puis imposée à cURL pour cette requête.
+        $parts = parse_url($url);
+        if (!empty($parts['host']) && !filter_var(trim($parts['host'], '[]'), FILTER_VALIDATE_IP)) {
+            $ip = Net::assertPublicHost($parts['host']);
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                $port = (int) ($parts['port'] ?? (($parts['scheme'] ?? 'https') === 'http' ? 80 : 443));
+                curl_setopt($ch, CURLOPT_RESOLVE, [$parts['host'] . ':' . $port . ':' . (str_contains($ip, ':') ? "[$ip]" : $ip)]);
+            }
+        } elseif (!empty($parts['host'])) {
+            Net::assertPublicHost($parts['host']);
+        }
         $responseHeaders = [];
         $h = [];
         foreach ($headers as $k => $v) {

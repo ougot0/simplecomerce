@@ -688,8 +688,13 @@ final class FileSiteAdapter implements Adapter
         } catch (\InvalidArgumentException) {
             return null;
         }
+        // Seules les pages HTML simples sont recopiées : jamais un fichier PHP (ni une page qui contient du code PHP),
+        // où un nom de produit bien choisi pourrait devenir du code exécuté sur l'hébergement.
+        if (!preg_match('/\.html?$/i', $sourcePath)) {
+            return null;
+        }
         $source = $this->backend->read($sourcePath);
-        if (!$source) {
+        if (!$source || str_contains($source['content'], '<?')) {
             return null;
         }
         $oldName = HtmlCards::values($html, $last)['nom'] ?? '';

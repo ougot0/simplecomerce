@@ -23,6 +23,15 @@ final class Auth
     {
         $id = Session::get('uid');
         if ($id) {
+            // Mot de passe changé depuis l'ouverture de cette session (sur un autre appareil) : la session n'est plus valable.
+            $u = Repo::user($id);
+            $pwv = $u ? self::passwordVersion($u) : null;
+            if ($u && Session::get('pwv') === null) {
+                Session::set('pwv', $pwv);
+            } elseif (!$u || Session::get('pwv') !== $pwv) {
+                Session::destroy();
+                return null;
+            }
             return $id;
         }
         $token = $_COOKIE[self::REMEMBER_COOKIE] ?? null;
@@ -31,6 +40,7 @@ final class Auth
             if ($t && Repo::user($t['user_id'])) {
                 Session::regenerate();
                 Session::set('uid', $t['user_id']);
+                Session::set('pwv', self::passwordVersion(Repo::user($t['user_id'])));
                 Repo::extendToken($t['id'], self::REMEMBER_DAYS * 86400);
                 self::setCookie($token);
                 return $t['user_id'];
@@ -38,6 +48,36 @@ final class Auth
             self::forgetCookie();
         }
         return null;
+    }
+
+    /** Empreinte courte du mot de passe enregistré : change quand le mot de passe change. */
+    public static function passwordVersion(array $user): string
+    {
+        return substr(hash('sha256', (string) $user['password_hash']), 0, 16);
+    }
+
+    /**
+     * Nouveau mot de passe : les autres appareils sont déconnectés (sessions et « Rester connecté »),
+     * celui-ci reste connecté.
+     */
+    public static function changePassword(string $userId, string $password): void
+    {
+        Repo::updateUser($userId, ['password_hash' => password_hash($password, PASSWORD_DEFAULT)]);
+        Repo::deleteUserTokens($userId, 'remember');
+        $user = Repo::user($userId);
+        if ($user && Session::get('uid') === $userId) {
+            Session::regenerate();
+            Session::set('pwv', self::passwordVersion($user));
+            if (isset($_COOKIE[self::REMEMBER_COOKIE])) {
+                self::setCookie(Repo::createToken($userId, 'remember', self::REMEMBER_DAYS * 86400));
+            }
+        }
+    }
+
+    /** Compte créé sans que l'adresse e-mail ait été prouvée (inscription libre). */
+    public static function markUnverified(string $userId): void
+    {
+        Repo::setMeta('unverified:' . $userId, '1');
     }
 
     public static function passwordProblem(string $pw): ?string
@@ -55,6 +95,7 @@ final class Auth
     {
         Session::regenerate();
         Session::set('uid', $user['id']);
+        Session::set('pwv', self::passwordVersion($user));
         Session::forget('assist');
         if ($remember) {
             $token = Repo::createToken($user['id'], 'remember', self::REMEMBER_DAYS * 86400);
@@ -134,7 +175,20 @@ final class Auth
         if (!$user) {
             return null;
         }
+        // Le lien prouve que la personne reçoit bien les e-mails de cette adresse. Si le compte avait été créé
+        // sans cette preuve, quelqu'un d'autre a pu le créer avec son adresse : on retire alors l'ancien mot de passe
+        // et on déconnecte tous les autres appareils, puis on lui fait choisir le sien.
+        if (Repo::meta('unverified:' . $user['id']) !== null) {
+            Repo::updateUser($user['id'], ['password_hash' => password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT)]);
+            Repo::deleteUserTokens($user['id'], 'remember');
+            \SimpleCommerce\Db::run('DELETE FROM sc_meta WHERE name = ?', ['unverified:' . $user['id']]);
+            $user = Repo::user($user['id']);
+            self::login($user, (bool) ($t['extra']['remember'] ?? false));
+            Session::set('magic_at', time());
+            return '/compte?nouveau-mot-de-passe=1';
+        }
         self::login($user, (bool) ($t['extra']['remember'] ?? false));
+        Session::set('magic_at', time());
         return (string) ($t['extra']['next'] ?? '/sites');
     }
 }

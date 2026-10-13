@@ -137,12 +137,10 @@ final class Registry
             case 'bitbucket':
                 return new FileSiteAdapter(new BitbucketBackend($s('workspace'), $s('repo'), $s('branch') ?: 'main', (string) ($secrets['token'] ?? ''), $s('username') ?: null), self::fileOptions($config, $ctx, false));
             case 'sftp':
-                Net::assertPublicHost($s('host'));
-                return new FileSiteAdapter(new SftpBackend($s('host'), (int) ($config['port'] ?? 22) ?: 22, $s('username'), $secrets['password'] ?? null, $secrets['privateKey'] ?? null,
+                return new FileSiteAdapter(new SftpBackend(Net::assertPublicHost($s('host')), (int) ($config['port'] ?? 22) ?: 22, $s('username'), $secrets['password'] ?? null, $secrets['privateKey'] ?? null,
                     $secrets['passphrase'] ?? null, $s('remoteRoot') ?: '/', $s('hostFingerprint') ?: null), self::fileOptions($config, $ctx, true));
             case 'ftp':
-                Net::assertPublicHost($s('host'));
-                return new FileSiteAdapter(new FtpBackend($s('host'), (int) ($config['port'] ?? 0), $s('username'), (string) ($secrets['password'] ?? ''), $s('tls') ?: 'explicit', $s('remoteRoot') ?: '/'), self::fileOptions($config, $ctx, true));
+                return new FileSiteAdapter(new FtpBackend(Net::assertPublicHost($s('host')), (int) ($config['port'] ?? 0), $s('username'), (string) ($secrets['password'] ?? ''), $s('tls') ?: 'explicit', $s('remoteRoot') ?: '/'), self::fileOptions($config, $ctx, true));
             case 'netlify':
                 return new FileSiteAdapter(new NetlifyBackend($s('netlifySite'), (string) ($secrets['token'] ?? '')), self::fileOptions($config, $ctx, true));
             case 'shopify':

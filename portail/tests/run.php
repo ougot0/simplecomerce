@@ -224,5 +224,25 @@ test('boutique', function () {
     check(file_get_contents("$dir/index.html") === $before, 'compteur retiré, page identique');
 });
 
+test('sécurité (audit du 13/10)', function () {
+    foreach (['0:0:0:0:0:ffff:127.0.0.1', '::0:ffff:7f00:1', '::ffff:169.254.169.254', '64:ff9b::10.0.0.1', '2002:7f00:1::', 'fec0::1'] as $ip) {
+        check(Net::isPrivateIp($ip), "adresse interne déguisée refusée : $ip");
+    }
+    check(!Net::isPrivateIp('8.8.8.8') && !Net::isPrivateIp('2606:4700::1111'), 'adresses publiques acceptées');
+    $img = ['key' => 'photo', 'label' => 'Photo', 'type' => 'image'];
+    [, $e] = Values::normalize([$img], ['photo' => '/x.jpg" onerror="alert(1)'], []);
+    check(!empty($e), 'photo piégée (guillemet) refusée');
+    [, $e] = Values::normalize([$img], ['photo' => "/a.jpg');background:url(https://evil"], []);
+    check(!empty($e), 'photo piégée (style) refusée');
+    [$d, $e] = Values::normalize([$img], ['photo' => '/images/mon gateau (1).jpg'], ['photo' => '/images/mon gateau (1).jpg']);
+    check(!$e, 'photo existante inchangée gardée');
+    $txt = ['key' => 'nom', 'label' => 'Nom', 'type' => 'text'];
+    [, $e] = Values::normalize([$txt], ['nom' => 'Tarte <img src=x onerror=alert(1)>'], []);
+    check(!empty($e), 'balise HTML dans un texte refusée');
+    [, $e] = Values::normalize([$txt], ['nom' => 'Prix < 5 € et 3 > 2'], []);
+    check(!$e, 'signes < et > ordinaires acceptés');
+    check(throws(fn () => \SimpleCommerce\Content\HtmlCards::copyPage('<?php echo \'<h1>A</h1>\'; ?>', 'A', 'B', null)), 'page PHP jamais recopiée');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

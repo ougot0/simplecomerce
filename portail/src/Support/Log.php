@@ -7,7 +7,7 @@ namespace SimpleCommerce\Support;
 final class Log
 {
     private const SECRET_KEY = '/token|password|passwd|secret|authorization|private.?key|passphrase|api.?key|consumer.?key|cookie/i';
-    private const SECRET_VALUE = '/\b(ghp_|github_pat_|gho_|glpat-|shpat_|shpca_|shppa_|shpss_|sk_live_|sk_test_)[A-Za-z0-9_\-]+/';
+    private const SECRET_VALUE = '/\b(ghp_|github_pat_|gho_|glpat-|shpat_|shpca_|shppa_|shpss_|sk_live_|sk_test_|rk_live_|rk_test_|whsec_|nfp_)[A-Za-z0-9_\-]+/';
 
     public static function redact(mixed $value, int $depth = 0): mixed
     {

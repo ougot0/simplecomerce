@@ -225,7 +225,7 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 - Démo locale : `cd portail && SC_DEMO=1 SC_ALLOW_PRIVATE=1 php -S 127.0.0.1:8080 -t public public/index.php`
   → http://127.0.0.1:8080. Comptes : `marie@patisserie-lune.fr` / `tarte-citron-2026`, `paul@atelier-brun.fr` /
   `maison-bois-2026`, `alex@simplecommerce.demo` / `atelier-demo-2026` (admin). Effacer `storage/` remet tout à zéro.
-- Tests : `php portail/tests/run.php` (68 vérifications : sécurité, coffre, photos, formulaires, formats, moteur de
+- Tests : `php portail/tests/run.php` (81 vérifications : sécurité, coffre, photos, formulaires, formats, moteur de
   contenu sur les sites de démo, annulation). `php -l` sur chaque fichier modifié.
 - Tests navigateur : Playwright via `node_modules/playwright-core` du dépôt, Chromium `/opt/pw-browsers/chromium`.
 - Tests réels faits pendant la session (à refaire si on touche aux connecteurs) : MariaDB + installation web ;
@@ -277,6 +277,20 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit, 2) : **audit de sécurité complet** (le propriétaire voulait le plugin « Security Guidance », pas activable
+  dans une session en cours : audit fait par 3 agents en lecture seule, puis corrections vérifiées). Corrigé :
+  commandes publiques (lignes du même produit additionnées, verrou par boutique `storage/commande-*.lock`, 40/jour, nom
+  saisi retiré de l'e-mail client), limites par IPv6 /64 (`Req::ipBucket`), plafonds « Prévenez-moi » (300/produit) et
+  statistiques (300 entrées/jour) ; mots de passe enregistrés d'un site **non réutilisés si l'hôte/l'identifiant change**
+  (Réglages → Connexion) ; comptes créés sans preuve d'e-mail marqués `unverified:<id>` (sc_meta) → au 1er lien de
+  connexion, ancien mot de passe annulé et appareils déconnectés ; changement de mot de passe = mot de passe actuel
+  demandé (sauf 30 min après un lien e-mail) + autres appareils déconnectés (`pwv` en session, jetons `remember` supprimés) ;
+  `SC_DATA` ne revient jamais à l'ancien emplacement une fois `config.php` déménagé ; export CSV des commandes réservé
+  au propriétaire ; **SSRF** : IPv6 cachant une IPv4 refusées (`Net::isPrivateIp` normalisé), IP vérifiée imposée à cURL
+  (`CURLOPT_RESOLVE`) et aux connexions FTP/SFTP ; **pages de détail** recopiées seulement si `.html` sans `<?` (injection
+  PHP possible avant) ; photos : expression ancrée, sans guillemets/parenthèses/espaces (valeur inchangée tolérée) ;
+  textes simples : balises `<x` refusées ; images max 25 Mpx ; `Log::redact` + `rk_`, `whsec_`, `nfp_`. 81 vérifications.
+  Restent (faibles, connus) : 1er inscrit = admin (décision 9), FTPS sans vérification du certificat (préférer SFTP). Version F.
 - 13/10/2026 (nuit) : **les comptes disparaissaient à chaque envoi du zip** (il remplace tout le dossier `public/` chez OVH,
   qui contenait `config.php` et `storage/`). Désormais **données hors du dossier du portail** : `SC_DATA` =
   `dirname(SC_ROOT)/simplecommerce-donnees` (chez lui `/home/coumaoq/simplecommerce/simplecommerce-donnees/`), avec

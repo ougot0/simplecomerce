@@ -276,9 +276,24 @@ final class SettingsController
         if (!$publicUrl) {
             $errors['publicUrl'] = 'Adresse invalide.';
         }
-        $previous = Sites::secrets($site);
         $values = SitesController::connectorValues();
-        $parsed = Registry::parse($site['connector'], $values, $previous);
+        // Les mots de passe enregistrés ne sont réutilisés que si l'adresse du serveur et l'identifiant n'ont pas changé :
+        // sinon on pourrait les faire envoyer à un autre serveur. Dans ce cas, il faut les retaper.
+        $fresh = Registry::parse($site['connector'], $values, null);
+        $moved = false;
+        foreach ($fresh['config'] as $k => $v) {
+            if (!in_array($k, ['hostPreset', 'hostFingerprint', 'publicKey', 'extras', 'contentDir', 'mediaDir', 'mediaPublicPrefix', 'remoteRoot', 'branch'], true)
+                && (string) $v !== (string) ($site['config'][$k] ?? '')) {
+                $moved = true;
+            }
+        }
+        $previous = $moved ? null : Sites::secrets($site);
+        $parsed = $moved ? $fresh : Registry::parse($site['connector'], $values, $previous);
+        if ($moved) {
+            foreach ($parsed['errors'] as $k => $m) {
+                $parsed['errors'][$k] = $m === 'Ce champ est obligatoire.' ? 'L\'adresse ou l\'identifiant a changé : retapez ce mot de passe ou cette clé.' : $m;
+            }
+        }
         foreach ($parsed['errors'] as $k => $m) {
             $errors["c_$k"] = $m;
         }

@@ -25,6 +25,14 @@ function sc_data_dir(): string
     if (!is_dir($dir) && !@mkdir($dir, 0750) && !is_dir($dir)) {
         return SC_ROOT;
     }
+    if (is_file("$dir/config.php")) {
+        // Données déjà déménagées : on ne revient JAMAIS à l'ancien emplacement (sinon le portail se réinstallerait vide).
+        if (!is_readable("$dir/config.php")) {
+            http_response_code(503);
+            exit('Simple Commerce : le dossier simplecommerce-donnees n\'est pas lisible. Remettez-lui ses droits (705) avec WinSCP.');
+        }
+        return $dir;
+    }
     if (!is_writable($dir)) {
         return SC_ROOT;
     }
@@ -49,7 +57,7 @@ function sc_data_dir(): string
 define('SC_DATA', sc_data_dir());
 define('SC_STORAGE', SC_DATA . '/storage');
 /** Version affichée dans l'administration : sert à vérifier qu'une mise à jour est bien en ligne. */
-define('SC_VERSION', '13 octobre 2026 — E');
+define('SC_VERSION', '13 octobre 2026 — F');
 
 // Erreur grave de PHP (fichier manquant ou abîmé…) : le serveur n'afficherait qu'une page « Erreur interne ».
 // On note le détail dans storage/erreurs.txt (à envoyer à la personne qui s'occupe du portail) et on le dit simplement.
