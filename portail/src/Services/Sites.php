@@ -120,6 +120,45 @@ final class Sites
         }
     }
 
+    /** Clé publique du site (scripts à coller : catalogue, statistiques, avis). Créée à la première demande. */
+    public static function publicKey(array $site): string
+    {
+        $key = (string) ($site['config']['publicKey'] ?? '');
+        if (!preg_match('/^[a-f0-9]{24}$/', $key)) {
+            $key = bin2hex(random_bytes(12));
+            Repo::updateSite($site['id'], ['config' => ['publicKey' => $key] + $site['config']]);
+        }
+        return $key;
+    }
+
+    public static function byPublicKey(string $key): ?array
+    {
+        if (!preg_match('/^[a-f0-9]{24}$/', $key)) {
+            return null;
+        }
+        foreach (Repo::sites() as $s) {
+            if (($s['config']['publicKey'] ?? '') === $key && $s['status'] === 'active') {
+                return $s;
+            }
+        }
+        return null;
+    }
+
+    /** Réglages du portail pour ce site (seuil de stock, horaires, fermetures prévues…), rangés à part de la connexion. */
+    public static function extras(array $site): array
+    {
+        return (array) ($site['config']['extras'] ?? []);
+    }
+
+    public static function setExtras(array $site, array $patch): array
+    {
+        $fresh = Repo::site($site['id']) ?? $site;
+        $config = $fresh['config'];
+        $config['extras'] = array_replace(self::extras($fresh), $patch);
+        Repo::updateSite($site['id'], ['config' => $config]);
+        return $config['extras'];
+    }
+
     /** Délai d'apparition sur le site, selon la façon dont il est relié. */
     public static function delayText(array $site): string
     {

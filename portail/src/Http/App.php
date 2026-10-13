@@ -126,6 +126,9 @@ final class App
         if (!Config::installed() && InstallController::autoInstall()) {
             return Response::redirect('/');
         }
+        if (Config::installed()) {
+            Schema::migrate();
+        }
         if (!Config::installed()) {
             return $path === '/installation' ? ($method === 'POST' ? InstallController::install() : InstallController::form()) : Response::redirect('/installation');
         }
@@ -145,6 +148,7 @@ final class App
             }
         }
         Demo::ensure();
+        Schema::migrate();
         Session::start();
 
         if ($method === 'POST' && !Session::checkCsrf($_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null))) {

@@ -211,6 +211,12 @@ final class SettingsController
         }
         $config = $parsed['config'];
         unset($config['hostPreset']);
+        // La clé publique et les réglages du portail (stock, horaires…) ne viennent pas du formulaire de connexion.
+        foreach (['publicKey', 'extras'] as $keep) {
+            if (!empty($site['config'][$keep])) {
+                $config[$keep] = $site['config'][$keep];
+            }
+        }
         if (!empty($site['config']['publicKey'])) {
             $config['publicKey'] = $site['config']['publicKey'];
         }

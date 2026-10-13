@@ -12,10 +12,12 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 use SimpleCommerce\Config;
+use SimpleCommerce\Schema;
 use SimpleCommerce\Services\Scheduler;
 
 if (!Config::installed()) {
     fwrite(STDERR, "Simple Commerce n'est pas encore installé.\n");
     exit(1);
 }
+Schema::migrate();
 echo date('Y-m-d H:i') . ' — ' . Scheduler::run() . " brouillon(s) publié(s)\n";

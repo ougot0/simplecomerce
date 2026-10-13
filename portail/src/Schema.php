@@ -9,7 +9,8 @@ namespace SimpleCommerce;
  */
 final class Schema
 {
-    public const VERSION = 1;
+    /** 2 : liste d'attente, commandes, avis, statistiques, abonnements (12/10/2026). */
+    public const VERSION = 2;
 
     /** @return string[] */
     public static function statements(string $driver): array
@@ -71,6 +72,26 @@ final class Schema
                 id $id PRIMARY KEY, user_id $id NOT NULL, kind VARCHAR(16) NOT NULL, token_hash VARCHAR(64) NOT NULL UNIQUE,
                 expires_at VARCHAR(32) NOT NULL, created_at VARCHAR(32) NOT NULL, extra TEXT NULL)$engine",
             "CREATE TABLE IF NOT EXISTS sc_attempts (id $id PRIMARY KEY, bucket $key NOT NULL, at VARCHAR(32) NOT NULL)$engine",
+            // Version 2
+            "CREATE TABLE IF NOT EXISTS sc_waitlist (
+                id $id PRIMARY KEY, site_id $id NOT NULL, product_id VARCHAR(191) NOT NULL, product_name VARCHAR(255) NOT NULL DEFAULT '',
+                email $key NOT NULL, created_at VARCHAR(32) NOT NULL, notified_at VARCHAR(32) NULL)$engine",
+            "CREATE TABLE IF NOT EXISTS sc_orders (
+                id $id PRIMARY KEY, site_id $id NOT NULL, number INTEGER NOT NULL, status VARCHAR(16) NOT NULL,
+                customer_name VARCHAR(120) NOT NULL, email $key NOT NULL, phone VARCHAR(40) NOT NULL DEFAULT '',
+                address TEXT NOT NULL, note TEXT NOT NULL, items $long NOT NULL, total DOUBLE PRECISION NULL,
+                created_at VARCHAR(32) NOT NULL, updated_at VARCHAR(32) NOT NULL)$engine",
+            "CREATE TABLE IF NOT EXISTS sc_reviews (
+                id $id PRIMARY KEY, site_id $id NOT NULL, product_id VARCHAR(191) NULL, author VARCHAR(80) NOT NULL,
+                rating INTEGER NOT NULL, body TEXT NOT NULL, status VARCHAR(16) NOT NULL, reply TEXT NULL,
+                created_at VARCHAR(32) NOT NULL)$engine",
+            "CREATE TABLE IF NOT EXISTS sc_hits (
+                site_id $id NOT NULL, day VARCHAR(10) NOT NULL, kind VARCHAR(8) NOT NULL, item VARCHAR(191) NOT NULL,
+                hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (site_id, day, kind, item))$engine",
+            "CREATE TABLE IF NOT EXISTS sc_billing (
+                user_id $id PRIMARY KEY, status VARCHAR(16) NOT NULL, trial_ends_at VARCHAR(32) NULL,
+                customer_id VARCHAR(191) NULL, subscription_id VARCHAR(191) NULL, period_end VARCHAR(32) NULL,
+                updated_at VARCHAR(32) NOT NULL)$engine",
         ];
         $indexes = [
             'CREATE INDEX sc_members_user ON sc_members (user_id)',
@@ -79,6 +100,9 @@ final class Schema
             'CREATE INDEX sc_schemas_site ON sc_schemas (site_id, version)',
             'CREATE INDEX sc_events_at ON sc_events (at)',
             'CREATE INDEX sc_attempts_bucket ON sc_attempts (bucket, at)',
+            'CREATE INDEX sc_waitlist_site ON sc_waitlist (site_id, product_id)',
+            'CREATE INDEX sc_orders_site ON sc_orders (site_id, created_at)',
+            'CREATE INDEX sc_reviews_site ON sc_reviews (site_id, status)',
         ];
         return [...$tables, ...$indexes];
     }
@@ -97,6 +121,19 @@ final class Schema
             }
         }
         Db::run($driver === 'mysql' ? 'REPLACE INTO sc_meta (name, value) VALUES (?, ?)' : 'INSERT OR REPLACE INTO sc_meta (name, value) VALUES (?, ?)', ['schema_version', (string) self::VERSION]);
+    }
+
+    /** Portail déjà en service avec une ancienne version : on ajoute les nouvelles tables (rien n'est supprimé). */
+    public static function migrate(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        if ((int) (Db::value("SELECT value FROM sc_meta WHERE name = 'schema_version'") ?? 0) < self::VERSION) {
+            self::install();
+        }
     }
 
     public static function isInstalled(): bool
