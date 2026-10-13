@@ -287,7 +287,9 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
   Administration → Informations légales, « [à compléter] » sinon ; OVH et Stripe déjà cités), liens en bas des pages,
   case « J'accepte les conditions » obligatoire à l'inscription (acceptation notée dans le journal). **Première année
   gratuite** : `trialDays` 365 (migration base v4 qui passe l'ancien 7 → 365), textes via `Billing::freeSentence()`.
-  Version E. ⚠ Ne JAMAIS supprimer `simplecommerce-donnees`.
+  Version E. ⚠ Ne JAMAIS supprimer `simplecommerce-donnees`. Vérification sécurité demandée (« je mets ma clé Stripe ») :
+  admin 404 pour un client, CSRF 419, faux webhook 400, fichiers sensibles 404 — OK. Corrigé : code promo à 100 % devinable
+  (« GRATUIT100 ») → 8 caractères minimum, code aléatoire proposé, 10 utilisations max, l'ancien désactivé chez Stripe.
 - 13/10/2026 (soir) : **adresse de contact de Simple Commerce : `simplecommercess@gmail.com`** (`Config::contactEmail()`,
   surchargeable par `'contact_email'` dans config.php) : Reply-To des e-mails du portail, page d'aide, pied de la page
   d'accueil (modèle seulement : son `public/accueil.html` déjà créé n'est pas réécrit). Expéditeur (`mail_from`) inchangé

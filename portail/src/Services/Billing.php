@@ -347,19 +347,27 @@ final class Billing
     public static function setupPromo(string $code): string
     {
         $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $code));
-        if ($code === '' || strlen($code) < 4) {
-            throw new AdapterError('invalid', 'Le code promo doit faire au moins 4 lettres ou chiffres.');
+        if (strlen($code) < 8) {
+            throw new AdapterError('invalid', 'Le code promo doit faire au moins 8 lettres ou chiffres, pour ne pas être deviné.');
         }
         $s = self::settings();
         if ($s['promoCode'] === $code && $s['promoId'] !== '') {
             return $code;
         }
-        $existing = (array) (self::stripe('GET', '/promotion_codes?code=' . rawurlencode($code) . '&limit=1')['data'] ?? []);
+        // Un seul code actif à la fois : l'ancien est désactivé (un code connu de trop de monde ne sert plus).
+        if ($s['promoId'] !== '') {
+            try {
+                self::stripe('POST', '/promotion_codes/' . rawurlencode($s['promoId']), ['active' => 'false']);
+            } catch (\Throwable) {
+            }
+        }
+        $existing = (array) (self::stripe('GET', '/promotion_codes?code=' . rawurlencode($code) . '&active=true&limit=1')['data'] ?? []);
         if ($existing) {
             $id = (string) $existing[0]['id'];
         } else {
             $coupon = self::stripe('POST', '/coupons', ['percent_off' => 100, 'duration' => 'forever', 'name' => 'Gratuit (100 %)']);
-            $id = (string) self::stripe('POST', '/promotion_codes', ['coupon' => $coupon['id'], 'code' => $code])['id'];
+            // Au plus 10 utilisations : même si le code circule, il ne peut pas servir à tout le monde.
+            $id = (string) self::stripe('POST', '/promotion_codes', ['coupon' => $coupon['id'], 'code' => $code, 'max_redemptions' => 10])['id'];
         }
         self::saveSettings(['promoCode' => $code, 'promoId' => $id]);
         return $code;
