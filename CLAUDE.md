@@ -49,9 +49,11 @@ portail/
 │   ├── Db.php, Schema.php  ← PDO (MySQL en prod, SQLite en démo) ; tables sc_* ; Schema::install()
 │   ├── Repo.php            ← toutes les lectures/écritures en base (aucun contrôle de droits ici)
 │   ├── Http/               ← App (routes + en-têtes de sécurité + CSRF), Req, Response, View, Halt
-│   ├── Controllers/        ← Auth, Sites (assistant « Relier un site »), Site, Editor, Settings, Admin, Misc, Install
+│   ├── Controllers/        ← Auth, Sites (assistant « Relier un site »), Site, Editor, Settings, Admin, Misc, Install,
+│   │                          Catalogue + Public (adresses publiques des sites clients), Shop (commandes/avis/stats), Billing
 │   ├── Services/           ← Access (droits, isolation, assistance), Auth, Sites (ouvrir un connecteur), Changes
-│   │                          (publier/annuler/fermer + historique), Media (photos), Scheduler, Notifier, Demo
+│   │                          (publier/annuler/fermer + historique), Media (photos), Scheduler, Notifier, Demo,
+│   │                          Backups, Shop (stock bas), Waitlist, Orders, Reviews, Stats, Hours (horaires/congés), Billing (Stripe)
 │   ├── Content/            ← moteur de contenu : ContentSchema, Infer (détection auto), Formats (JSON/YAML/Markdown/JS),
 │   │                          Values (validation), FormInput (formulaire HTML → valeurs typées), Price, Paths
 │   ├── Adapters/           ← connecteurs : Shopify, WordPress(+Woo), Webflow, CustomApi ; Files/ = FileSiteAdapter +
@@ -146,6 +148,15 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 17. **Prototype cliquable** (artifact claude.ai `https://claude.ai/artifact/AhpE7mGFoipZ8NCsQPoWPc`, version 3,
     données dans le localStorage) : il **montre l'ancien parcours**, il n'a **pas** les options de la version PHP.
     Le vrai test se fait sur l'installation OVH.
+18. **Onze idées choisies le 13/10/2026** (« 4 5 6 7 8 10 13 15 16 20 21 ») : pastilles et produits mis en avant,
+    « Prévenez-moi », alerte de stock bas, commandes, modification en lot, horaires et congés programmés, application
+    téléphone, statistiques sans Google, avis clients, abonnements Stripe, sauvegardes automatiques. Choix faits :
+    **commandes sans paiement en ligne** (le commerçant règle avec son client ; prix et stock relus côté serveur, stock
+    retiré à la commande, remis si annulée) ; avis **relus avant affichage** ; statistiques **sans cookie ni IP** ;
+    horaires/avis/statistiques = **une ligne à coller** (`/horaires|avis|p/{publicKey}.js`), le compteur pouvant être
+    **ajouté automatiquement** à toutes les pages des sites reliés par fichiers ; abonnements **éteints par défaut**
+    (Administration → Abonnements), essai gratuit puis lecture seule, les **propriétaires** paient, les actions
+    automatiques (commandes, congés) ne sont jamais bloquées ; sauvegardes de la nuit dans `storage/backups/`.
 
 ## 6. Sécurité — règles non négociables (demande initiale)
 
@@ -213,7 +224,7 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 - Démo locale : `cd portail && SC_DEMO=1 SC_ALLOW_PRIVATE=1 php -S 127.0.0.1:8080 -t public public/index.php`
   → http://127.0.0.1:8080. Comptes : `marie@patisserie-lune.fr` / `tarte-citron-2026`, `paul@atelier-brun.fr` /
   `maison-bois-2026`, `alex@simplecommerce.demo` / `atelier-demo-2026` (admin). Effacer `storage/` remet tout à zéro.
-- Tests : `php portail/tests/run.php` (61 vérifications : sécurité, coffre, photos, formulaires, formats, moteur de
+- Tests : `php portail/tests/run.php` (68 vérifications : sécurité, coffre, photos, formulaires, formats, moteur de
   contenu sur les sites de démo, annulation). `php -l` sur chaque fichier modifié.
 - Tests navigateur : Playwright via `node_modules/playwright-core` du dépôt, Chromium `/opt/pw-browsers/chromium`.
 - Tests réels faits pendant la session (à refaire si on touche aux connecteurs) : MariaDB + installation web ;
@@ -231,10 +242,14 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 
 1. **Accompagner l'installation sur l'OVH du propriétaire** (étapes section 8) et le premier vrai site relié ;
    lui demander des captures d'écran en cas de souci.
-2. **« Comme Shopify, pour n'importe quel site »** — **première version construite le 12/10/2026** : type de site `catalogue`
+2. **Tester en réel les fonctions du 13/10/2026** : abonnements avec un vrai compte Stripe (jamais testé contre Stripe :
+   seulement signature des avis et logique), e-mails de commande/avis depuis OVH, compteur de visites sur un vrai site.
+   Le propriétaire n'a pas encore envoyé ces fichiers chez OVH.
+3. **« Comme Shopify, pour n'importe quel site »** — **première version construite le 12/10/2026** : type de site `catalogue`
    (« Gérer mes produits ici, puis les afficher sur mon site »), contenu gardé dans la table `sc_files` (`DbBackend`, créée à la
    demande), ligne à coller `<script src="…/catalogue/{publicKey}.js">` (widget `public/assets/catalogue-widget.js`, Shadow DOM,
-   routes publiques sans session dans `App::handle`, `CatalogueController`). Reste à faire : paiement (Stripe), variantes, catégories.
+   routes publiques sans session dans `App::handle`, `CatalogueController`). Panier/commandes, pastilles, « Prévenez-moi »
+   ajoutés le 13/10. Reste à faire : paiement en ligne des commandes, variantes, catégories.
    Description d'origine :
    un **catalogue hébergé par Simple Commerce** (produits, stocks, prix, ouvert/fermé gardés dans la base du portail)
    + **une ligne à coller une fois** dans le site du client (script public qui affiche les produits, comme le bouton
@@ -242,13 +257,13 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
    route publique lecture seule + CORS, cache, gabarit d'affichage sobre et personnalisable, gestion des stocks,
    éventuellement paiement Stripe. Aujourd'hui, un site « fait main » dont les produits sont dans le code doit être
    **préparé une fois** (contenu sorti dans un fichier de données) — c'est ce qui a été fait pour l'exemple Kumao.
-3. Tester **Shopify** et **Webflow** avec de vrais comptes (vérifiés le 12/10/2026 contre des imitations fidèles de leurs API
+4. Tester **Shopify** et **Webflow** avec de vrais comptes (vérifiés le 12/10/2026 contre des imitations fidèles de leurs API
    seulement). Shopify : depuis le 01/01/2026 plus de jeton `shpat_` pour les nouvelles applications → le portail accepte
    **Client ID + Client secret** (application du Dev Dashboard, jeton 24 h obtenu à chaque connexion) ; API `2026-07`
    (`ShopifyAdapter::API_VERSION`, à relever chaque année : `inventorySetQuantities` exige `@idempotent` depuis 2026-04).
-4. Mettre à jour le **prototype cliquable** (artifact) avec le design et les options de la version PHP, si le propriétaire le veut.
-5. Brancher le **nom de domaine** `simplecommercess.com` (acheté le 12/10/2026) dans le multisite OVH.
-6. Pistes : connecteurs Wix, Squarespace, PrestaShop (listés « pas encore disponibles ») ; envoi d'e-mails par SMTP
+5. Mettre à jour le **prototype cliquable** (artifact) avec le design et les options de la version PHP, si le propriétaire le veut.
+6. Brancher le **nom de domaine** `simplecommercess.com` (acheté le 12/10/2026) dans le multisite OVH.
+7. Pistes : connecteurs Wix, Squarespace, PrestaShop (listés « pas encore disponibles ») ; envoi d'e-mails par SMTP
    si `mail()` d'OVH arrive en indésirables ; décider du sort de la version Next.js (la garder ou la supprimer — au propriétaire).
 
 ## 11. L'exemple Kumao (hors projet, pour mémoire)
@@ -261,6 +276,16 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (matin) : après la restauration OVH (« tout marche »), **onze nouvelles fonctions** (décision 18), une par
+  commit : sauvegardes automatiques (+ sauvegarde complète du portail dans l'administration), alerte de stock bas,
+  modification en lot (`FileSiteAdapter::changeMany`, `Changes::publishBatch`), horaires + congés programmés
+  (`Hours::tick` dans le Scheduler), pastilles (`DbBackend::upgradeSchema`, base en version 3), « Prévenez-moi »,
+  commandes, avis, statistiques (`PublicController`, `ShopController`, `FileSiteAdapter::setPageScript`), application
+  téléphone (`public/manifest.webmanifest`, `public/sw.js`, `assets/hors-connexion.html`), abonnements Stripe
+  (`Billing`, `BillingController`, CSP `form-action` ouverte à checkout/billing.stripe.com). 68 vérifications.
+  Testé dans la démo au navigateur (panier, commande, annulation avec remise en stock, e-mail de retour en stock, avis,
+  statistiques, hors connexion, abonnement bloqué puis débloqué par un avis Stripe signé). Démo : lancer avec
+  `SC_URL=http://127.0.0.1:PORT` sinon les scripts publics appellent localhost:8080.
 - 13/10/2026 (nuit) : **incident** — le propriétaire a effacé par erreur tout son espace OVH (/home/coumaoq vidé à 0 h 26 : `www`,
   `ougot`, `aminteriorss`, `simplecommerce`…). Restauration OVH refusée avant 7 h (« Wait until 7:00 AM ») ; accès `-snapN` en FTP
   refusé chez lui. À faire après 7 h : FTP-SSH → Restaurer une sauvegarde → la plus récente (13/10 0 h 01). Copies anciennes des

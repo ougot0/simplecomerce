@@ -193,9 +193,11 @@ final class Orders
         $out = fopen('php://temp', 'r+');
         fwrite($out, "\xEF\xBB\xBF");
         fputcsv($out, ['Numéro', 'Date', 'État', 'Client', 'E-mail', 'Téléphone', 'Adresse', 'Message', 'Produits', 'Total'], ';');
+        // Une cellule qui commence par = + - @ serait lue comme une formule par le tableur : on la neutralise.
+        $cell = fn ($v) => is_string($v) && preg_match('/^[=+\-@\t\r]/', $v) ? "'" . $v : $v;
         foreach (self::list($siteId, null, 5000) as $o) {
-            fputcsv($out, [$o['number'], substr($o['created_at'], 0, 10), self::STATUSES[$o['status']] ?? $o['status'], $o['customer_name'], $o['email'], $o['phone'],
-                $o['address'], $o['note'], implode(', ', array_map(fn ($i) => "{$i['qte']} × {$i['nom']}", $o['items'])), number_format((float) $o['total'], 2, ',', '')], ';');
+            fputcsv($out, array_map($cell, [$o['number'], substr($o['created_at'], 0, 10), self::STATUSES[$o['status']] ?? $o['status'], $o['customer_name'], $o['email'], $o['phone'],
+                $o['address'], $o['note'], implode(', ', array_map(fn ($i) => "{$i['qte']} × {$i['nom']}", $o['items'])), number_format((float) $o['total'], 2, ',', '')]), ';');
         }
         rewind($out);
         return (string) stream_get_contents($out);

@@ -4,7 +4,7 @@
 
 Adresse            https://simplecommercess.com
 Version            Portail PHP (dossier « portail/ » du projet)
-Mise à jour        12 octobre 2026
+Mise à jour        13 octobre 2026
 
 
 --------------------------------------------------------------------------------
@@ -71,8 +71,20 @@ il est hébergé, et donne au commerçant un espace simple pour le modifier.
 - Enregistrer sans publier (brouillon) ou programmer une publication.
 - Voir l'historique de toutes les modifications et revenir en arrière.
 - Inviter un collègue sur un site précis, et lui retirer l'accès à tout moment.
-- Télécharger une sauvegarde de son contenu.
+- Télécharger une sauvegarde de son contenu ; sauvegarde automatique chaque
+  nuit (14 nuits gardées), remise en place en un clic.
 - Rester connecté sur son appareil sans limite de durée.
+- Modifier plusieurs produits d'un coup : masquer, afficher, changer les prix
+  d'un pourcentage, le stock, supprimer.
+- Être prévenu par e-mail quand un stock devient bas ou épuisé.
+- Afficher ses horaires d'ouverture sur son site ; programmer ses congés (le
+  site se ferme et se rouvre tout seul).
+- Catalogue hébergé : pastilles (« Nouveau », « Promo »), produits mis en
+  avant, panier et commandes (suivi : nouvelle, préparée, remise, annulée,
+  export tableur), « Prévenez-moi quand il revient » pour les produits épuisés.
+- Avis clients relus avant affichage, avec réponse publique.
+- Statistiques de visite sans Google et sans cookie.
+- Installer Simple Commerce sur son téléphone comme une application.
 
 
 --------------------------------------------------------------------------------
@@ -142,7 +154,10 @@ Hébergement       Hébergement mutualisé classique (OVHcloud) : pas besoin de
                   Node.js, ni de terminal, ni de Composer sur le serveur
 Installation      Envoi des fichiers par FTP ; le portail s'installe seul à la
                   première visite ; le premier compte devient administrateur
-Tâche planifiée   bin/cron.php toutes les heures (publications programmées)
+Tâche planifiée   bin/cron.php toutes les heures (publications programmées,
+                  congés programmés, sauvegardes de la nuit)
+Abonnements       Stripe (Checkout + espace client), éteints par défaut,
+                  essai gratuit réglable
 
 
 --------------------------------------------------------------------------------
@@ -160,7 +175,9 @@ Icônes       Dessinées au trait, jamais d'emoji.
 11. CE QUI RESTE À FAIRE
 --------------------------------------------------------------------------------
 
-- Paiement en ligne (Stripe), variantes et catégories pour le catalogue hébergé.
+- Paiement en ligne des commandes (aujourd'hui : demande de commande, paiement
+  réglé avec le commerçant), variantes et catégories pour le catalogue hébergé.
+- Tester les abonnements Stripe avec un vrai compte Stripe.
 - Tester Shopify et Webflow avec de vrais comptes.
 - Connecteurs Wix, Squarespace, PrestaShop.
 - Envoi des e-mails par SMTP si ceux d'OVH arrivent en indésirables.

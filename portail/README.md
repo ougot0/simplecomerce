@@ -15,7 +15,7 @@ WordPress/WooCommerce, Webflow, GitHub, GitLab, Bitbucket, ou derrière une peti
 | `src/`, `templates/` | le code du portail | non |
 | `vendor/` | bibliothèques (SFTP en PHP pur, lecture YAML) | non |
 | `storage/` | photos en attente, sessions, journal | non (bloqué) |
-| `bin/cron.php` | publication des brouillons programmés | non |
+| `bin/cron.php` | publications programmées, congés programmés, sauvegardes de la nuit | non |
 | `config.php` | créé à l'installation : base de données et **clés de chiffrement** | non |
 
 ## Mettre en ligne sur OVH, pas à pas
@@ -84,7 +84,17 @@ Onglet **Plus → Tâches planifiées - Cron** → **Ajouter une planification**
 - langage : PHP 8.3
 - fréquence : toutes les heures (ou plus souvent si votre offre le permet).
 
-En secours, le portail publie aussi les brouillons échus pendant les visites, au plus une fois par minute.
+Cette tâche publie les brouillons programmés, ferme et rouvre les sites aux dates de congés choisies, et fait chaque nuit
+(entre 1 h et 6 h) une sauvegarde de chaque site, gardée dans `storage/backups/` (14 nuits).
+En secours, le portail fait aussi ce travail pendant les visites, au plus une fois par minute (une sauvegarde à la fois).
+
+### 7 bis. Abonnements (facultatif)
+
+Éteints par défaut : tout le monde publie librement. Pour faire payer vos clients :
+**Administration → Abonnements** — prix affiché, durée de l'essai gratuit, identifiant du prix Stripe (`price_…`),
+clé secrète Stripe (`sk_live_…`, chiffrée), puis dans Stripe → Développeurs → Webhooks une destination vers
+`https://votre-domaine/stripe/webhook` (évènements `checkout.session.completed`, `customer.subscription.updated`,
+`customer.subscription.deleted`) dont vous recopiez le secret `whsec_…`. Cochez « Activer ».
 
 ### 8. E-mails
 

@@ -6,7 +6,7 @@
 voir docs/FICHE-TECHNIQUE.txt. Les décisions prises avec le propriétaire du
 projet, et leur historique, sont dans CLAUDE.md à la racine du projet.
 
-Mise à jour : 12 octobre 2026.
+Mise à jour : 13 octobre 2026.
 
 
 ================================================================================
@@ -194,7 +194,18 @@ Principales routes :
   /s/{slug}/historique     Historique et annulation
   /s/{slug}/reglages       Équipe, fermeture, rubriques, connexion
   /admin, /admin/journal   Administration
+  /s/{slug}/commandes      Commandes du catalogue (+ commandes.csv, liste d'attente)
+  /s/{slug}/avis           Avis clients à relire, afficher, répondre
+  /s/{slug}/statistiques   Visites, pages, provenances
+  /s/{slug}/groupe         Modification en lot (POST)
+  /compte/abonnement       Abonnement Stripe du client ; /admin/abonnements
   /catalogue/{clé}.js      Script public du catalogue hébergé (sans session)
+  /catalogue/{clé}/alerte  « Prévenez-moi » (POST public) ; …/commande = commande
+  /horaires/{clé}.js       Horaires d'ouverture à coller dans n'importe quel site
+  /avis/{clé}.js, /avis/{clé}   Avis : affichage + envoi (POST public)
+  /p/{clé}.js, /p/{clé}    Compteur de visites : script + envoi (POST public)
+  /stripe/webhook          Avis de Stripe (signature vérifiée, sans session)
+  /manifest.webmanifest, /sw.js   Application installable (téléphone)
   /cron                    Déclenchement web des publications programmées
   /robots.txt /sitemap.xml Moteurs de recherche
 
@@ -322,6 +333,19 @@ sc_impersonations Sessions d'assistance « agir pour un client »
 sc_tokens         Jetons hachés : « rester connecté », lien de connexion…
 sc_attempts       Limitation des tentatives de connexion
 sc_files          Contenu des catalogues hébergés (créée à la demande)
+sc_waitlist       « Prévenez-moi quand il revient » (e-mail par produit)
+sc_orders         Commandes du catalogue (n°, état, client, lignes, total)
+sc_reviews        Avis clients (attente / publie / refuse, réponse)
+sc_hits           Compteurs de visites par jour (aucune IP, aucun identifiant)
+sc_billing        Abonnement Stripe de chaque compte (essai, actif…)
+
+Version du schéma : Schema::VERSION (3). Schema::migrate() est appelé à chaque
+requête et par cron.php : si la base est plus ancienne, les tables manquantes
+sont créées (CREATE IF NOT EXISTS) et les catalogues reçoivent les nouveaux
+champs (DbBackend::upgradeSchema). Réglages par site (seuil de stock,
+horaires, fermeture prévue, commandes, avis, statistiques…) : dans
+sc_sites.config['extras'] (Sites::extras / setExtras). Clé publique d'un site
+(24 caractères hexadécimaux) : config['publicKey'] (Sites::publicKey).
 
 NE JAMAIS renommer une table ou une colonne sans migration : des bases sont
 déjà en service.
@@ -347,6 +371,9 @@ Chez OVH :
     public/ du portail (pour que src/, storage/ et config.php restent hors du
     web). Cocher SSL.
   - Tâches planifiées : bin/cron.php, PHP 8.3, toutes les heures.
+    Elle publie les brouillons programmés, ferme / rouvre les sites aux dates
+    prévues (Services\Hours::tick) et fait les sauvegardes de la nuit entre
+    1 h et 6 h (Services\Backups::nightly, storage/backups/, 14 nuits gardées).
 
 Installation actuelle : domaine simplecommercess.com. Les fichiers ont été
 envoyés dans simplecommerce/public/ (un étage plus bas que prévu), donc le
@@ -384,6 +411,15 @@ PERDRE config.php = PERDRE tous les accès enregistrés (clé de chiffrement).
 - Texte enrichi nettoyé par liste blanche (p, br, strong, em, a, ul, ol, li).
 - Seule la page d'accueil publique est indexable ; tout le reste est
   « noindex » et interdit dans robots.txt.
+- Adresses publiques appelées par les sites des clients (PublicController) :
+  sans session ni cookie, corps en texte (pas de pré-requête CORS), limitées
+  par IP (l'IP n'est gardée que hachée), champ piège « site_web » contre les
+  robots. Prix et stock d'une commande toujours relus côté serveur.
+- Statistiques : aucun cookie, aucune IP, seulement des compteurs par jour ;
+  sessionStorage sert uniquement à savoir si c'est la 1re page de la visite.
+- Abonnements : clé Stripe et secret du webhook chiffrés (Vault, donnée
+  associée « simplecommerce-billing »), avis Stripe vérifiés par signature
+  HMAC (5 min de tolérance). Le portail ne voit jamais de carte bancaire.
 
 
 ================================================================================
@@ -398,6 +434,9 @@ PERDRE config.php = PERDRE tous les accès enregistrés (clé de chiffrement).
 - Réécrire tout un fichier de contenu d'un client.
 - Affaiblir l'isolation, le CSRF, l'anti-SSRF, la validation des photos ou
   le masquage des secrets.
+- Bloquer les actions automatiques quand un abonnement est fini : les
+  commandes des clients et les fermetures programmées passent toujours
+  (Billing::$system).
 - Supprimer la version Next.js sans l'accord du propriétaire.
 
 
