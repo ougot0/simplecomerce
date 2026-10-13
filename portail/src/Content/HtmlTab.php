@@ -64,7 +64,7 @@ final class HtmlTab
                     || count($li[0]) < 3) {
                     continue;
                 }
-                $model = self::clean($li[2][0][0]);
+                $model = self::clean(self::plainest(array_column($li[2], 0)));
                 $new = preg_replace('#^<li\b#i', '<li data-sc-onglet="' . $id . '"', $model);
                 $new = self::retarget($new, $href, $label);
                 [$at, $indent] = self::spot($li, $ul);
@@ -75,10 +75,10 @@ final class HtmlTab
         if (!$edits && preg_match_all('#<nav\b[^>]*>(.*?)</nav>#is', $html, $nm, PREG_OFFSET_CAPTURE)) {
             foreach ($nm[0] as $i => [$nav, $pos]) {
                 if (!$inZone($pos, $pos + strlen($nav)) || stripos($nav, '<li') !== false
-                    || !preg_match_all('#([ \t]*)(<a\b[^>]*href="[^"]*"[^>]*>.*?</a>)#is', $nav, $a, PREG_OFFSET_CAPTURE) || count($a[0]) < 3) {
+                    || !preg_match_all('#([ \t]*)(<a\b[^>]*href="[^"]*"[^>]*>.*?</a>)#is', $nav, $a, PREG_OFFSET_CAPTURE) || count($a[0]) < 2) {
                     continue;
                 }
-                $new = preg_replace('#^<a\b#i', '<a data-sc-onglet="' . $id . '"', self::clean($a[2][0][0]));
+                $new = preg_replace('#^<a\b#i', '<a data-sc-onglet="' . $id . '"', self::clean(self::plainest(array_column($a[2], 0))));
                 $new = self::retarget($new, $href, $label);
                 [$at, $indent] = self::spot($a, $nav);
                 $edits[] = [$pos + $at, $indent . $new . "\n"];
@@ -105,6 +105,17 @@ final class HtmlTab
         $rest = substr($block, $end);
         $nl = preg_match('/^[ \t]*\r?\n/', $rest, $w) ? strlen($w[0]) : 0;
         return [$end + $nl, $m[1][$n - 1][0] !== '' ? $m[1][$n - 1][0] : ''];
+    }
+
+    /** L'élément du menu le plus simple (sans classe de préférence), pour que l'onglet ajouté ressemble aux autres. */
+    private static function plainest(array $items): string
+    {
+        foreach ($items as $it) {
+            if (!preg_match('#\sclass="[^"]*\S[^"]*"#i', $it)) {
+                return $it;
+            }
+        }
+        return $items[0];
     }
 
     /** Un élément de menu « neutre » : sans marque de page en cours ni d'identifiant. */
@@ -141,6 +152,11 @@ final class HtmlTab
         $html = (string) preg_replace('#<title>.*?</title>#is', '<title>' . htmlspecialchars($title, ENT_QUOTES) . '</title>', $html, 1);
         $html = (string) preg_replace('#(<meta\b[^>]*name="description"[^>]*content=")[^"]*(")#i', '${1}' . htmlspecialchars($title, ENT_QUOTES) . '${2}', $html);
         $html = (string) preg_replace_callback('#<(link|meta)\b[^>]*(canonical|og:url)[^>]*>#i', fn ($m) => str_replace($templateName . '"', $fileName . '"', $m[0]), $html);
+        // Liens du menu vers une partie de la page modèle (« #sacs ») : ils mènent désormais à cette page.
+        $html = (string) preg_replace_callback('#<(header|nav)\b.*?</\1>#is', fn ($z) => (string) preg_replace_callback('#href="\#([\w-]+)"#',
+            fn ($l) => preg_match('#\sid="' . preg_quote($l[1], '#') . '"#', $html) ? $l[0] : 'href="' . $templateName . '#' . $l[1] . '"', $z[0]), $html);
+        $html = (string) preg_replace_callback('#<(header|nav)\b.*?</\1>#is', fn ($z) => (string) preg_replace_callback('#\sclass="([^"]*)"#',
+            fn ($c) => ' class="' . trim((string) preg_replace('/(^|\s)(is-)?(active|current)(?=\s|$)/', ' ', $c[1])) . '"', $z[0]), $html);
         // Plus de page « en cours » héritée du modèle.
         $html = (string) preg_replace('#\saria-current="page"#i', '', $html);
         $meta = '<meta name="generator" content="' . self::GENERATOR . '">';

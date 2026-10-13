@@ -235,7 +235,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 `simplecommerce/public/bin/cron.php`, mises à jour à renvoyer dans `simplecommerce/public/`. Autres sites sur le même
 hébergement (ne pas y toucher) : `www`, `ougot`, `aminteriorss`.
 
-**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique)** (il voit Administration → Rédaction automatique ; clé Claude
+**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique), version J (menus comme celui de Coumao)** (il voit Administration → Rédaction automatique ; clé Claude
 pas encore créée). Avant : **installation en cours sur l'OVH du propriétaire (envoi par WinSCP)** (il a reçu l'archive et les étapes ; il ne
 nous donne pas ses mots de passe — ne pas les lui demander dans la conversation).
 
@@ -303,6 +303,12 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 13/10/2026 (nuit, 7) : chez lui, sur Coumao : « Le menu de votre site n'a pas été trouvé ». Le menu de Coumao n'a que
+  2 liens écrits (Accueil `#top`, Contact `#contact`) + `<div id="tabs">` rempli par JavaScript. **Version J** : menus
+  `<nav>` sans liste acceptés dès 2 liens ; modèle d'onglet = le lien le plus simple (sans classe) ; sur la page créée, les
+  liens du menu vers une ancre absente (`#top`) deviennent `index.html#top` et la marque `active` est retirée. Vérifié sur
+  une copie du site Coumao (dépôt public `ougot0/coumao`, lu seulement). Rappel : le zip ne contient JAMAIS
+  `simplecommerce-donnees` (créé par le portail sur le serveur ; l'inclure écraserait les comptes).
 - 13/10/2026 (nuit, 6) : le propriétaire refuse la « ligne à coller » pour les rendez-vous (« je veux pas que la personne
   ait à demander à son développeur ») : veut un **onglet ajouté tout seul** dans le menu du site. **Version I** :
   bouton « Ajouter l'onglet « Rendez-vous » à mon site » (sites reliés par fichiers, propriétaire) → `Content\HtmlTab`
