@@ -6,6 +6,7 @@ namespace SimpleCommerce\Http;
 use SimpleCommerce\Config;
 use SimpleCommerce\Controllers\AdminController;
 use SimpleCommerce\Controllers\AuthController;
+use SimpleCommerce\Controllers\BillingController;
 use SimpleCommerce\Controllers\CatalogueController;
 use SimpleCommerce\Controllers\EditorController;
 use SimpleCommerce\Controllers\InstallController;
@@ -45,6 +46,9 @@ final class App
             ['GET', '/lien/(?<token>[\w-]{20,100})', [AuthController::class, 'magic']],
             ['POST', '/deconnexion', [AuthController::class, 'logout']],
             ['GET', '/compte', [AuthController::class, 'account']],
+            ['GET', '/compte/abonnement', [BillingController::class, 'show']],
+            ['POST', '/compte/abonnement/payer', [BillingController::class, 'pay']],
+            ['POST', '/compte/abonnement/gerer', [BillingController::class, 'manage']],
             ['POST', '/compte', [AuthController::class, 'saveAccount']],
             ['GET', '/invitation/(?<token>[\w-]{20,100})', [AuthController::class, 'invitation']],
             ['POST', '/invitation/(?<token>[\w-]{20,100})', [AuthController::class, 'acceptInvitation']],
@@ -94,6 +98,8 @@ final class App
             ['POST', '/admin/suspendre', [AdminController::class, 'setStatus']],
             ['POST', '/admin/inscriptions', [AdminController::class, 'setSignup']],
             ['GET', '/admin/sauvegarde', [AdminController::class, 'portalBackup']],
+            ['GET', '/admin/abonnements', [BillingController::class, 'admin']],
+            ['POST', '/admin/abonnements', [BillingController::class, 'saveAdmin']],
         ];
     }
 
@@ -162,6 +168,10 @@ final class App
                 return CatalogueController::hours($m);
             }
         }
+        // Avis de Stripe (abonnements) : signature vérifiée, sans session.
+        if ($path === '/stripe/webhook' && $method === 'POST') {
+            return BillingController::webhook();
+        }
         // Envois des sites des clients : « Prévenez-moi », commandes, avis, statistiques (sans session ni cookie).
         if (preg_match('#^/(?:catalogue/(?<ckey>[a-f0-9]{24})/(?<what>alerte|commande)|avis/(?<akey>[a-f0-9]{24})|p/(?<pkey>[a-f0-9]{24}))$#', $path, $m)) {
             if ($method === 'OPTIONS') {
@@ -218,7 +228,7 @@ final class App
 
     private static function securityHeaders(): void
     {
-        header("Content-Security-Policy: default-src 'self'; img-src 'self' https: data: blob:; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'");
+        header("Content-Security-Policy: default-src 'self'; img-src 'self' https: data: blob:; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self' https://checkout.stripe.com https://billing.stripe.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'");
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: same-origin');
         header('X-Frame-Options: SAMEORIGIN');

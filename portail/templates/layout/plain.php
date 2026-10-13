@@ -20,6 +20,7 @@ include dirname(__DIR__) . '/partials/assist.php';
     <?php endif ?>
 </header>
 <main class="plain-main<?= !empty($wide) ? ' plain-wide' : '' ?>" id="contenu">
+    <?php include dirname(__DIR__) . '/partials/billing-banner.php'; ?>
     <?php include dirname(__DIR__) . '/partials/flash.php'; ?>
     <?= $content ?>
 </main>

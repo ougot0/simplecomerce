@@ -55,6 +55,9 @@ final class Changes
     /** @return array{ok: true, change: array, result: array}|array{ok: false, error: string, conflict: bool} */
     public static function publish(array $viewer, array $site, array $op, ?string $revertsId = null, bool $notify = true): array
     {
+        if (!Billing::siteAllowed($site, $viewer)) {
+            return ['ok' => false, 'error' => Billing::blockedMessage(), 'conflict' => false];
+        }
         $label = self::labelFor($op);
         $summary = ($revertsId ? 'Annulation : ' : '') . self::describe($op, $label);
         $change = Repo::insertChange([
@@ -131,6 +134,9 @@ final class Changes
     {
         if (!$items) {
             return ['ok' => true, 'count' => 0];
+        }
+        if (!Billing::siteAllowed($site, $viewer)) {
+            return ['ok' => false, 'error' => Billing::blockedMessage()];
         }
         $ctx = ['author' => self::authorName($viewer), 'summary' => $summary, 'changeId' => 'lot-' . bin2hex(random_bytes(6)), 'assets' => []];
         try {
@@ -249,6 +255,9 @@ final class Changes
     /** Ferme ou rouvre le site, avec une ligne dans l'historique. */
     public static function setClosure(array $viewer, array $site, array $status): array
     {
+        if (!Billing::siteAllowed($site, $viewer)) {
+            return ['ok' => false, 'error' => Billing::blockedMessage()];
+        }
         $label = $status['closed'] ? 'Site fermé temporairement' : 'Site rouvert';
         $change = Repo::insertChange([
             'site_id' => $site['id'],

@@ -82,7 +82,12 @@ final class Orders
         $number = (int) Db::value('SELECT COALESCE(MAX(number), 0) FROM sc_orders WHERE site_id = ?', [$site['id']]) + 1;
         $viewer = Sites::ownerViewer($site);
         if ($stock && $viewer) {
-            $r = Changes::publishBatch($viewer, $site, $section, $stock, "Commande n° $number", false);
+            Billing::$system = true; // la commande d'un client n'est jamais bloquée
+            try {
+                $r = Changes::publishBatch($viewer, $site, $section, $stock, "Commande n° $number", false);
+            } finally {
+                Billing::$system = false;
+            }
             if (!$r['ok']) {
                 return ['ok' => false, 'error' => "La commande n'a pas pu être enregistrée. Réessayez dans un instant."];
             }

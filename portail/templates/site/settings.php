@@ -80,7 +80,7 @@ $viewer = $ctx['viewer'];
         <?= csrf_field() ?>
         <?php foreach (\SimpleCommerce\Services\Hours::DAYS as $i => $dayName): ?>
         <div class="field hours-row"><label for="hours-<?= $i ?>"><?= e($dayName) ?></label>
-            <input id="hours-<?= $i ?>" name="hours[<?= $i ?>]" maxlength="80" class="medium" placeholder="Fermé" value="<?= e($week[$i]) ?>"></div>
+            <input id="hours-<?= $i ?>" type="text" name="hours[<?= $i ?>]" maxlength="80" class="medium" placeholder="Fermé" value="<?= e($week[$i]) ?>"></div>
         <?php endforeach ?>
         <div class="actions"><button class="btn btn-primary" type="submit">Enregistrer les horaires</button></div>
     </form>

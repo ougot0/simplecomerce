@@ -52,6 +52,16 @@ final class Hours
     public static function tick(): int
     {
         $today = self::today();
+        Billing::$system = true; // ce que le commerçant a programmé se fait, même après son essai
+        try {
+            return self::tickSites($today);
+        } finally {
+            Billing::$system = false;
+        }
+    }
+
+    private static function tickSites(string $today): int
+    {
         $done = 0;
         foreach (Repo::sites() as $site) {
             $x = Sites::extras($site);

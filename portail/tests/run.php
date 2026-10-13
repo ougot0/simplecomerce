@@ -204,5 +204,25 @@ test('annulation', function () {
     check(Changes::inverse(['reverted_by_id' => 'y'] + $base + ['before_json' => ['a' => 1], 'after_json' => ['a' => 2]], $section) === null, 'pas de double annulation');
 });
 
+test('boutique', function () {
+    $secret = 'whsec_test123456789';
+    $body = '{"type":"x"}';
+    $t = (string) time();
+    check(\SimpleCommerce\Services\Billing::checkSignature($body, "t=$t,v1=" . hash_hmac('sha256', "$t.$body", $secret), $secret), 'avis Stripe authentique accepté');
+    check(!\SimpleCommerce\Services\Billing::checkSignature($body, "t=$t,v1=" . hash_hmac('sha256', "$t.$body", 'autre'), $secret), 'avis Stripe mal signé refusé');
+    $old = (string) (time() - 3600);
+    check(!\SimpleCommerce\Services\Billing::checkSignature($body, "t=$old,v1=" . hash_hmac('sha256', "$old.$body", $secret), $secret), 'avis Stripe trop ancien refusé');
+    check(\SimpleCommerce\Services\Stats::source('google.fr') === 'Google' && \SimpleCommerce\Services\Stats::source('instagram.com') === 'Instagram', 'provenance lisible');
+    $dir = tmpSite('patisserie-lune');
+    file_put_contents("$dir/index.html", "<html><body><h1>Bonjour</h1>\n</body></html>\n");
+    $before = file_get_contents("$dir/index.html");
+    $a = new FileSiteAdapter(new LocalBackend($dir), ['contentDir' => '', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => 'https://x', 'webRoot' => true]);
+    $src = 'https://portail.test/p/0123456789abcdef01234567.js';
+    check($a->setPageScript($src, true, 't')['changed'] === 1 && str_contains(file_get_contents("$dir/index.html"), $src), 'compteur ajouté à la page');
+    check($a->setPageScript($src, true, 't')['changed'] === 0, 'compteur pas ajouté deux fois');
+    $a->setPageScript($src, false, 't');
+    check(file_get_contents("$dir/index.html") === $before, 'compteur retiré, page identique');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);
