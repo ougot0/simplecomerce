@@ -168,8 +168,8 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 
 19. **Application iPhone, App Store seulement** (13/10/2026 : « je veux que sur Apple », pas de Play Store, pas
     d'installation par Safari). Gratuit impossible : compte Apple Developer 99 €/an (payé le 30/09/2026, commande
-    W1829815798, **inscription bloquée** : nom du compte ≠ carte d'identité, facture au nom « Dev Dev » ; il ne veut PAS
-    de remboursement, il appelle Apple pour faire corriger). Choix : application native légère autour du portail (pas
+    W1829815798 ; bloquée par des noms différents « Dev Dev » / « Yotam Marec » / « Alon Marec » ; **débloquée le
+    14/10/2026 vers 17 h** après un message au support : e-mail App Store Connect « Hello Alon Marec », compte au nom d'Alon Marec). Choix : application native légère autour du portail (pas
     Capacitor, pas de Node), construite sur GitHub (pas besoin de Mac). **Dans l'application, aucun paiement ni lien vers
     le paiement** (règle App Store 3.1.1) : le portail reconnaît `SimpleCommerceApp/` dans l'identité du navigateur
     (`Req::inApp()`, affichage seulement, jamais un droit). **Suppression du compte** dans « Mon compte » (exigence
@@ -260,11 +260,15 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 
 ## 10. Ce qui reste à faire
 
-0. **Application iPhone** : (a) le propriétaire appelle Apple (rappels programmés le 14/10 à 10 h, 12 h, 16 h) pour
-   débloquer son compte développeur ; (b) envoyer chez OVH la version du portail avec suppression de compte et
+0. **Application iPhone** : (a) ~~débloquer le compte développeur~~ **fait le 14/10/2026** (accès App Store Connect reçu) ; (b) envoyer chez OVH la version du portail avec suppression de compte et
    `inApp` ; (c) compte de démonstration pour Apple ; (d) étapes A à D du `application-iphone/README.md` (Bundle ID,
-   app dans App Store Connect, clé API → secrets GitHub, Run workflow « Envoyer à Apple », soumission). L'envoi TestFlight
-   n'a **jamais été essayé** (pas de compte Apple actif). Ensuite : notifications « nouvelle commande » (APNs), liens
+   app dans App Store Connect, clé API → secrets GitHub, Run workflow « Envoyer à Apple », soumission). **Premier envoi réussi le 14/10/2026** (construction n° 5,
+   « Upload succeeded ») : secrets en place, App ID et app créés, contrat accepté. Envoi = `actions_run_trigger`
+   (run_workflow, `application-iphone.yml`, ref = branche, `envoyer_a_apple: true`) ; les étiquettes git sont refusées
+   par le proxy. Archive non signée puis signature App Store à l'export (sinon « no devices »). TestFlight : groupe interne
+   « Moi » (studioyotam@gmail.com invité), groupe externe « amies » avec la version 1.0 (1) **en attente de vérification
+   bêta** (14/10, ~18 h) → ensuite lien public pour un ami. Reste :
+   fiche App Store, statut de commerçant UE, compte de démonstration, soumission. Ensuite : notifications « nouvelle commande » (APNs), liens
    universels (`apple-app-site-association`, Team ID nécessaire).
 1. **Accompagner l'installation sur l'OVH du propriétaire** (étapes section 8) et le premier vrai site relié ;
    lui demander des captures d'écran en cas de souci.
