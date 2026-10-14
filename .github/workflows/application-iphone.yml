@@ -1,12 +1,17 @@
 # Application iPhone de Simple Commerce : construite sur un Mac de GitHub (aucun Mac nécessaire chez soi).
 # - À chaque modification de application-iphone/ : construction d'essai pour le simulateur (fichier « apercu-iphone »
 #   à télécharger dans l'onglet Actions, utilisable sur appetize.io pour cliquer dans l'application depuis un navigateur).
-# - Bouton « Run workflow » avec « Envoyer à Apple » coché : construction signée envoyée sur App Store Connect (TestFlight).
+# - Étiquette git « iphone-<n> » (ou bouton « Run workflow » + « Envoyer à Apple » si ce fichier est sur la branche
+#   par défaut) : construction signée envoyée sur App Store Connect (TestFlight).
 #   Nécessite les secrets APPLE_TEAM_ID, APPLE_CLE_ID, APPLE_EMETTEUR_ID, APPLE_CLE_P8 (voir application-iphone/README.md).
 name: Application iPhone
 
 on:
   push:
+    branches: ['**']
+    # Étiquette « iphone-… » posée sur un commit = envoi à Apple (le bouton « Run workflow » n'apparaît que si ce
+    # fichier est sur la branche par défaut du dépôt, ce qui n'est pas le cas ici).
+    tags: ['iphone-*']
     paths:
       - 'application-iphone/**'
       - '.github/workflows/application-iphone.yml'
@@ -88,7 +93,7 @@ jobs:
   envoyer:
     name: Envoi à Apple (TestFlight)
     needs: apercu
-    if: github.event_name == 'workflow_dispatch' && inputs.envoyer_a_apple
+    if: (github.event_name == 'workflow_dispatch' && inputs.envoyer_a_apple) || startsWith(github.ref, 'refs/tags/iphone-')
     runs-on: macos-15
     timeout-minutes: 45
     defaults:
