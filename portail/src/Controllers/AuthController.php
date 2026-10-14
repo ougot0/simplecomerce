@@ -43,7 +43,10 @@ final class AuthController
     /** Moteurs de recherche : seule la page de présentation est à visiter. */
     public static function robots(): Response
     {
-        return new Response("User-agent: *\nAllow: /\$\nAllow: /assets/\nDisallow: /\n\nSitemap: " . Req::origin() . '/sitemap.xml' . "\n", 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+        // Seules la page d'accueil, ses images et le plan du site sont ouverts aux moteurs de recherche
+        // (sans « Allow: /sitemap.xml », Google refuse de lire le plan du site : « Impossible de lire le sitemap »).
+        return new Response("User-agent: *\nAllow: /\$\nAllow: /assets/\nAllow: /sitemap.xml\nAllow: /mentions-legales\nAllow: /conditions-generales-utilisation\n"
+            . "Allow: /conditions-generales-vente\nAllow: /confidentialite\nDisallow: /\n\nSitemap: " . Req::origin() . '/sitemap.xml' . "\n", 200, ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 
     public static function sitemap(): Response
