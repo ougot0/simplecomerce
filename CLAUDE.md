@@ -262,8 +262,11 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
 
 0. **Application iPhone** : (a) ~~débloquer le compte développeur~~ **fait le 14/10/2026** (accès App Store Connect reçu) ; (b) envoyer chez OVH la version du portail avec suppression de compte et
    `inApp` ; (c) compte de démonstration pour Apple ; (d) étapes A à D du `application-iphone/README.md` (Bundle ID,
-   app dans App Store Connect, clé API → secrets GitHub, Run workflow « Envoyer à Apple », soumission). L'envoi TestFlight
-   n'a **jamais été essayé** (pas de compte Apple actif). Ensuite : notifications « nouvelle commande » (APNs), liens
+   app dans App Store Connect, clé API → secrets GitHub, Run workflow « Envoyer à Apple », soumission). **Premier envoi réussi le 14/10/2026** (construction n° 5,
+   « Upload succeeded ») : secrets en place, App ID et app créés, contrat accepté. Envoi = `actions_run_trigger`
+   (run_workflow, `application-iphone.yml`, ref = branche, `envoyer_a_apple: true`) ; les étiquettes git sont refusées
+   par le proxy. Archive non signée puis signature App Store à l'export (sinon « no devices »). Reste : TestFlight,
+   fiche App Store, statut de commerçant UE, compte de démonstration, soumission. Ensuite : notifications « nouvelle commande » (APNs), liens
    universels (`apple-app-site-association`, Team ID nécessaire).
 1. **Accompagner l'installation sur l'OVH du propriétaire** (étapes section 8) et le premier vrai site relié ;
    lui demander des captures d'écran en cas de souci.

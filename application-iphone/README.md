@@ -87,10 +87,9 @@ Ne collez jamais ces informations dans une conversation : seulement dans GitHub.
 
 ### Étape C : envoyer l'application à Apple
 
-1. Dites à Claude « les secrets sont prêts ». Il pose une étiquette `iphone-1` (puis `iphone-2`, `iphone-3`…
-   pour chaque nouvelle version) sur le code, ce qui lance l'envoi à Apple.
-   (Le bouton **Actions → Application iPhone → Run workflow** n'apparaît que si ce fichier est sur la branche
-   principale du projet ; ce n'est pas le cas pour l'instant.)
+1. Dites à Claude « envoie une nouvelle version à Apple ». Il lance la construction « Application iPhone » sur
+   GitHub avec « Envoyer à Apple » (le bouton **Run workflow** n'apparaît pas chez vous : ce fichier n'est pas sur
+   la branche principale du projet).
 2. On peut suivre l'envoi dans l'onglet **Actions** de GitHub (ligne « Application iPhone », étiquette `iphone-…`).
 3. Après 10 à 30 minutes, l'application apparaît dans **App Store Connect**, dans **TestFlight**.
 4. Installez l'application **TestFlight** sur votre iPhone : vous pouvez tester Simple Commerce comme une vraie
