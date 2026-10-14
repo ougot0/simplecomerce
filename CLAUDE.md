@@ -265,7 +265,9 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
    app dans App Store Connect, clé API → secrets GitHub, Run workflow « Envoyer à Apple », soumission). **Premier envoi réussi le 14/10/2026** (construction n° 5,
    « Upload succeeded ») : secrets en place, App ID et app créés, contrat accepté. Envoi = `actions_run_trigger`
    (run_workflow, `application-iphone.yml`, ref = branche, `envoyer_a_apple: true`) ; les étiquettes git sont refusées
-   par le proxy. Archive non signée puis signature App Store à l'export (sinon « no devices »). Reste : TestFlight,
+   par le proxy. Archive non signée puis signature App Store à l'export (sinon « no devices »). TestFlight : groupe interne
+   « Moi » (studioyotam@gmail.com invité), groupe externe « amies » avec la version 1.0 (1) **en attente de vérification
+   bêta** (14/10, ~18 h) → ensuite lien public pour un ami. Reste :
    fiche App Store, statut de commerçant UE, compte de démonstration, soumission. Ensuite : notifications « nouvelle commande » (APNs), liens
    universels (`apple-app-site-association`, Team ID nécessaire).
 1. **Accompagner l'installation sur l'OVH du propriétaire** (étapes section 8) et le premier vrai site relié ;
