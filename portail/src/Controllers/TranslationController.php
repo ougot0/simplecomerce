@@ -29,6 +29,7 @@ final class TranslationController
 
     public static function page(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('anglais');
         $ctx = self::ctx($p);
         return SiteController::page($ctx, 'site/english', ['state' => Translation::state($ctx['site']), 'ready' => Writer::enabled()], 'Version anglaise');
     }
@@ -39,6 +40,7 @@ final class TranslationController
      */
     public static function action(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('anglais');
         $ctx = self::ctx($p);
         $site = $ctx['site'];
         $back = "/s/{$site['slug']}/anglais";

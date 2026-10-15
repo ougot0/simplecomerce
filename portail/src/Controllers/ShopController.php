@@ -85,6 +85,7 @@ final class ShopController
 
     public static function reviews(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('avis');
         $ctx = Access::site($p['slug']);
         $site = $ctx['site'];
         $status = Req::query('etat', 20);
@@ -100,6 +101,7 @@ final class ShopController
 
     public static function reviewAction(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('avis');
         $ctx = Access::site($p['slug']);
         $site = $ctx['site'];
         $back = "/s/{$site['slug']}/avis";
@@ -144,6 +146,7 @@ final class ShopController
 
     public static function stats(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('statistiques');
         $ctx = Access::site($p['slug']);
         $site = $ctx['site'];
         $days = Req::query('jours', 3) === '7' ? 7 : (Req::query('jours', 3) === '90' ? 90 : 30);
@@ -159,6 +162,7 @@ final class ShopController
 
     public static function statsAction(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('statistiques');
         $ctx = Access::site($p['slug'], 'owner');
         $site = $ctx['site'];
         $back = "/s/{$site['slug']}/statistiques";

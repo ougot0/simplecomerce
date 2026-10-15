@@ -255,6 +255,7 @@ final class SiteController
     /** Aperçu du site dans un cadre de téléphone (ou de tablette). */
     public static function phone(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('telephone');
         $ctx = Access::site($p['slug']);
         $site = $ctx['site'];
         $url = (string) $site['public_url'];

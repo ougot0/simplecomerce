@@ -19,6 +19,7 @@ final class BookingController
 {
     public static function page(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('rendezvous');
         $ctx = Access::site($p['slug']);
         $site = $ctx['site'];
         $s = Bookings::settings($site);
@@ -29,6 +30,7 @@ final class BookingController
 
     public static function action(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('rendezvous');
         $ctx = Access::site($p['slug']);
         $site = $ctx['site'];
         $back = "/s/{$site['slug']}/rendez-vous";

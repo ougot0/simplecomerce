@@ -20,7 +20,7 @@ include dirname(__DIR__) . '/partials/assist.php';
             <a href="<?= e($base) ?>" class="site-name"><?= e($site['name']) ?></a>
             <?php if ($site['public_url']): ?>
             <a class="site-link" href="<?= e($site['public_url']) ?>" target="_blank" rel="noopener noreferrer"><?= icon('eye') ?> Voir mon site</a>
-            <a class="site-link site-link-quiet" href="<?= e($base) ?>/telephone"><?= icon('phone') ?> Sur téléphone</a>
+            <?php if (\SimpleCommerce\Services\Features::on('telephone')): ?><a class="site-link site-link-quiet" href="<?= e($base) ?>/telephone"><?= icon('phone') ?> Sur téléphone</a><?php endif ?>
             <?php endif ?>
         </div>
         <button type="button" class="btn btn-small menu-toggle" data-menu-toggle aria-expanded="false"><?= icon('menu') ?> Menu</button>
@@ -32,7 +32,7 @@ include dirname(__DIR__) . '/partials/assist.php';
                     <?php foreach ($ctx['sections'] as $s): ?>
                         <?= $navItem("$base/r/{$s['key']}", $s['label'], ($s['kind'] ?? '') === 'collection' ? 'list' : 'text') ?>
                     <?php endforeach ?>
-                    <?php if ($ctx['role'] !== 'editor' && \SimpleCommerce\Services\Translation::supported($site) && (\SimpleCommerce\Services\Writer::enabled() || \SimpleCommerce\Services\Translation::state($site)['on'])): ?>
+                    <?php if (\SimpleCommerce\Services\Features::on('anglais') && $ctx['role'] !== 'editor' && \SimpleCommerce\Services\Translation::supported($site) && (\SimpleCommerce\Services\Writer::enabled() || \SimpleCommerce\Services\Translation::state($site)['on'])): ?>
                         <?= $navItem("$base/anglais", 'Version anglaise', 'globe') ?>
                     <?php endif ?>
                 </ul>
@@ -44,9 +44,9 @@ include dirname(__DIR__) . '/partials/assist.php';
                     <?php if ($site['connector'] === 'catalogue'): ?>
                         <?= $navItem("$base/commandes", 'Commandes', 'bag', false, $shop['ordersToDo']) ?>
                     <?php endif ?>
-                    <?= $navItem("$base/rendez-vous", 'Rendez-vous', 'calendar') ?>
-                    <?= $navItem("$base/avis", 'Avis clients', 'star', false, $shop['reviewsToCheck']) ?>
-                    <?= $navItem("$base/statistiques", 'Statistiques', 'chart') ?>
+                    <?php if (\SimpleCommerce\Services\Features::on('rendezvous')): ?><?= $navItem("$base/rendez-vous", 'Rendez-vous', 'calendar') ?><?php endif ?>
+                    <?php if (\SimpleCommerce\Services\Features::on('avis')): ?><?= $navItem("$base/avis", 'Avis clients', 'star', false, $shop['reviewsToCheck']) ?><?php endif ?>
+                    <?php if (\SimpleCommerce\Services\Features::on('statistiques')): ?><?= $navItem("$base/statistiques", 'Statistiques', 'chart') ?><?php endif ?>
                 </ul>
             </nav>
             <nav aria-label="Suivi">

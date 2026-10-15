@@ -472,6 +472,7 @@ final class EditorController
     /** « Écrire pour moi » : propose un texte pour un champ de description (rien n'est publié). */
     public static function write(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('ecrire');
         $ctx = Access::site($p['slug']);
         $uid = $ctx['viewer']['user']['id'];
         if (!\SimpleCommerce\Services\Writer::enabled()) {

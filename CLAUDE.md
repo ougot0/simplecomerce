@@ -235,7 +235,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 `simplecommerce/public/bin/cron.php`, mises à jour à renvoyer dans `simplecommerce/public/`. Autres sites sur le même
 hébergement (ne pas y toucher) : `www`, `ougot`, `aminteriorss`.
 
-**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique), version J (menus comme celui de Coumao), version K (filtres Soldes/Nouveautés/catégories), version L (sitemap lisible par Google)** (il voit Administration → Rédaction automatique ; clé Claude
+**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique), version J (menus comme celui de Coumao), version K (filtres Soldes/Nouveautés/catégories), version L (sitemap lisible par Google), version M (Options du portail)** (il voit Administration → Rédaction automatique ; clé Claude
 pas encore créée). Avant : **installation en cours sur l'OVH du propriétaire (envoi par WinSCP)** (il a reçu l'archive et les étapes ; il ne
 nous donne pas ses mots de passe — ne pas les lui demander dans la conversation).
 
@@ -307,6 +307,11 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 15/10/2026 : demande « un accès pour modifier Simple Commerce moi-même (retirer/ajouter des options) ». **Version M** :
+  **Administration → Options du portail** (`/admin/options`, `Services\Features`, meta `features_off`) : 8 interrupteurs
+  pour tous les clients (rendez-vous, avis, statistiques, version anglaise, « Écrire pour moi », aperçu téléphone,
+  parrainage, « Besoin d'aide ? »). Éteinte = menus cachés + pages et adresses publiques en 404 (`Features::need`),
+  rien d'effacé. Pour l'apparence ou une nouvelle option : il le demande dans la conversation. Testé au navigateur.
 - 14/10/2026 : **Google Search Console** faite avec lui (propriété « Domaine » simplecommercess.com, validée par un
   enregistrement TXT `google-site-verification=…` dans la Zone DNS OVH, sous-domaine `@` — **ne jamais le supprimer**).
   La page d'accueil est indexée. Le sitemap était refusé (« Impossible de lire le sitemap ») car `robots.txt` interdisait

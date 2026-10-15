@@ -25,12 +25,14 @@ final class MiscController
     /** « Besoin d'aide ? » : un message envoyé directement à l'équipe de Simple Commerce. */
     public static function helpForm(array $p = [], array $state = []): Response
     {
+        \SimpleCommerce\Services\Features::need('aide');
         $v = Access::requireViewer();
         return Response::page('help-contact', $state + ['viewer' => $v, 'title' => 'Besoin d\'aide ?', 'from' => \SimpleCommerce\Http\Req::safeNext(\SimpleCommerce\Http\Req::query('depuis', 300)) ?: '/sites'], 'plain');
     }
 
     public static function helpSend(): Response
     {
+        \SimpleCommerce\Services\Features::need('aide');
         $v = Access::requireViewer();
         $msg = trim(\SimpleCommerce\Http\Req::str('message', 4000));
         $from = \SimpleCommerce\Http\Req::safeNext(\SimpleCommerce\Http\Req::str('from', 300)) ?: '/sites';

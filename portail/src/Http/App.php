@@ -120,6 +120,8 @@ final class App
             ['POST', '/admin/confirmer-email', [AdminController::class, 'confirmEmail']],
             ['GET', '/admin/emails', [AdminController::class, 'emails']],
             ['POST', '/admin/emails', [AdminController::class, 'saveEmails']],
+            ['GET', '/admin/options', [AdminController::class, 'features']],
+            ['POST', '/admin/options', [AdminController::class, 'saveFeatures']],
             ['GET', '/admin/redaction', [AdminController::class, 'writer']],
             ['POST', '/admin/redaction', [AdminController::class, 'saveWriter']],
             ['GET', '/admin/revenus', [BillingController::class, 'revenue']],

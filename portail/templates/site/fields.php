@@ -45,7 +45,7 @@ if (!function_exists('sc_field')) {
     function sc_ai(array $f, string $id, array $ctx, bool $rich): string
     {
         static $on = null;
-        $on ??= \SimpleCommerce\Services\Writer::enabled();
+        $on ??= \SimpleCommerce\Services\Writer::enabled() && \SimpleCommerce\Services\Features::on('ecrire');
         if (!$on || empty($ctx['slug'])) {
             return '';
         }

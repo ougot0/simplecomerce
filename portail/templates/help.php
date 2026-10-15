@@ -1,5 +1,5 @@
 <div class="page-head"><div><h1>Aide</h1><p class="page-intro">Tout ce qu'il faut savoir pour mettre à jour votre site. Une question qui n'est pas ici ? Écrivez-nous à <a href="mailto:<?= e(\SimpleCommerce\Config::contactEmail()) ?>"><?= e(\SimpleCommerce\Config::contactEmail()) ?></a>.</p></div>
-    <?php if (!empty($viewer)): ?><a class="btn btn-primary" href="/aide/contact"><?= icon('help') ?> Besoin d'aide ? Écrivez-nous</a><?php endif ?></div>
+    <?php if (!empty($viewer) && \SimpleCommerce\Services\Features::on('aide')): ?><a class="btn btn-primary" href="/aide/contact"><?= icon('help') ?> Besoin d'aide ? Écrivez-nous</a><?php endif ?></div>
 <nav class="tabs" aria-label="Sommaire">
     <a href="#modifier">Modifier</a><a href="#photos">Photos</a><a href="#brouillons">Brouillons</a><a href="#annuler">Annuler</a><a href="#fermer">Fermer le site</a><a href="#boutique">Boutique</a><a href="#telephone">Téléphone</a><a href="#equipe">Équipe</a><a href="#hebergeurs">Hébergeurs</a><a href="#preparer">Préparer un site</a>
 </nav>

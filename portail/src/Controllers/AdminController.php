@@ -208,4 +208,23 @@ final class AdminController
         Session::flash('Clé enregistrée. Cliquez sur « Tester » pour vérifier.');
         return Response::redirect('/admin/redaction');
     }
+
+    // --- Options du portail (allumer / éteindre des fonctions pour tous) ---
+
+    public static function features(): Response
+    {
+        $v = Access::requireAdmin();
+        return Response::page('admin/features', ['viewer' => $v, 'on' => \SimpleCommerce\Services\Features::all(), 'title' => 'Options du portail'], 'plain');
+    }
+
+    public static function saveFeatures(): Response
+    {
+        $v = Access::requireAdmin();
+        $keep = array_keys((array) Req::arr('on'));
+        $off = array_values(array_diff(array_keys(\SimpleCommerce\Services\Features::LIST), $keep));
+        \SimpleCommerce\Services\Features::save($off);
+        Repo::log($v['user']['id'], null, null, 'features', ['off' => $off]);
+        Session::flash($off ? 'Options enregistrées. Éteintes pour tous les clients : ' . implode(', ', array_map(fn ($k) => \SimpleCommerce\Services\Features::LIST[$k][0], $off)) . '.' : 'Options enregistrées : tout est allumé.');
+        return Response::redirect('/admin/options');
+    }
 }

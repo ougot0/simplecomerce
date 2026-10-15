@@ -139,6 +139,7 @@ final class PublicController
 
     public static function reviewsScript(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('avis');
         $site = Sites::byPublicKey($p['key']);
         if (!$site || empty(Sites::extras($site)['reviews'])) {
             return new Response('', 404, ['Content-Type' => 'application/javascript; charset=utf-8', 'Access-Control-Allow-Origin' => '*']);
@@ -151,6 +152,7 @@ final class PublicController
 
     public static function review(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('avis');
         $site = Sites::byPublicKey($p['key']);
         $d = self::body();
         if (!$site || empty(Sites::extras($site)['reviews'])) {
@@ -176,6 +178,7 @@ final class PublicController
 
     public static function statsScript(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('statistiques');
         $site = Sites::byPublicKey($p['key']);
         $js = $site && !empty(Sites::extras($site)['stats']) ? Stats::script(Config::url('/p/' . $p['key'])) : '';
         return new Response($js, 200, ['Content-Type' => 'application/javascript; charset=utf-8', 'Cache-Control' => 'public, max-age=3600', 'Access-Control-Allow-Origin' => '*']);
@@ -183,6 +186,7 @@ final class PublicController
 
     public static function statsHit(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('statistiques');
         $site = Sites::byPublicKey($p['key']);
         $ua = (string) ($_SERVER['HTTP_USER_AGENT'] ?? '');
         if ($site && !empty(Sites::extras($site)['stats']) && $ua !== '' && !preg_match('/bot|crawl|spider|slurp|preview|headless|lighthouse|monitor/i', $ua)
@@ -203,6 +207,7 @@ final class PublicController
 
     public static function bookingScript(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('rendezvous');
         $site = self::bookingSite($p['key']);
         if (!$site) {
             return new Response('', 404, ['Content-Type' => 'application/javascript; charset=utf-8', 'Access-Control-Allow-Origin' => '*']);
@@ -216,6 +221,7 @@ final class PublicController
     /** Jours ouverts, ou créneaux d'un jour (?jour=AAAA-MM-JJ), pour une prestation. */
     public static function bookingSlots(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('rendezvous');
         $site = self::bookingSite($p['key']);
         if (!$site) {
             return self::json(['error' => 'Prise de rendez-vous fermée.'], 404);
@@ -229,6 +235,7 @@ final class PublicController
 
     public static function book(array $p): Response
     {
+        \SimpleCommerce\Services\Features::need('rendezvous');
         $site = self::bookingSite($p['key']);
         $d = self::body();
         if (!$site) {

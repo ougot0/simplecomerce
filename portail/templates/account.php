@@ -2,7 +2,7 @@
 <div class="page-head"><div><h1>Mon compte</h1><p class="page-intro"><?= e($u['email']) ?></p></div></div>
 <?php if (!empty($error)): ?><div class="notice notice-error" role="alert"><?= e($error) ?></div><?php endif ?>
 <?php if (!empty($resetHint)): ?><div class="notice notice-warn"><p>Vous êtes connecté. Choisissez maintenant un nouveau mot de passe ci-dessous.</p></div><?php endif ?>
-<?php if (\SimpleCommerce\Services\Billing::enabled() && !$viewer['effective']['is_admin']): ?>
+<?php if (\SimpleCommerce\Services\Features::on('parrainage') && \SimpleCommerce\Services\Billing::enabled() && !$viewer['effective']['is_admin']): ?>
 <p class="mb-12"><a class="btn" href="/compte/abonnement">Mon abonnement</a></p>
 <?php endif ?>
 <div class="stack-40">
