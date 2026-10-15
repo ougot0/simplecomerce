@@ -93,8 +93,7 @@ $viewer = $ctx['viewer'];
     </form>
     <?php if (\SimpleCommerce\Services\Hours::hasHours($site)): ?>
     <div class="panel mt-6">
-        <p><strong>Pour les afficher sur votre site</strong>, collez cette ligne une seule fois à l'endroit voulu (ou demandez-le à la personne qui s'occupe de votre site). Ensuite, chaque changement ici apparaît tout seul.</p>
-        <div class="copy-row"><input type="text" readonly value="<?= e('<script src="' . \SimpleCommerce\Config::url('/horaires/' . Sites::publicKey($site) . '.js') . '"></script>') ?>" class="code" aria-label="Ligne à coller dans votre site" data-select><button type="button" class="btn btn-small" data-copy><?= icon('copy') ?> Copier</button></div>
+        <?php $kind = 'horaires'; $line = '<script src="' . \SimpleCommerce\Config::url('/horaires/' . Sites::publicKey($site) . '.js') . '"></script>'; include dirname(__DIR__) . '/partials/site-tab.php'; ?>
     </div>
     <?php endif ?>
 </section>

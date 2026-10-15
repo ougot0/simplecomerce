@@ -16,8 +16,9 @@ use SimpleCommerce\Services\Reviews;
 </div>
 <?php else: ?>
 <div class="panel">
-    <p><strong>Pour afficher les avis sur votre site</strong>, collez cette ligne une seule fois à l'endroit voulu (ou demandez-le à la personne qui s'occupe de votre site). Le formulaire « Donner mon avis » apparaît avec.</p>
-    <div class="copy-row"><input type="text" readonly value="<?= e($line) ?>" class="code" aria-label="Ligne à coller dans votre site" data-select><button type="button" class="btn btn-small" data-copy><?= icon('copy') ?> Copier</button></div>
+    <?php if ($role !== 'editor') { $kind = 'avis'; include dirname(__DIR__) . '/partials/site-tab.php'; } else { ?>
+    <p>Les avis sont ouverts sur votre site.</p>
+    <?php } ?>
     <?php if ($role !== 'editor'): ?>
     <form method="post" action="<?= e($base) ?>/avis/action" class="mt-6" data-confirm="Fermer les avis ? Ils ne seront plus affichés sur votre site."><?= csrf_field() ?><input type="hidden" name="do" value="desactiver">
         <button class="btn btn-small btn-quiet" type="submit">Fermer les avis</button></form>

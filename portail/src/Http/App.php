@@ -96,6 +96,7 @@ final class App
             ['GET', "$s/commandes/(?<id>[a-f0-9-]{36})/(?<doc>bon|facture)", [ShopController::class, 'orderDocument']],
             ['GET', "$s/avis", [ShopController::class, 'reviews']],
             ['POST', "$s/avis/action", [ShopController::class, 'reviewAction']],
+            ['POST', "$s/onglet", [ShopController::class, 'tabAction']],
             ['GET', "$s/statistiques", [ShopController::class, 'stats']],
             ['POST', "$s/statistiques/action", [ShopController::class, 'statsAction']],
             ['GET', "$s/reglages", [SettingsController::class, 'show']],

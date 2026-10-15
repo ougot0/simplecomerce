@@ -34,7 +34,7 @@ final class FileSiteAdapter implements Adapter
     private ?array $scanFiles = null;
     /** Page d'accueil d'un site (index.html, ou accueil.html / home.html). */
     private const HOME_PAGE = '#(^|/)(index|accueil|home)\.(html?|php)$#i';
-    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$|-en\.html?$|(^|/)rendez-vous\.html$#i';
+    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$|-en\.html?$|(^|/)(rendez-vous|avis|horaires)\.html$#i';
     /** @var array<string, ?string> versions lues pendant une opération */
     private array $versions = [];
     /** @var array<string, ?array> fichiers lus pendant une opération */
@@ -683,9 +683,12 @@ final class FileSiteAdapter implements Adapter
         $menus = 0;
         $template = null;
         $templateName = '';
-        foreach ($pages as $page) {
+        // Les autres pages déjà ajoutées par le portail (Rendez-vous, Avis…) reçoivent aussi l'onglet.
+        $ours = array_filter($this->backend->list($this->options['contentDir'], 3),
+            fn ($f) => $f !== $file && preg_match('#(^|/)(rendez-vous|avis|horaires)\.html$#i', $f));
+        foreach (array_merge($pages, array_values($ours)) as $page) {
             $raw = $this->backend->read($page);
-            if (!$raw) {
+            if (!$raw || (!in_array($page, $pages, true) && !\SimpleCommerce\Content\HtmlTab::isOurs($raw['content']))) {
                 continue;
             }
             $depth = substr_count($page, '/') - substr_count($file, '/');

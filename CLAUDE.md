@@ -307,6 +307,14 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 15/10/2026 : **version O** — demande du propriétaire : « pour tout ce genre de trucs, ajoute-moi des boutons » (pas de
+  ligne à coller). `Services\SiteTabs` (générique, une entrée par page dans `KINDS`) + `partials/site-tab.php` + route
+  POST `/s/{slug}/onglet` (`ShopController::tabAction`, propriétaire seulement) : boutons « Ajouter l'onglet « Avis » »
+  (page Avis clients) et « Ajouter l'onglet « Horaires » » (Réglages → Horaires), ligne à coller repliée en secours.
+  Fermer les avis retire aussi l'onglet. Les pages ajoutées par le portail (rendez-vous/avis/horaires.html) reçoivent les
+  onglets des autres ; retrait = site remis exactement comme avant (testé). Ces pages sont exclues de la détection.
+  Rappel donné : les changements du portail (zip OVH) ne passent **pas** par Apple ; seules les fonctions propres au
+  téléphone (Face ID, notifications, pubs) demandent une nouvelle version vérifiée. TestFlight 1.0 (1) **approuvé** le 15/10.
 - 15/10/2026 (2) : il veut « un lien à moi, pas Claude, pour modifier Simple Commerce » sans que ça change en direct chez
   les clients. **Version N : Studio** (`/studio`, administrateur seul, lien en haut de l'Administration ; `Services\Studio`,
   `StudioController`, gabarit `studio.php`) : nom affiché (wordmark, titre), 4 couleurs (variables CSS servies par
