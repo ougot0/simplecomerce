@@ -20,7 +20,8 @@ $v = @filemtime(SC_ROOT . '/public/assets/app.css') . @filemtime(SC_ROOT . '/pub
 <?php endif ?>
 <meta name="theme-color" content="#f4efe6">
 <meta name="csrf" content="<?= e(session_status() === PHP_SESSION_ACTIVE ? Session::csrf() : '') ?>">
-<title><?= e(($title ?? '') !== '' ? (!empty($indexable) ? 'Simple Commerce — ' . $title : $title . ' — Simple Commerce') : 'Simple Commerce') ?></title>
+<?php $scName = \SimpleCommerce\Services\Studio::name(); ?>
+<title><?= e(($title ?? '') !== '' ? (!empty($indexable) ? $scName . ' — ' . $title : $title . ' — ' . $scName) : $scName) ?></title>
 <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="/assets/logo-96.png" type="image/png" sizes="96x96">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
@@ -30,9 +31,11 @@ $v = @filemtime(SC_ROOT . '/public/assets/app.css') . @filemtime(SC_ROOT . '/pub
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="/assets/app.css?v=<?= e(substr(md5($v), 0, 8)) ?>">
+<link rel="stylesheet" href="/theme.css?v=<?= e(\SimpleCommerce\Services\Studio::version()) ?>">
 <script src="/assets/app.js?v=<?= e(substr(md5($v), 0, 8)) ?>" defer></script>
 </head>
 <body<?= \SimpleCommerce\Http\Req::inApp() ? ' class="in-app"' : '' ?>>
 <?php if (Config::demo()): ?>
 <div class="demo-bar">Démonstration : rien n'est envoyé sur Internet. Les sites des clients sont des copies locales, remises à zéro en effaçant le dossier storage/.</div>
 <?php endif ?>
+<?php $scNotice = \SimpleCommerce\Services\Studio::current()['notice'] ?? ''; if ($scNotice !== '' && \SimpleCommerce\Services\Access::viewer()): ?><div class="portal-notice" role="status"><?= e($scNotice) ?></div><?php endif ?>

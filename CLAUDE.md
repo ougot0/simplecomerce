@@ -235,7 +235,7 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 `simplecommerce/public/bin/cron.php`, mises à jour à renvoyer dans `simplecommerce/public/`. Autres sites sur le même
 hébergement (ne pas y toucher) : `www`, `ougot`, `aminteriorss`.
 
-**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique), version J (menus comme celui de Coumao), version K (filtres Soldes/Nouveautés/catégories), version L (sitemap lisible par Google), version M (Options du portail)** (il voit Administration → Rédaction automatique ; clé Claude
+**Statut au 13/10/2026 (soir) : version G installée chez lui, version H envoyée (photos), version I (onglet Rendez-vous automatique), version J (menus comme celui de Coumao), version K (filtres Soldes/Nouveautés/catégories), version L (sitemap lisible par Google), version M (Options du portail), version N (Studio /studio)** (il voit Administration → Rédaction automatique ; clé Claude
 pas encore créée). Avant : **installation en cours sur l'OVH du propriétaire (envoi par WinSCP)** (il a reçu l'archive et les étapes ; il ne
 nous donne pas ses mots de passe — ne pas les lui demander dans la conversation).
 
@@ -307,6 +307,14 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 15/10/2026 (2) : il veut « un lien à moi, pas Claude, pour modifier Simple Commerce » sans que ça change en direct chez
+  les clients. **Version N : Studio** (`/studio`, administrateur seul, lien en haut de l'Administration ; `Services\Studio`,
+  `StudioController`, gabarit `studio.php`) : nom affiché (wordmark, titre), 4 couleurs (variables CSS servies par
+  `/theme.css?v=…`, les autres teintes calculées), bandeau « message pour tous les clients », options (`Features` lit
+  désormais `Studio::current()['off']`). Tout est d'abord un **brouillon** (meta `studio_draft`) visible seulement par
+  l'administrateur (session `studio_apercu`, aperçu dans un cadre à droite) ; « Publier pour tous » → `studio_live`
+  (+ `features_off`). « Effacer le brouillon », « Remettre les couleurs d'origine ». Testé au navigateur (client ne voit rien
+  avant publication). Pour une vraie nouvelle fonction, il faut toujours passer par la conversation.
 - 15/10/2026 : demande « un accès pour modifier Simple Commerce moi-même (retirer/ajouter des options) ». **Version M** :
   **Administration → Options du portail** (`/admin/options`, `Services\Features`, meta `features_off`) : 8 interrupteurs
   pour tous les clients (rendez-vous, avis, statistiques, version anglaise, « Écrire pour moi », aperçu téléphone,

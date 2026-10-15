@@ -2,7 +2,7 @@
 use SimpleCommerce\Adapters\Catalog;
 /** @var array $sites @var array $users @var array $members @var array $count @var array $stats */ ?>
 <div class="page-head">
-    <div><h1>Administration</h1><p class="page-intro">Tous les sites et tous les comptes. <a href="/admin/journal">Journal d'activité</a> · <a href="/admin/revenus">Revenus</a> · <a href="/admin/abonnements">Abonnements</a> · <a href="/admin/informations-legales">Informations légales</a> · <a href="/admin/emails">E-mails</a> · <a href="/admin/redaction">Rédaction automatique</a> · <a href="/admin/options">Options du portail</a></p></div>
+    <div><h1>Administration</h1><p class="page-intro">Tous les sites et tous les comptes. <a href="/admin/journal">Journal d'activité</a> · <a href="/admin/revenus">Revenus</a> · <a href="/admin/abonnements">Abonnements</a> · <a href="/admin/informations-legales">Informations légales</a> · <a href="/admin/emails">E-mails</a> · <a href="/admin/redaction">Rédaction automatique</a> · <a href="/admin/options">Options du portail</a> · <a href="/studio"><strong>Studio</strong></a></p></div>
     <a class="btn btn-primary" href="/sites/nouveau"><?= icon('plus') ?> Relier un site</a>
 </div>
 <div class="notice <?= $signupOpen ? 'notice-ok' : 'notice-warn' ?> access-mode">

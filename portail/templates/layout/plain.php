@@ -6,7 +6,7 @@ include __DIR__ . '/head.php';
 include dirname(__DIR__) . '/partials/assist.php';
 ?>
 <header class="topbar">
-    <a href="/sites?liste=1" class="wordmark">Simple<span> </span>Commerce</a>
+    <a href="/sites?liste=1" class="wordmark"><?= e(\SimpleCommerce\Services\Studio::name()) ?></a>
     <?php if ($viewer): ?>
     <nav class="topbar-nav" aria-label="Compte">
         <a href="/sites?liste=1">Mes sites</a>

@@ -29,8 +29,7 @@ final class Features
     public static function all(): array
     {
         if (self::$cache === null) {
-            $off = json_decode((string) Repo::meta('features_off', '[]'), true);
-            $off = is_array($off) ? $off : [];
+            $off = (array) (Studio::current()['off'] ?? []);
             self::$cache = [];
             foreach (array_keys(self::LIST) as $k) {
                 self::$cache[$k] = !in_array($k, $off, true);
@@ -55,7 +54,7 @@ final class Features
     /** @param string[] $off */
     public static function save(array $off): void
     {
-        Repo::setMeta('features_off', json_encode(array_values(array_intersect($off, array_keys(self::LIST)))));
+        Studio::setOff(array_values(array_intersect($off, array_keys(self::LIST))));
         self::$cache = null;
     }
 }
