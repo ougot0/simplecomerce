@@ -307,6 +307,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 16/10/2026 : Apple demande une vidéo (Directive 2.1, « informations requises », pas un refus) ; texte de réponse en
+  anglais donné. En filmant, il a trouvé un vrai défaut : inscription dans l'application → le lien de confirmation s'ouvre
+  dans Safari (autre session) → l'ancien code croyait à un compte créé avec l'adresse d'un autre : mot de passe annulé,
+  application déconnectée. **Version P** : `Auth::consumeVerification` confirme seulement (mot de passe et appareils gardés) ;
+  ouvert ailleurs, page `auth/verified.php` « Retournez dans l'application » + bouton replié « Ce n'est pas vous qui avez
+  créé ce compte ? → Reprendre ce compte » (jeton `claim` 7 jours, POST `/verifier/reprendre/{jeton}`, `Auth::claimAccount` =
+  ancien comportement). Le lien de connexion par e-mail garde sa protection. Testé (curl, 2 sessions) + 105 vérifications.
 - 15/10/2026 : **version O** — demande du propriétaire : « pour tout ce genre de trucs, ajoute-moi des boutons » (pas de
   ligne à coller). `Services\SiteTabs` (générique, une entrée par page dans `KINDS`) + `partials/site-tab.php` + route
   POST `/s/{slug}/onglet` (`ShopController::tabAction`, propriétaire seulement) : boutons « Ajouter l'onglet « Avis » »

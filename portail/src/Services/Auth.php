@@ -102,28 +102,42 @@ final class Auth
     }
 
     /**
-     * Lien de confirmation ouvert. Dans le navigateur qui a créé le compte : simple confirmation.
-     * Ailleurs : le lien prouve l'adresse comme un lien de connexion (ancien mot de passe annulé, à rechoisir),
-     * pour le cas où quelqu'un aurait créé ce compte avec l'adresse d'un autre.
-     * @return ?string page où aller, ou null si le lien n'est plus valable
+     * Lien de confirmation ouvert. L'adresse est confirmée, sans rien changer d'autre : le mot de passe reste,
+     * et les appareils restent connectés (le lien s'ouvre souvent dans Safari, pas dans l'application qui a créé le compte).
+     * Ouvert ailleurs que dans le navigateur de l'inscription : la page propose « Ce n'est pas moi qui ai créé ce compte »,
+     * pour le cas où quelqu'un aurait utilisé l'adresse d'un autre (voir claimAccount).
+     * @return ?array{next: string, claim: ?string} null si le lien n'est plus valable
      */
-    public static function consumeVerification(string $token): ?string
+    public static function consumeVerification(string $token): ?array
     {
         $t = Repo::useToken($token, 'verify', true);
         $user = $t ? Repo::user($t['user_id']) : null;
         if (!$user) {
             return null;
         }
-        if (Session::get('uid') === $user['id'] && Session::get('signup_uid') === $user['id']) {
-            self::markVerified($user['id']);
-            return '/sites/nouveau?verifie=1';
+        self::markVerified($user['id']);
+        if (Session::get('uid') === $user['id']) {
+            return ['next' => '/sites/nouveau?verifie=1', 'claim' => null];
+        }
+        return ['next' => '', 'claim' => Repo::createToken($user['id'], 'claim', 7 * 86400)];
+    }
+
+    /**
+     * « Ce n'est pas moi qui ai créé ce compte » : la personne qui reçoit les e-mails reprend le compte.
+     * Ancien mot de passe annulé, tous les appareils déconnectés, puis elle choisit le sien.
+     */
+    public static function claimAccount(string $token): bool
+    {
+        $t = Repo::useToken($token, 'claim', true);
+        $user = $t ? Repo::user($t['user_id']) : null;
+        if (!$user) {
+            return false;
         }
         Repo::updateUser($user['id'], ['password_hash' => password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT)]);
         Repo::deleteUserTokens($user['id'], 'remember');
-        self::markVerified($user['id']);
         self::login(Repo::user($user['id']), false);
         Session::set('magic_at', time());
-        return '/compte?nouveau-mot-de-passe=1';
+        return true;
     }
 
     /** Compte créé sans que l'adresse e-mail ait été prouvée (inscription libre). */

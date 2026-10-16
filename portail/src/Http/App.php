@@ -51,6 +51,7 @@ final class App
             ['GET', '/lien/(?<token>[\w-]{20,100})', [AuthController::class, 'magic']],
             ['GET', '/verifier/(?<token>[\w-]{20,100})', [AuthController::class, 'verify']],
             ['POST', '/verifier/renvoyer', [AuthController::class, 'resendVerification']],
+            ['POST', '/verifier/reprendre/(?<token>[\w-]{20,100})', [AuthController::class, 'claim']],
             ['POST', '/deconnexion', [AuthController::class, 'logout']],
             ['GET', '/compte', [AuthController::class, 'account']],
             ['GET', '/compte/abonnement', [BillingController::class, 'show']],

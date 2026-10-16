@@ -171,12 +171,24 @@ final class AuthController
 
     public static function verify(array $p): Response
     {
-        $next = Auth::consumeVerification($p['token']);
-        if ($next === null) {
+        $r = Auth::consumeVerification($p['token']);
+        if ($r === null) {
             return Response::page('message', ['title' => 'Lien expiré', 'text' => "Ce lien de confirmation n'est plus valable (il a déjà servi, ou il a plus de 7 jours). Connectez-vous : vous pourrez en demander un nouveau.", 'link' => ['/connexion', 'Aller à la connexion']], 'auth', 410);
         }
-        Session::flash(str_contains($next, 'nouveau-mot-de-passe') ? 'Adresse confirmée. Choisissez maintenant votre mot de passe.' : 'Merci, votre adresse est confirmée ! Vous pouvez relier votre site.');
-        return Response::redirect($next);
+        if ($r['claim'] === null) {
+            Session::flash('Merci, votre adresse est confirmée ! Vous pouvez relier votre site.');
+            return Response::redirect($r['next']);
+        }
+        return Response::page('auth/verified', ['claim' => $r['claim'], 'title' => 'Adresse confirmée'], 'auth');
+    }
+
+    public static function claim(array $p): Response
+    {
+        if (!Auth::claimAccount($p['token'])) {
+            return Response::page('message', ['title' => 'Lien expiré', 'text' => "Ce lien n'est plus valable. Utilisez « Mot de passe oublié » sur la page de connexion.", 'link' => ['/connexion', 'Aller à la connexion']], 'auth', 410);
+        }
+        Session::flash('Le compte est à vous : les autres appareils ont été déconnectés. Choisissez maintenant votre mot de passe.');
+        return Response::redirect('/compte?nouveau-mot-de-passe=1');
     }
 
     public static function resendVerification(): Response
