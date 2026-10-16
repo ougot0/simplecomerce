@@ -307,6 +307,10 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 16/10/2026 (3) : réponse envoyée à Apple (vidéo sur Drive, 310 Mo, trop lourde pour la pièce jointe → lien public dans
+  le message + même texte dans « Remarques ») puis « Mettre à jour la vérification » → version 1.0 de nouveau **en attente
+  de vérification**. Rappels : un compte neuf est « en pause » tant qu'il n'est pas abonné (Administration → Abonnements →
+  Offrir pour un compte de test) ; zip trop long pour l'extraction Windows → extraire dans `C:\sc` ou 7-Zip.
 - 16/10/2026 (2) : **version Q** — à sa demande (« tant que t'as pas validé ton mail, t'as pas accès au site, change
   ça ») : on peut **relier un site sans avoir confirmé son adresse** (`SitesController::verifiedOrPage` et
   `auth/verify-needed.php` supprimés). Le bandeau « Confirmez votre adresse » reste ; la protection contre un compte créé
