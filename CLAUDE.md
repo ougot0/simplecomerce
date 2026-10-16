@@ -307,6 +307,10 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 16/10/2026 (2) : **version Q** — à sa demande (« tant que t'as pas validé ton mail, t'as pas accès au site, change
+  ça ») : on peut **relier un site sans avoir confirmé son adresse** (`SitesController::verifiedOrPage` et
+  `auth/verify-needed.php` supprimés). Le bandeau « Confirmez votre adresse » reste ; la protection contre un compte créé
+  avec l'adresse d'un autre reste (lien de connexion, « Reprendre ce compte »).
 - 16/10/2026 : Apple demande une vidéo (Directive 2.1, « informations requises », pas un refus) ; texte de réponse en
   anglais donné. En filmant, il a trouvé un vrai défaut : inscription dans l'application → le lien de confirmation s'ouvre
   dans Safari (autre session) → l'ancien code croyait à un compte créé avec l'adresse d'un autre : mot de passe annulé,

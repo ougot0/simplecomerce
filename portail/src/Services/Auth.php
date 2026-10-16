@@ -97,7 +97,7 @@ final class Auth
         $link = Config::url('/verifier/' . Repo::createToken($user['id'], 'verify', 7 * 86400));
         Mailer::send($user['email'], 'Confirmez votre adresse e-mail — Simple Commerce',
             "Bonjour,\n\nBienvenue sur Simple Commerce ! Pour confirmer votre adresse e-mail, ouvrez ce lien :\n$link\n\n"
-            . "Ensuite, vous pourrez relier votre site.\n\nSi vous n'avez pas créé de compte, ignorez ce message.");
+            . "Si vous n'avez pas créé de compte, ignorez ce message.");
         return Config::demo() ? $link : null;
     }
 

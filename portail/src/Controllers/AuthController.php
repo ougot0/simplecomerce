@@ -164,7 +164,7 @@ final class AuthController
         }
         Auth::login($user, Req::bool('remember'));
         Session::set('signup_uid', $user['id']);
-        Session::flash("Votre compte est créé. Un e-mail de confirmation vient d'être envoyé à $email : ouvrez le lien qu'il contient pour pouvoir relier votre site."
+        Session::flash("Votre compte est créé. Un e-mail de confirmation vient d'être envoyé à $email : ouvrez le lien qu'il contient quand vous voulez. Vous pouvez déjà relier votre site."
             . ($demoLink ? " (Démonstration : $demoLink)" : ''), 'warn');
         return Response::redirect(Req::safeNext(Req::str('next', 500)));
     }
