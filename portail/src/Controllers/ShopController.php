@@ -114,8 +114,16 @@ final class ShopController
                 }
                 $on = Req::str('do', 20) === 'activer';
                 Sites::setExtras($site, ['reviews' => $on]);
+                if (!$on && \SimpleCommerce\Services\SiteTabs::current($site, 'avis')) {
+                    try {
+                        \SimpleCommerce\Services\SiteTabs::set(\SimpleCommerce\Repo::site($site['id']), 'avis', false);
+                    } catch (\RuntimeException $e) {
+                        Session::flash('Avis fermés, mais l\'onglet n\'a pas pu être retiré : ' . $e->getMessage(), 'error');
+                        return Response::redirect($back);
+                    }
+                }
                 Access::audit($ctx['viewer'], $on ? 'reviews_on' : 'reviews_off', [], $site['id']);
-                Session::flash($on ? 'Les avis sont ouverts. Collez la ligne ci-dessous dans votre site pour les afficher.' : 'Les avis sont fermés : la ligne collée n\'affiche plus rien.');
+                Session::flash($on ? 'Les avis sont ouverts. Ajoutez maintenant l\'onglet « Avis » à votre site.' : 'Les avis sont fermés et ne sont plus affichés sur votre site.');
                 return Response::redirect($back);
             case 'publier':
                 Reviews::update($site['id'], $id, ['status' => 'publie']);
@@ -135,6 +143,30 @@ final class ShopController
                 return Response::redirect($back . '?etat=' . rawurlencode(Req::str('back', 20) ?: 'attente'));
         }
         throw Halt::notFound();
+    }
+
+    /** Bouton « Ajouter l'onglet … à mon site » : page et onglet posés tout seuls (avis, horaires…). */
+    public static function tabAction(array $p): Response
+    {
+        $ctx = Access::site($p['slug']);
+        $site = $ctx['site'];
+        $kind = Req::str('quoi', 20);
+        if ($ctx['role'] === 'editor' || !isset(\SimpleCommerce\Services\SiteTabs::KINDS[$kind])) {
+            throw Halt::notFound();
+        }
+        $back = "/s/{$site['slug']}" . \SimpleCommerce\Services\SiteTabs::KINDS[$kind]['back'];
+        $on = Req::str('do', 20) === 'ajouter';
+        if ($on && !\SimpleCommerce\Services\Billing::siteAllowed($site, $ctx['viewer'])) {
+            Session::flash(\SimpleCommerce\Services\Billing::blockedMessage(), 'error');
+            return Response::redirect($back);
+        }
+        try {
+            Session::flash(\SimpleCommerce\Services\SiteTabs::set($site, $kind, $on));
+            Access::audit($ctx['viewer'], $on ? 'tab_added' : 'tab_removed', ['page' => $kind], $site['id']);
+        } catch (\RuntimeException $e) {
+            Session::flash($e->getMessage(), 'error');
+        }
+        return Response::redirect($back);
     }
 
     // --- Statistiques ---

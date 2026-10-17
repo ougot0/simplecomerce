@@ -308,10 +308,33 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 ## 12. Journal
 
 - 17/10/2026 : projet GitHub `lennyoliel/ALYA-3D` (privé, pas lisible par nous) : « aucune page ni fichier de contenu ».
-  Probablement un site fabriqué (React/Vite). **Version O** : listes de données lues aussi dans les `.mjs/.jsx/.ts/.tsx`
+  Probablement un site fabriqué (React/Vite). **Version R** : listes de données lues aussi dans les `.mjs/.jsx/.ts/.tsx`
   (`export const produits: Produit[] = [...]`, annotations TypeScript tolérées) ; si rien n'est trouvé et qu'il y a un
   `package.json`, le message explique que le site est « fabriqué » et propose le catalogue hébergé. Les photos importées
   (`image: photo1`) ne sont pas lisibles : préparation nécessaire.
+- 16/10/2026 (3) : réponse envoyée à Apple (vidéo sur Drive, 310 Mo, trop lourde pour la pièce jointe → lien public dans
+  le message + même texte dans « Remarques ») puis « Mettre à jour la vérification » → version 1.0 de nouveau **en attente
+  de vérification**. Rappels : un compte neuf est « en pause » tant qu'il n'est pas abonné (Administration → Abonnements →
+  Offrir pour un compte de test) ; zip trop long pour l'extraction Windows → extraire dans `C:\sc` ou 7-Zip.
+- 16/10/2026 (2) : **version Q** — à sa demande (« tant que t'as pas validé ton mail, t'as pas accès au site, change
+  ça ») : on peut **relier un site sans avoir confirmé son adresse** (`SitesController::verifiedOrPage` et
+  `auth/verify-needed.php` supprimés). Le bandeau « Confirmez votre adresse » reste ; la protection contre un compte créé
+  avec l'adresse d'un autre reste (lien de connexion, « Reprendre ce compte »).
+- 16/10/2026 : Apple demande une vidéo (Directive 2.1, « informations requises », pas un refus) ; texte de réponse en
+  anglais donné. En filmant, il a trouvé un vrai défaut : inscription dans l'application → le lien de confirmation s'ouvre
+  dans Safari (autre session) → l'ancien code croyait à un compte créé avec l'adresse d'un autre : mot de passe annulé,
+  application déconnectée. **Version P** : `Auth::consumeVerification` confirme seulement (mot de passe et appareils gardés) ;
+  ouvert ailleurs, page `auth/verified.php` « Retournez dans l'application » + bouton replié « Ce n'est pas vous qui avez
+  créé ce compte ? → Reprendre ce compte » (jeton `claim` 7 jours, POST `/verifier/reprendre/{jeton}`, `Auth::claimAccount` =
+  ancien comportement). Le lien de connexion par e-mail garde sa protection. Testé (curl, 2 sessions) + 105 vérifications.
+- 15/10/2026 : **version O** — demande du propriétaire : « pour tout ce genre de trucs, ajoute-moi des boutons » (pas de
+  ligne à coller). `Services\SiteTabs` (générique, une entrée par page dans `KINDS`) + `partials/site-tab.php` + route
+  POST `/s/{slug}/onglet` (`ShopController::tabAction`, propriétaire seulement) : boutons « Ajouter l'onglet « Avis » »
+  (page Avis clients) et « Ajouter l'onglet « Horaires » » (Réglages → Horaires), ligne à coller repliée en secours.
+  Fermer les avis retire aussi l'onglet. Les pages ajoutées par le portail (rendez-vous/avis/horaires.html) reçoivent les
+  onglets des autres ; retrait = site remis exactement comme avant (testé). Ces pages sont exclues de la détection.
+  Rappel donné : les changements du portail (zip OVH) ne passent **pas** par Apple ; seules les fonctions propres au
+  téléphone (Face ID, notifications, pubs) demandent une nouvelle version vérifiée. TestFlight 1.0 (1) **approuvé** le 15/10.
 - 15/10/2026 (2) : il veut « un lien à moi, pas Claude, pour modifier Simple Commerce » sans que ça change en direct chez
   les clients. **Version N : Studio** (`/studio`, administrateur seul, lien en haut de l'Administration ; `Services\Studio`,
   `StudioController`, gabarit `studio.php`) : nom affiché (wordmark, titre), 4 couleurs (variables CSS servies par

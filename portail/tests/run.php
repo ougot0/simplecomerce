@@ -261,6 +261,20 @@ test('Version anglaise', function () {
     check($T::enPath('dossier/projet.html') === 'dossier/projet-en.html', 'nom des pages anglaises');
 });
 
+test('Confirmation de l\'adresse ouverte dans un autre navigateur', function () {
+    $R = \SimpleCommerce\Repo::class;
+    $A = \SimpleCommerce\Services\Auth::class;
+    $u = $R::createUser('v-' . bin2hex(random_bytes(4)) . '@test.invalid', 'Val', 'mot-de-passe-9');
+    $A::markUnverified($u['id']);
+    $R::createToken($u['id'], 'remember', 3600);
+    $hash = $R::user($u['id'])['password_hash'];
+    $r = $A::consumeVerification($R::createToken($u['id'], 'verify', 3600));
+    check($A::isVerified($R::user($u['id'])), 'adresse confirmée');
+    check($R::user($u['id'])['password_hash'] === $hash, 'mot de passe gardé (l\'application reste connectée)');
+    check((int) \SimpleCommerce\Db::value("SELECT COUNT(*) FROM sc_tokens WHERE user_id = ? AND kind = 'remember'", [$u['id']]) === 1, 'appareils toujours connectés');
+    check(is_string($r['claim'] ?? null), '« Ce n\'est pas moi » proposé');
+});
+
 test('Suppression de compte', function () {
     \SimpleCommerce\Services\Demo::ensure();
     $R = \SimpleCommerce\Repo::class;
