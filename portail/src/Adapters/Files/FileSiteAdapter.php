@@ -167,12 +167,20 @@ final class FileSiteAdapter implements Adapter
                 $where = $this->options['contentDir'] !== '' ? "dossier « {$this->options['contentDir']} »" : 'content.json, data.json… à la racine';
                 $checks[] = $files
                     ? ['label' => $this->scanFiles !== null ? 'Contenu modifiable trouvé dans les fichiers du site' : 'Fichiers de contenu trouvés (' . count($files) . ')', 'ok' => true]
-                    : ['label' => 'Contenu du site', 'ok' => false, 'hint' => "Nous n'avons trouvé aucune page ni aucun fichier de contenu dans ce dossier. Vérifiez le « Dossier du site sur le serveur » : c'est celui qui contient la page d'accueil (index.html)."];
+                    : ['label' => 'Contenu du site', 'ok' => false, 'hint' => $this->built()
+                        ? "Ce site est fabriqué par un outil de développement (React, Vue, Vite…) : ses textes et ses produits sont écrits au milieu du code, pas dans une page ni dans un fichier de données. Il doit être préparé une fois par la personne qui l'a créé : ranger ses produits dans un fichier de données à part. En attendant, choisissez « Gérer mes produits ici, puis les afficher sur mon site »."
+                        : "Nous n'avons trouvé aucune page ni aucun fichier de contenu dans ce dossier. Vérifiez le « Dossier du site sur le serveur » : c'est celui qui contient la page d'accueil (index.html)."];
             } catch (AdapterError $e) {
                 $checks[] = ['label' => 'Lecture du dossier de contenu', 'ok' => false, 'hint' => $e->userMessage];
             }
         }
         return ['ok' => !array_filter($checks, fn ($c) => !$c['ok']), 'checks' => $checks];
+    }
+
+    /** Site fabriqué par un outil (package.json à la racine) : ses pages n'existent qu'après fabrication. */
+    private function built(): bool
+    {
+        return (bool) array_filter($this->backend->list('', 1), fn ($f) => $f === 'package.json');
     }
 
     public function discover(): array

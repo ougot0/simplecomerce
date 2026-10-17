@@ -20,6 +20,8 @@ final class Formats
             str_ends_with($p, '.yml'), str_ends_with($p, '.yaml') => 'yaml',
             str_ends_with($p, '.md'), str_ends_with($p, '.mdx'), str_ends_with($p, '.markdown') => 'markdown',
             str_ends_with($p, '.js') && !str_ends_with($p, '.min.js') => 'js',
+            // Sites fabriqués (React, Vue, Vite…) : seules les listes de données écrites telles quelles sont lues.
+            (bool) preg_match('/\.(mjs|jsx|tsx?)$/', $p) && !str_ends_with($p, '.d.ts') => 'js',
             str_ends_with($p, '.html'), str_ends_with($p, '.htm') => 'html',
             default => null,
         };

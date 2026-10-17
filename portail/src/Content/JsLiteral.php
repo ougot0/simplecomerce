@@ -29,7 +29,7 @@ final class JsLiteral
     public static function declarations(string $src): array
     {
         $out = [];
-        if (!preg_match_all('/^[ \t]*(?:export[ \t]+)?(?:(?:const|let|var)[ \t]+([A-Za-z_$][\w$]*)|(?:window|globalThis)\.([A-Za-z_$][\w$]*))[ \t]*=[ \t]*(?=[\[{])/m', $src, $m, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        if (!preg_match_all('/^[ \t]*(?:export[ \t]+)?(?:(?:const|let|var)[ \t]+([A-Za-z_$][\w$]*)(?:[ \t]*:[ \t]*[\w$.<>\[\], |]+?)?|(?:window|globalThis)\.([A-Za-z_$][\w$]*))[ \t]*=[ \t]*(?=[\[{])/m', $src, $m, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             return [];
         }
         foreach ($m as $match) {

@@ -307,6 +307,11 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/10/2026 : projet GitHub `lennyoliel/ALYA-3D` (privé, pas lisible par nous) : « aucune page ni fichier de contenu ».
+  Probablement un site fabriqué (React/Vite). **Version O** : listes de données lues aussi dans les `.mjs/.jsx/.ts/.tsx`
+  (`export const produits: Produit[] = [...]`, annotations TypeScript tolérées) ; si rien n'est trouvé et qu'il y a un
+  `package.json`, le message explique que le site est « fabriqué » et propose le catalogue hébergé. Les photos importées
+  (`image: photo1`) ne sont pas lisibles : préparation nécessaire.
 - 15/10/2026 (2) : il veut « un lien à moi, pas Claude, pour modifier Simple Commerce » sans que ça change en direct chez
   les clients. **Version N : Studio** (`/studio`, administrateur seul, lien en haut de l'Administration ; `Services\Studio`,
   `StudioController`, gabarit `studio.php`) : nom affiché (wordmark, titre), 4 couleurs (variables CSS servies par
