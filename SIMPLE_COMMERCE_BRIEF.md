@@ -165,7 +165,7 @@ Pour un site qui ne peut pas être relié, il reste une solution : **« Gérer m
 - `portail/public/assets/favicon-32.png`
 - `portail/public/assets/apple-touch-icon.png`
 - `portail/public/assets/icon.svg`
-- Icônes de l'application iPhone : dans `application-iphone/SimpleCommerce/` (catalogue d'images du projet Xcode).
+- Icône de l'application iPhone : `application-iphone/SimpleCommerce/Assets.xcassets/AppIcon.appiconset/`.
 
 ### Captures d'écran (iPhone, 1320×2868)
 - `application-iphone/captures/1-connexion.png`
