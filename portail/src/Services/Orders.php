@@ -59,13 +59,16 @@ final class Orders
         if ((int) Db::value('SELECT COUNT(*) FROM sc_orders WHERE site_id = ? AND created_at >= ?', [$site['id'], gmdate('Y-m-d\TH:i:s\Z', time() - 86400)]) >= self::MAX_PER_DAY) {
             return ['ok' => false, 'error' => 'La boutique reçoit beaucoup de commandes en ce moment. Contactez-la directement.'];
         }
-        // Un même produit en plusieurs lignes compte pour une seule ligne (sinon le contrôle du stock serait contourné).
+        // Un même produit avec les mêmes choix en plusieurs lignes compte pour une seule ligne ; le stock, lui, est
+        // contrôlé par produit, toutes lignes confondues (sinon il serait contourné).
         $wanted = [];
         foreach (array_slice($lines, 0, self::MAX_LINES) as $l) {
             $id = (string) ($l['id'] ?? '');
             $q = (int) ($l['qte'] ?? 0);
+            $picked = is_array($l['choix'] ?? null) ? array_slice($l['choix'], 0, ProductOptions::MAX_GROUPS, true) : [];
             if ($id !== '' && $q > 0) {
-                $wanted[$id] = min(99, ($wanted[$id] ?? 0) + $q);
+                $k = $id . '|' . json_encode($picked);
+                $wanted[$k] = ['id' => $id, 'choix' => $picked, 'qte' => min(99, ($wanted[$k]['qte'] ?? 0) + $q)];
             }
         }
         // Les commandes d'une même boutique passent l'une après l'autre : le stock relu ici est le vrai,
@@ -84,28 +87,37 @@ final class Orders
         }
     }
 
-    /** @param array<string, int> $wanted identifiant => quantité */
+    /** @param array<string, array{id: string, choix: array, qte: int}> $wanted */
     private static function createLocked(array $site, array $section, array $customer, array $wanted): array
     {
         $products = self::catalogue($site, $section);
         $items = [];
         $total = 0.0;
         $stock = [];
-        foreach ($wanted as $id => $qty) {
-            $id = (string) $id;
+        $perProduct = [];
+        foreach ($wanted as $w) {
+            $id = $w['id'];
+            $qty = $w['qte'];
             $p = $products[$id] ?? null;
             if (!$p || $qty < 1 || $qty > 99 || (array_key_exists('disponible', $p) && $p['disponible'] === false)) {
                 continue;
             }
             $name = (string) ($p['nom'] ?? 'Produit');
+            // Prix et choix recalculés depuis le catalogue : rien n'est repris tel quel du navigateur du client.
+            $r = ProductOptions::resolve($p, $w['choix']);
+            if (!$r['ok']) {
+                return ['ok' => false, 'error' => $r['error']];
+            }
+            $perProduct[$id] = ($perProduct[$id] ?? 0) + $qty;
             if (isset($p['stock']) && is_numeric($p['stock'])) {
-                if ((int) $p['stock'] < $qty) {
+                if ((int) $p['stock'] < $perProduct[$id]) {
                     return ['ok' => false, 'error' => (int) $p['stock'] <= 0 ? "« $name » vient d'être épuisé." : "Il ne reste que {$p['stock']} « $name »."];
                 }
-                $stock[$id] = ['stock' => (int) $p['stock'] - $qty];
+                $stock[$id] = ['stock' => (int) $p['stock'] - $perProduct[$id]];
             }
-            $price = is_numeric($p['prix'] ?? null) ? (float) $p['prix'] : null;
-            $items[] = ['id' => $id, 'nom' => $name, 'qte' => $qty, 'prix' => $price];
+            $price = $r['prix'];
+            $items[] = ['id' => $id, 'nom' => $r['detail'] !== '' ? "$name ({$r['detail']})" : $name, 'qte' => $qty, 'prix' => $price]
+                + ($r['detail'] !== '' ? ['choix' => $r['choix']] : []);
             $total += ($price ?? 0) * $qty;
         }
         if (!$items) {

@@ -334,5 +334,21 @@ test('Choix des fiches (tailles, parfums)', function () {
     check(substr_count($out, 'data-kind="Parvé"') === 1, 'autre fiche inchangée');
 });
 
+test('Choix des produits du catalogue (tailles, boîtes)', function () {
+    $O = \SimpleCommerce\Services\ProductOptions::class;
+    $p = ['nom' => 'Cookies', 'prix' => 30, 'options' => [
+        ['nom' => 'Taille', 'type' => 'un', 'choix' => "Boîte de 10\nBoîte de 20 · 60 €"],
+        ['nom' => 'Parfums', 'type' => 'plusieurs', 'nombre' => 4, 'choix' => "Praliné\n3 chocolats · +0,50 €"],
+        ['nom' => 'Bougie', 'type' => 'un', 'choix' => "Sans\nAvec · +2 €"],
+    ]];
+    check($O::parseLine('40 cm · 55 €') === ['nom' => '40 cm', 'prix' => 55.0, 'ajout' => false] && $O::parseLine('Bougie · +2,50 €')['ajout'] && $O::parseLine('Vanille')['prix'] === null, 'ligne de choix lue avec son prix');
+    $r = $O::resolve($p, [1, [2, 2], 1]);
+    check($r['ok'] && $r['prix'] === 63.0, 'prix recalculé : taille qui remplace, boîte et ajout qui s\'ajoutent');
+    check(str_contains($r['detail'], 'Parfums : 2 × Praliné, 2 × 3 chocolats'), 'détail de la boîte');
+    check(!$O::resolve($p, [0, [1, 1], 0])['ok'], 'boîte incomplète refusée');
+    check(!$O::resolve($p, [7, [4, 0], 0])['ok'], 'choix inexistant refusé');
+    check($O::resolve(['nom' => 'Vase', 'prix' => 12], [])['prix'] === 12.0, 'produit sans choix inchangé');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

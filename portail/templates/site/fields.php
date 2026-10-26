@@ -103,7 +103,8 @@ if (!function_exists('sc_field')) {
                 return '<div class="' . $cls . '"><input type="hidden" name="' . e($name) . '" value="0"><label class="switch"><input id="' . e($id) . '" type="checkbox" name="' . e($name) . '" value="1"' . ($value === true ? ' checked' : '') . $preview . '>'
                     . '<span class="switch-track" aria-hidden="true"></span><span><strong>' . e($f['label']) . '</strong></span></label>' . sc_foot($f, $errors, $path) . '</div>';
             case 'select':
-                $opts = '<option value="">—</option>';
+                // Choix obligatoire : pas de case vide, la première option est prise d'avance.
+                $opts = empty($f['required']) ? '<option value="">—</option>' : '';
                 foreach ($f['options'] ?? [] as $o) {
                     $opts .= '<option value="' . e($o['value']) . '"' . ($o['value'] === $str ? ' selected' : '') . '>' . e($o['label']) . '</option>';
                 }

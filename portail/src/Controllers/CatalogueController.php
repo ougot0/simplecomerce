@@ -8,6 +8,7 @@ use SimpleCommerce\Adapters\Status;
 use SimpleCommerce\Config;
 use SimpleCommerce\Http\Response;
 use SimpleCommerce\Repo;
+use SimpleCommerce\Services\ProductOptions;
 
 /**
  * Pages publiques des catalogues hébergés : la ligne collée dans le site du client charge
@@ -47,6 +48,8 @@ final class CatalogueController
                 'prix' => is_numeric($p['prix'] ?? null) ? (float) $p['prix'] : null,
                 'ancienPrix' => is_numeric($p['ancienPrix'] ?? null) ? (float) $p['ancienPrix'] : null,
                 'description' => (string) ($p['description'] ?? ''),
+                'details' => ProductOptions::details($p),
+                'options' => ProductOptions::groups($p),
                 'epuise' => isset($p['stock']) && is_numeric($p['stock']) && (int) $p['stock'] <= 0,
                 'pastille' => mb_substr(trim((string) ($p['pastille'] ?? '')), 0, 24),
                 'enAvant' => ($p['enAvant'] ?? false) === true,

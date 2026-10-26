@@ -7,14 +7,45 @@ if (!host) {
   if (me && me.parentNode) { me.parentNode.insertBefore(host, me); } else { document.body.appendChild(host); }
 }
 var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+// Panier : une ligne par produit et par choix faits ({ id, c: choix, q: quantité }).
 var cart = {};
 var cartKey = 'sc_panier_' + (D.api || '').slice(-24);
 try { cart = JSON.parse(localStorage.getItem(cartKey) || '{}') || {}; } catch (e) { cart = {}; }
+Object.keys(cart).forEach(function (k) {
+  if (typeof cart[k] === 'number') { cart[k + '|{}'] = { id: k, c: {}, q: cart[k] }; delete cart[k]; } // ancien panier
+});
 
 function price(n) {
   if (n === null || n === undefined) { return ''; }
   var s = (Math.round(n * 100) % 100 === 0) ? String(Math.round(n)) : n.toFixed(2).replace('.', ',');
   return s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' €';
+}
+// Prix et description des choix faits (même calcul que le serveur, qui recalcule tout à la commande).
+function resolve(p, c) {
+  var total = p.prix, parts = [];
+  (p.options || []).forEach(function (g, gi) {
+    if (g.type === 'un') {
+      var ch = g.choix[c[gi] || 0];
+      if (ch.prix !== null) { total = ch.ajout ? (total || 0) + ch.prix : ch.prix; }
+      parts.push(g.nom + ' : ' + ch.nom);
+      return;
+    }
+    var counts = c[gi] || [], taken = [];
+    g.choix.forEach(function (ch, ci) {
+      var n = counts[ci] || 0;
+      if (n > 0) {
+        if (ch.prix !== null) { total = (total || 0) + ch.prix * n; }
+        taken.push(n + ' × ' + ch.nom);
+      }
+    });
+    parts.push(g.nom + ' : ' + taken.join(', '));
+  });
+  return { prix: total, detail: parts.join(' · ') };
+}
+function boxFull(p, c) {
+  return (p.options || []).every(function (g, gi) {
+    return g.type === 'un' || (c[gi] || []).reduce(function (a, b) { return a + b; }, 0) === g.nombre;
+  });
 }
 function el(tag, cls, text) {
   var e = document.createElement(tag);
@@ -90,14 +121,26 @@ style.textContent = [
   '.sc-qty button{width:28px;height:28px;border-radius:50%;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;font:inherit}',
   '.sc-total{display:flex;justify-content:space-between;font-weight:700;margin:10px 0}',
   '.sc-form{display:grid;gap:10px;margin-top:12px}',
-  '.sc-note{opacity:.8;font-size:.92em;margin:0}'
+  '.sc-note{opacity:.8;font-size:.92em;margin:0}',
+  '.sc-details{margin:0;padding-left:18px;font-size:.9em;opacity:.85;line-height:1.5}',
+  '.sc-group{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}',
+  '.sc-group legend{font-size:.85em;font-weight:600;padding:0;margin-bottom:4px}',
+  '.sc-pills{display:flex;flex-wrap:wrap;gap:6px}',
+  '.sc-pill{padding:6px 12px;border-radius:999px;border:1px solid rgba(127,127,127,.55);background:transparent;color:inherit;font:inherit;font-size:.9em;cursor:pointer}',
+  '.sc-pill[aria-pressed=true]{background:#141210;border-color:#141210;color:#fff}',
+  '.sc-box-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.92em}',
+  '.sc-count{font-size:.85em;opacity:.75}',
+  '.sc-line small{display:block;opacity:.7}'
 ].join('');
 root.appendChild(style);
 
 var byId = {};
 D.produits.forEach(function (p) { byId[p.id] = p; });
 // Produits disparus ou épuisés depuis : retirés du panier.
-Object.keys(cart).forEach(function (id) { if (!byId[id] || byId[id].epuise) { delete cart[id]; } });
+Object.keys(cart).forEach(function (k) {
+  var l = cart[k], p = l && byId[l.id];
+  if (!p || p.epuise || !boxFull(p, l.c || {})) { delete cart[k]; }
+});
 
 var wrap = el('div', 'sc');
 if (D.ferme) {
@@ -172,21 +215,88 @@ D.produits.forEach(function (p) {
   }
   if (!p.photos.length && p.pastille) { card.appendChild(el('span', 'sc-tag', p.pastille)); }
   card.appendChild(el('h3', 'sc-name', p.nom));
-  if (p.prix !== null || p.epuise) {
+  var c = {}; // choix faits sur cette fiche
+  var priceNow = el('span', '');
+  if (p.prix !== null || p.epuise || (p.options || []).length) {
     var pr = el('div', 'sc-price');
-    if (p.prix !== null) { pr.appendChild(el('span', '', price(p.prix))); }
+    pr.appendChild(priceNow);
     if (p.ancienPrix !== null && p.prix !== null && p.ancienPrix > p.prix) { pr.appendChild(el('span', 'sc-old', price(p.ancienPrix))); }
     if (p.epuise && !p.photos.length) { pr.appendChild(el('span', 'sc-tag', 'Épuisé')); }
     card.appendChild(pr);
   }
   if (p.description) { card.appendChild(el('p', 'sc-desc', p.description)); }
+  if ((p.details || []).length) {
+    var ul = el('ul', 'sc-details');
+    p.details.forEach(function (d) { ul.appendChild(el('li', '', d)); });
+    card.appendChild(ul);
+  }
+  var add = null;
+  function refresh() {
+    var r = resolve(p, c);
+    priceNow.textContent = r.prix !== null ? price(r.prix) : '';
+    if (add) { add.disabled = !boxFull(p, c); }
+  }
+  (p.options || []).forEach(function (g, gi) {
+    var fs = el('fieldset', 'sc-group');
+    var lg = el('legend', '', g.nom);
+    fs.appendChild(lg);
+    if (g.type === 'un') {
+      c[gi] = 0;
+      var pills = el('div', 'sc-pills');
+      g.choix.forEach(function (ch, ci) {
+        var b = el('button', 'sc-pill', ch.nom + (ch.prix !== null ? ' · ' + (ch.ajout ? '+' : '') + price(ch.prix) : ''));
+        b.type = 'button';
+        b.setAttribute('aria-pressed', ci === 0 ? 'true' : 'false');
+        b.addEventListener('click', function () {
+          c[gi] = ci;
+          Array.prototype.forEach.call(pills.children, function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+          refresh();
+        });
+        pills.appendChild(b);
+      });
+      fs.appendChild(pills);
+    } else {
+      c[gi] = g.choix.map(function () { return 0; });
+      var count = el('span', 'sc-count');
+      lg.appendChild(document.createTextNode(' '));
+      lg.appendChild(count);
+      var showCount = function () {
+        var n = c[gi].reduce(function (a, b) { return a + b; }, 0);
+        count.textContent = '(' + n + ' / ' + g.nombre + ')';
+        return n;
+      };
+      g.choix.forEach(function (ch, ci) {
+        var row = el('div', 'sc-box-row');
+        row.appendChild(el('span', '', ch.nom + (ch.prix !== null ? ' · +' + price(ch.prix) : '')));
+        var q = el('span', 'sc-qty');
+        var minus = el('button', '', '−');
+        minus.type = 'button';
+        minus.setAttribute('aria-label', 'Un ' + ch.nom + ' de moins');
+        var n = el('span', '', '0');
+        var plus = el('button', '', '+');
+        plus.type = 'button';
+        plus.setAttribute('aria-label', 'Un ' + ch.nom + ' de plus');
+        minus.addEventListener('click', function () { if (c[gi][ci] > 0) { c[gi][ci]--; n.textContent = c[gi][ci]; showCount(); refresh(); } });
+        plus.addEventListener('click', function () { if (showCount() < g.nombre) { c[gi][ci]++; n.textContent = c[gi][ci]; showCount(); refresh(); } });
+        q.appendChild(minus);
+        q.appendChild(n);
+        q.appendChild(plus);
+        row.appendChild(q);
+        fs.appendChild(row);
+      });
+      showCount();
+    }
+    card.appendChild(fs);
+  });
   if (p.epuise) {
     notifyForm(p, card);
   } else if (D.commandes && !D.ferme) {
-    var add = el('button', 'sc-btn', 'Ajouter au panier');
+    add = el('button', 'sc-btn', 'Ajouter au panier');
     add.type = 'button';
     add.addEventListener('click', function () {
-      cart[p.id] = Math.min(99, (cart[p.id] || 0) + 1);
+      var choice = JSON.parse(JSON.stringify(c));
+      var k = p.id + '|' + JSON.stringify(choice);
+      cart[k] = { id: p.id, c: choice, q: Math.min(99, ((cart[k] || {}).q || 0) + 1) };
       save();
       drawCart();
       add.textContent = 'Ajouté ✓';
@@ -201,20 +311,23 @@ D.produits.forEach(function (p) {
     if (D.ferme) { a.setAttribute('aria-disabled', 'true'); }
     card.appendChild(a);
   }
+  refresh();
   grid.appendChild(card);
 });
 
 function drawCart() {
-  var ids = Object.keys(cart).filter(function (id) { return cart[id] > 0 && byId[id]; });
+  var ids = Object.keys(cart).filter(function (k) { return cart[k].q > 0 && byId[cart[k].id]; });
   cartBox.textContent = '';
   cartBox.hidden = !ids.length;
   if (!ids.length) { return; }
   cartBox.appendChild(el('h3', '', 'Mon panier'));
   var total = 0;
   ids.forEach(function (id) {
-    var p = byId[id];
+    var l = cart[id], p = byId[l.id], r = resolve(p, l.c || {});
     var line = el('div', 'sc-line');
-    line.appendChild(el('span', '', p.nom));
+    var label = el('span', '', p.nom);
+    if (r.detail) { label.appendChild(el('small', '', r.detail)); }
+    line.appendChild(label);
     var q = el('span', 'sc-qty');
     var minus = el('button', '', '−');
     minus.type = 'button';
@@ -222,14 +335,14 @@ function drawCart() {
     var plus = el('button', '', '+');
     plus.type = 'button';
     plus.setAttribute('aria-label', 'Un de plus');
-    minus.addEventListener('click', function () { cart[id]--; if (cart[id] <= 0) { delete cart[id]; } save(); drawCart(); });
-    plus.addEventListener('click', function () { cart[id] = Math.min(99, cart[id] + 1); save(); drawCart(); });
+    minus.addEventListener('click', function () { l.q--; if (l.q <= 0) { delete cart[id]; } save(); drawCart(); });
+    plus.addEventListener('click', function () { l.q = Math.min(99, l.q + 1); save(); drawCart(); });
     q.appendChild(minus);
-    q.appendChild(el('span', '', String(cart[id])));
+    q.appendChild(el('span', '', String(l.q)));
     q.appendChild(plus);
     line.appendChild(q);
-    line.appendChild(el('span', '', p.prix !== null ? price(p.prix * cart[id]) : ''));
-    total += (p.prix || 0) * cart[id];
+    line.appendChild(el('span', '', r.prix !== null ? price(r.prix * l.q) : ''));
+    total += (r.prix || 0) * l.q;
     cartBox.appendChild(line);
   });
   var t = el('div', 'sc-total');
@@ -253,7 +366,7 @@ function drawCart() {
   f.addEventListener('submit', function (ev) {
     ev.preventDefault();
     go.disabled = true;
-    var data = { site_web: hp.value, lignes: ids.map(function (id) { return { id: id, qte: cart[id] }; }) };
+    var data = { site_web: hp.value, lignes: ids.map(function (k) { return { id: cart[k].id, qte: cart[k].q, choix: cart[k].c || {} }; }) };
     ['nom', 'email', 'telephone', 'adresse', 'note'].forEach(function (k) { data[k] = f.elements[k].value; });
     send('/commande', data, function (j) {
       go.disabled = false;

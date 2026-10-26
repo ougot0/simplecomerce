@@ -282,7 +282,7 @@ nous donne pas ses mots de passe — ne pas les lui demander dans la conversatio
    (« Gérer mes produits ici, puis les afficher sur mon site »), contenu gardé dans la table `sc_files` (`DbBackend`, créée à la
    demande), ligne à coller `<script src="…/catalogue/{publicKey}.js">` (widget `public/assets/catalogue-widget.js`, Shadow DOM,
    routes publiques sans session dans `App::handle`, `CatalogueController`). Panier/commandes, pastilles, « Prévenez-moi »
-   ajoutés le 13/10. Reste à faire : paiement en ligne des commandes, variantes, catégories.
+   ajoutés le 13/10. Choix/boîtes/détails le 26/10 (version U). Reste à faire : paiement en ligne des commandes, catégories.
    Description d'origine :
    un **catalogue hébergé par Simple Commerce** (produits, stocks, prix, ouvert/fermé gardés dans la base du portail)
    + **une ligne à coller une fois** dans le site du client (script public qui affiche les produits, comme le bouton
@@ -309,6 +309,16 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 (4) : demande « pour tout type de commerce : tailles à tel prix, dimensions, détails, boîtes à composer ».
+  **Version U** (catalogue hébergé) : champs `details` (textarea, un détail par ligne) et `options` (repeater : `nom`,
+  `type` un|plusieurs, `nombre`, `choix` = une option par ligne, « 40 cm · 55 € » remplace le prix, « Bougie · +2 € »
+  s'ajoute ; dans une boîte, chaque prix s'ajoute par article). `Services\ProductOptions` (parseLine, groups, details,
+  resolve) : prix et choix **recalculés au serveur** dans `Orders::createLocked` (lignes par produit + choix, stock par
+  produit), nom de ligne « Produit (Taille : Grande · Boîte : 2 × Praliné…) » repris partout (e-mails, bon, CSV). Widget :
+  boutons de choix, boîte avec compteurs « 4 / 4 », bouton bloqué tant que la boîte n'est pas pleine, prix qui suit, panier
+  par ligne `{id, c, q}` (ancien panier converti). `Schema::VERSION` 6 → champs ajoutés aux catalogues existants. Select
+  `required` = sans case vide. Testé au navigateur dans la démo (fiche remplie, commande 61 € = 60 + 2 × 0,50). 116 vérif.
+  Reste : la même chose pour les sites reliés par fichiers sans boutons existants, menus déroulants, Shopify/Woo.
 - 26/10/2026 (3) : il ne veut plus envoyer le zip à la main → **mise en ligne automatique** :
   `.github/workflows/portail-ovh.yml` (push sur `portail/**` de la branche de travail, ou « Run workflow ») : vérifie le
   code (php -l + tests), puis `lftp mirror --reverse` du portail (sans tests/demo) par SFTP vers `simplecommerce/public`

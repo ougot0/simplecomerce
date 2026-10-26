@@ -10,7 +10,7 @@ namespace SimpleCommerce;
 final class Schema
 {
     /** 2 : liste d'attente, commandes, avis, statistiques, abonnements (12/10/2026). */
-    public const VERSION = 5;
+    public const VERSION = 6;
 
     /** @return string[] */
     public static function statements(string $driver): array
