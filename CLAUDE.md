@@ -309,6 +309,9 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 (9) : il veut ajouter les secrets tout de suite. `portail-ovh.yml` mis **en pause** (seulement « Run workflow »,
+  plus d'envoi à chaque push — l'autre session pousse aussi sur la branche) jusqu'à la réponse d'Apple ; **à remettre ensuite**
+  (bloc `push` noté en tête du fichier).
 - 26/10/2026 (8) : il a collé la « recette » GitHub → OVH qui marche pour son autre site (SFTP port 22 car OVH Perso refuse
   le FTPS, secret `OVH_FTP_PASSWORD`). `portail-ovh.yml` aligné : mot de passe `OVH_FTP_PASSWORD` (ou l'ancien nom),
   identifiant par défaut `coumaoq`, serveur = secret ou variable `OVH_SFTP_SERVEUR`, `sftp://…:22`. Les fichiers du

@@ -11,12 +11,10 @@
 #   variable OVH_DOSSIER        dossier du portail depuis le dossier personnel (défaut simplecommerce/public)
 name: Mise en ligne OVH
 
+# EN PAUSE (26/10/2026) : vérification de l'application iPhone en cours chez Apple, le propriétaire ne veut aucune mise en
+# ligne avant la réponse. Seul un envoi demandé à la main (« Run workflow ») part. Après la réponse d'Apple, remettre :
+#   push: { branches: ['claude/brave-feynman-zya4u2'], paths: ['portail/**', '.github/workflows/portail-ovh.yml'] }
 on:
-  push:
-    branches: ['claude/brave-feynman-zya4u2']
-    paths:
-      - 'portail/**'
-      - '.github/workflows/portail-ovh.yml'
   workflow_dispatch:
 
 permissions:
