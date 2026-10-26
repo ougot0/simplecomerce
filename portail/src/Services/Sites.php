@@ -110,7 +110,7 @@ final class Sites
     }
 
     /** Après l'ajout ou la suppression d'une page (projet…), les rubriques du site sont relues. */
-    public static function rediscover(array $site, string $by): void
+    public static function rediscover(array $site, ?string $by): void
     {
         try {
             $found = self::discover($site);
@@ -118,6 +118,21 @@ final class Sites
         } catch (\Throwable $e) {
             Log::warn('relecture des rubriques échouée', ['site' => $site['slug'], 'err' => $e]);
         }
+    }
+
+    /**
+     * Après une mise à jour du portail, le contenu du site est relu tout seul une fois (nouvelles rubriques ou
+     * nouveaux champs reconnus), sans que personne ait à cliquer sur « Relire le contenu du site ».
+     * @return bool vrai si les rubriques ont été relues
+     */
+    public static function refreshIfNew(array $site): bool
+    {
+        if ((self::extras($site)['readWith'] ?? '') === SC_VERSION || !Repo::schema($site['id'])) {
+            return false;
+        }
+        self::setExtras($site, ['readWith' => SC_VERSION]); // une seule tentative par version, même si la lecture échoue
+        self::rediscover($site, null);
+        return true;
     }
 
     /** Clé publique du site (scripts à coller : catalogue, statistiques, avis). Créée à la première demande. */

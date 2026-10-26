@@ -307,6 +307,9 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 (2) : « tu peux pas actualiser tout seul ? » → **version T** : `Sites::refreshIfNew` relit les rubriques
+  d'un site une fois par version du portail (extras `readWith` = `SC_VERSION`), à l'ouverture du site ou d'une rubrique
+  (`SiteController::home/section`). Plus besoin de « Relire le contenu du site » après une mise à jour. Testé dans la démo.
 - 26/10/2026 : sur Ougot, les choix des fiches (tailles « 6-8 pers · 45 € », parfums, Parvé/Halavi) n'étaient pas
   modifiables. **Version S** : `HtmlCards` reconnaît les groupes de boutons de choix (role="group" ou classe opt/choix/
   variant/taille…, ≥ 2 boutons simples) → champ `choix_<aria-label>` (« Choix « Nombre de personnes » (un par ligne) »).

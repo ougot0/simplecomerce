@@ -45,6 +45,9 @@ final class SiteController
     public static function home(array $p): Response
     {
         $ctx = Access::site($p['slug']);
+        if (Sites::refreshIfNew($ctx['site'])) {
+            $ctx = Access::site($p['slug']);
+        }
         $site = $ctx['site'];
         $changes = Repo::changes($site['id'], 8);
         $last = [];
@@ -80,6 +83,9 @@ final class SiteController
     public static function section(array $p): Response
     {
         $ctx = Access::site($p['slug']);
+        if (Sites::refreshIfNew($ctx['site'])) {
+            $ctx = Access::site($p['slug']);
+        }
         $section = Access::section($ctx, $p['section']);
         if (($section['kind'] ?? '') === 'singleton') {
             return EditorController::singleton($ctx, $section);
