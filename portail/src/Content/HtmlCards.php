@@ -121,8 +121,14 @@ final class HtmlCards
     private static function cardFields(string $html, array $els, int $card): ?array
     {
         $title = $price = $desc = $img = $list = $tag = null;
+        $groups = [];
         foreach (self::descendants($els, $card) as $d) {
             $e = $els[$d];
+            if (($key = self::choiceKey($html, $els, $e, count($groups) + 1)) !== null && !isset($groups[$key])) {
+                // Groupe de choix (« 6 à 8 pers. · 45 € / 10 à 12 pers. · 65 € », « Parvé / Halavi »…).
+                $groups[$key] = $d;
+                continue;
+            }
             if (in_array($e['tag'], ['button', 'option', 'select', 'script', 'style', 'label', 'a'], true) || self::insideTag($els, $d, $card, ['button', 'select', 'a', 'label'])) {
                 continue;
             }
@@ -146,7 +152,7 @@ final class HtmlCards
                 $img = $d;
             }
         }
-        return $title !== null && ($price !== null || $img !== null || $desc !== null || $list !== null) ? ['title' => $title, 'price' => $price, 'desc' => $desc, 'img' => $img, 'list' => $list, 'tag' => $tag] : null;
+        return $title !== null && ($price !== null || $img !== null || $desc !== null || $list !== null) ? ['title' => $title, 'price' => $price, 'desc' => $desc, 'img' => $img, 'list' => $list, 'tag' => $tag, 'groups' => $groups] : null;
     }
 
     /** Liste simple : uniquement des <li> sans sous-élément. */
@@ -161,6 +167,68 @@ final class HtmlCards
             }
         }
         return true;
+    }
+
+    /**
+     * Groupe de boutons de choix (au moins deux boutons ou étiquettes de même sorte, sans sous-élément) :
+     * rangé avec role="group" ou une classe qui parle d'options. Renvoie le nom du champ, ou null.
+     */
+    private static function choiceKey(string $html, array $els, array $e, int $n): ?string
+    {
+        $class = (string) self::attr($e['attrs'], 'class');
+        if (count($e['children']) < 2 || !(self::attr($e['attrs'], 'role') === 'group' || preg_match('/opt|choi|variant|size|taille|format|parfum|saveur/i', $class))) {
+            return null;
+        }
+        $tags = array_unique(array_map(fn ($c) => $els[$c]['tag'], $e['children']));
+        if (count($tags) !== 1 || !in_array($tags[0], ['button', 'label', 'span', 'a'], true)) {
+            return null;
+        }
+        foreach ($e['children'] as $c) {
+            if (!self::isLeaf($els, $els[$c]) || self::text($html, $els[$c]) === '') {
+                return null;
+            }
+        }
+        $name = (string) (self::attr($e['attrs'], 'aria-label') ?? '');
+        $slug = trim((string) preg_replace('/[^a-z0-9]+/', '_', strtolower((string) (@iconv('UTF-8', 'ASCII//TRANSLIT', $name) ?: ''))), '_');
+        return 'choix_' . ($slug !== '' ? mb_substr($slug, 0, 40) : $n);
+    }
+
+    /** @return string[] textes des boutons d'un groupe de choix */
+    private static function choiceItems(string $html, array $els, array $group): array
+    {
+        return array_map(fn ($c) => str_replace(["\u{00A0}", "\u{202F}"], ' ', self::text($html, $els[$c])), $group['children']);
+    }
+
+    /** Bouton de choix réécrit avec un nouveau texte (prix et valeurs cachées suivent). */
+    private static function choiceButton(string $html, array $btn, string $old, string $new, bool $copy): string
+    {
+        $attrs = $btn['attrs'];
+        $label = fn (string $t) => trim((string) preg_split('/\s*[·•|–—]\s*|\s+-\s+/u', $t)[0]);
+        $amount = preg_match('/(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur)/iu', $new, $pm) ? str_replace(',', '.', $pm[1]) : null;
+        $attrs = (string) preg_replace_callback('/(\sdata-([\w-]+)\s*=\s*)("([^"]*)"|\'([^\']*)\')/i', function ($m) use ($old, $new, $label, $amount, $copy) {
+            $v = html_entity_decode($m[4] !== '' || $m[3][0] === '"' ? $m[4] : ($m[5] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $set = fn (string $x) => $m[1] . '"' . htmlspecialchars($x, ENT_QUOTES) . '"';
+            if (preg_match('#^(https?:)?//#i', $v)) {
+                // Lien de paiement : un nouveau choix ne garde pas celui du choix copié (il vendrait l'autre).
+                return $copy ? $set('#') : $m[0];
+            }
+            if (preg_match('/price|prix|amount|montant|tarif/i', $m[2])) {
+                return $amount !== null && $amount !== $v ? $set(preg_replace('/\.0+$/', '', $amount)) : $m[0];
+            }
+            if ($old === $new) {
+                return $m[0];
+            }
+            if ($v === $old) {
+                return $set($new);
+            }
+            return $label($old) !== $label($new) ? $set($label($new)) : $m[0];
+        }, $attrs);
+        if ($copy) {
+            $attrs = (string) preg_replace_callback('/(\sclass\s*=\s*")([^"]*)"/i', fn ($m) => $m[1] . trim((string) preg_replace('/(^|\s)(is-)?(active|selected|checked|current)(?=\s|$)/', ' ', $m[2])) . '"', $attrs);
+            $attrs = (string) preg_replace('/(\saria-(?:pressed|checked|selected)\s*=\s*")true"/i', '$1false"', $attrs);
+        }
+        $text = str_replace('&apos;', "'", htmlspecialchars($new, ENT_QUOTES | ENT_HTML5, 'UTF-8', false));
+        return '<' . $btn['tag'] . $attrs . '>' . $text . '</' . $btn['tag'] . '>';
     }
 
     /** Adresse de l'image de fond écrite dans l'attribut style (la dernière url() : la première est souvent un dégradé). */
@@ -258,7 +326,7 @@ final class HtmlCards
                 $key = "$base-$n";
             }
             $used[$key] = true;
-            $out[$key] = ['label' => $label, 'cards' => array_map(fn ($c) => ['start' => $els[$c['id']]['start'], 'end' => $els[$c['id']]['end'], 'fields' => array_map(fn ($f) => $f === null ? null : $els[$f], $c['fields'])], $r)];
+            $out[$key] = ['label' => $label, 'cards' => array_map(fn ($c) => ['start' => $els[$c['id']]['start'], 'end' => $els[$c['id']]['end'], 'fields' => array_map(fn ($f) => $f === null ? null : (is_array($f) ? array_map(fn ($g) => $els[$g] + ['id' => $g], $f) : $els[$f]), $c['fields'])], $r)];
         }
         return $out;
     }
@@ -586,6 +654,12 @@ final class HtmlCards
         if (!empty($f['list'])) {
             $out['points'] = implode("\n", self::listItems($html, $f['list']));
         }
+        if (!empty($f['groups'])) {
+            $els = self::elements($html);
+            foreach ($f['groups'] as $key => $g) {
+                $out[$key] = implode("\n", self::choiceItems($html, $els, $els[$g['id']]));
+            }
+        }
         if ($f['img']) {
             $out['photo'] = (string) ($f['img']['tag'] === 'img' ? self::attr($f['img']['attrs'], 'src') : self::bgUrl($f['img']['attrs']));
         }
@@ -628,6 +702,57 @@ final class HtmlCards
                 $items = array_map(fn ($l) => $liOpen . str_replace('&apos;', "'", htmlspecialchars($l, ENT_QUOTES | ENT_HTML5, 'UTF-8', false)) . '</li>', $lines);
                 $edits[] = [$f['list']['openEnd'] - $base, $f['list']['closeStart'] - $base, $lead . implode($sep, $items) . $tail];
             }
+        }
+        $els = null;
+        foreach ($f['groups'] ?? [] as $key => $g) {
+            if (!array_key_exists($key, $values)) {
+                continue;
+            }
+            $els ??= self::elements($html);
+            $kids = array_map(fn ($c) => $els[$c], $els[$g['id']]['children']);
+            $old = self::choiceItems($html, $els, $els[$g['id']]);
+            $lines = array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $values[$key])), fn ($l) => $l !== ''));
+            if ($lines === $old || !$lines) {
+                continue; // inchangé, ou vidé par erreur : un groupe de choix ne disparaît pas d'un coup
+            }
+            // Chaque ligne garde son bouton d'origine (lien de paiement compris) ; une ligne modifiée à la même place
+            // reprend le bouton de cette place ; une ligne nouvelle copie le dernier bouton, sans son lien de paiement.
+            $free = array_keys($old);
+            $plan = [];
+            foreach ($lines as $i => $l) {
+                $k = array_search($l, array_intersect_key($old, array_flip($free)), true);
+                if ($k !== false) {
+                    $plan[$i] = [$k, false];
+                    $free = array_values(array_diff($free, [$k]));
+                }
+            }
+            foreach ($lines as $i => $l) {
+                if (!isset($plan[$i])) {
+                    $k = in_array($i, $free, true) && !in_array($old[$i], $lines, true) ? $i : null;
+                    $plan[$i] = $k === null ? [count($kids) - 1, true] : [$k, false];
+                    if ($k !== null) {
+                        $free = array_values(array_diff($free, [$k]));
+                    }
+                }
+            }
+            ksort($plan);
+            $parts = [];
+            foreach ($plan as $i => [$k, $copy]) {
+                $btn = $kids[$k];
+                $parts[] = !$copy && $lines[$i] === $old[$k] ? substr($html, $btn['start'], $btn['end'] - $btn['start'])
+                    : self::choiceButton($html, $btn, $old[$k], $lines[$i], $copy);
+            }
+            $first = $kids[0];
+            $hadActive = (bool) preg_match('/\sclass\s*=\s*"[^"]*\b(is-)?active\b/i', $first['attrs']);
+            if ($hadActive && !preg_match('/^<[^>]*\sclass\s*=\s*"[^"]*\b(is-)?active\b/i', $parts[0])) {
+                // Le premier choix reste celui sélectionné d'avance.
+                $cls = preg_match('/\bis-active\b/', $first['attrs']) ? 'is-active' : 'active';
+                $parts[0] = preg_match('/^<[^>]*\sclass\s*=\s*"/i', $parts[0]) ? (string) preg_replace('/(\sclass\s*=\s*")/i', '$1' . $cls . ' ', $parts[0], 1)
+                    : (string) preg_replace('/^<(\w+)/', '<$1 class="' . $cls . '"', $parts[0], 1);
+                $parts[0] = (string) preg_replace('/(class=")([^"]*)\s+"/', '$1$2"', $parts[0]);
+            }
+            $sep = count($kids) > 1 ? substr($html, $kids[0]['end'], $kids[1]['start'] - $kids[0]['end']) : "\n";
+            $edits[] = [$kids[0]['start'] - $base, end($kids)['end'] - $base, implode($sep, $parts)];
         }
         if ($f['img'] && $f['img']['tag'] !== 'img') {
             $attrs = $f['img']['attrs'];

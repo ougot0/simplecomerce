@@ -307,6 +307,12 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 : sur Ougot, les choix des fiches (tailles « 6-8 pers · 45 € », parfums, Parvé/Halavi) n'étaient pas
+  modifiables. **Version S** : `HtmlCards` reconnaît les groupes de boutons de choix (role="group" ou classe opt/choix/
+  variant/taille…, ≥ 2 boutons simples) → champ `choix_<aria-label>` (« Choix « Nombre de personnes » (un par ligne) »).
+  Ajouter une ligne = copie du dernier bouton sans lien de paiement (`data-pay="#"`) ; un bouton existant garde son lien ;
+  `data-price` suit le prix écrit, les autres `data-*` suivent le texte ; le premier reste sélectionné. ⚠ Le prix Stripe
+  d'un lien de paiement ne change pas. Champs visibles après « Relire le contenu du site » (Réglages). 110 vérifications.
 - 17/10/2026 : projet GitHub `lennyoliel/ALYA-3D` (privé, pas lisible par nous) : « aucune page ni fichier de contenu ».
   Probablement un site fabriqué (React/Vite). **Version R** : listes de données lues aussi dans les `.mjs/.jsx/.ts/.tsx`
   (`export const produits: Produit[] = [...]`, annotations TypeScript tolérées) ; si rien n'est trouvé et qu'il y a un

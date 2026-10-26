@@ -77,6 +77,11 @@ final class Infer
         if (preg_match('/^([_$].*|comments?|notes?|readme|doc|docs|todo|version|schema)$/i', $key)) {
             return $base + ['type' => 'text', 'hidden' => true];
         }
+        if (str_starts_with($key, 'choix_')) {
+            // Boutons de choix d'une fiche (tailles, parfums…) : un choix par ligne.
+            $name = preg_match('/^choix_\d+$/', $key) ? '' : ' « ' . ltrim(self::humanize(substr($key, 6))) . ' »';
+            return ['key' => $key, 'label' => 'Choix' . $name . ' (un par ligne)', 'type' => 'textarea'];
+        }
         if (in_array(strtolower($key), self::ID_KEYS, true)) {
             return $base + ['type' => 'text', 'hidden' => true];
         }

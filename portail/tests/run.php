@@ -315,5 +315,24 @@ test('onglet ajouté au menu du site', function () {
     check(str_contains($page, '<p>RDV</p>') && !str_contains($page, 'Bienvenue') && str_contains($page, 'Sacs') && $T::isOurs($page), 'page créée avec le même menu');
 });
 
+test('Choix des fiches (tailles, parfums)', function () {
+    $card = fn ($n) => '<article class="cake"><img src="a.jpg" alt="' . $n . '"><h3>' . $n . '</h3><span class="price">45&nbsp;€</span>'
+        . '<div class="opt-group" role="group" aria-label="Nombre de personnes"><button class="opt is-active" data-price="45" data-serves="6 à 8 pers." data-pay="https://buy.stripe.com/a">6-8 pers · 45 €</button>'
+        . '<button class="opt" data-price="65" data-serves="10 à 12 pers." data-pay="https://buy.stripe.com/b">10-12 pers · 65 €</button></div>'
+        . '<div class="opt-group" role="group" aria-label="Parvé ou halavi"><button class="opt is-active" data-kind="Parvé">Parvé</button><button class="opt" data-kind="Halavi">Halavi</button></div></article>';
+    $html = '<main>' . $card('Fraisier') . $card('Tarte') . '</main>';
+    $p = Formats::parse($html, 'html');
+    $k = array_key_first($p['data']);
+    check(($p['data'][$k][0]['choix_nombre_de_personnes'] ?? '') === "6-8 pers · 45 €\n10-12 pers · 65 €", 'choix lus, un par ligne');
+    $d = $p['data'];
+    $d[$k][0]['choix_nombre_de_personnes'] = "6-8 pers · 45 €\n10-12 pers · 65 €\n14-16 pers · 85 €";
+    $d[$k][0]['choix_parve_ou_halavi'] = 'Halavi';
+    $out = Formats::serialize($p, $d);
+    check(str_contains($out, 'data-price="85" data-serves="14-16 pers" data-pay="#">14-16 pers · 85 €</button>'), 'choix ajouté, sans le lien de paiement copié');
+    check(str_contains($out, 'data-pay="https://buy.stripe.com/b">10-12 pers'), 'choix existant gardé tel quel');
+    check(!str_contains(substr($out, 0, strpos($out, 'Tarte')), 'data-kind="Parvé"') && str_contains($out, 'is-active opt" data-kind="Halavi"'), 'choix retiré, le premier reste sélectionné');
+    check(substr_count($out, 'data-kind="Parvé"') === 1, 'autre fiche inchangée');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);
