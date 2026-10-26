@@ -176,27 +176,66 @@ final class HtmlCards
     private static function choiceKey(string $html, array $els, array $e, int $n): ?string
     {
         $class = (string) self::attr($e['attrs'], 'class');
-        if (count($e['children']) < 2 || !(self::attr($e['attrs'], 'role') === 'group' || preg_match('/opt|choi|variant|size|taille|format|parfum|saveur/i', $class))) {
+        $select = $e['tag'] === 'select'; // menu déroulant « Choisissez une taille »
+        $kids = self::choiceKids($els, $e);
+        if (count($kids) < 2 || !($select || self::attr($e['attrs'], 'role') === 'group' || preg_match('/opt|choi|variant|size|taille|format|parfum|saveur/i', $class))) {
             return null;
         }
-        $tags = array_unique(array_map(fn ($c) => $els[$c]['tag'], $e['children']));
-        if (count($tags) !== 1 || !in_array($tags[0], ['button', 'label', 'span', 'a'], true)) {
+        $tags = array_unique(array_map(fn ($c) => $els[$c]['tag'], $kids));
+        if (count($tags) !== 1 || !in_array($tags[0], $select ? ['option'] : ['button', 'label', 'span', 'a'], true)) {
             return null;
         }
-        foreach ($e['children'] as $c) {
+        foreach ($kids as $c) {
             if (!self::isLeaf($els, $els[$c]) || self::text($html, $els[$c]) === '') {
                 return null;
             }
         }
-        $name = (string) (self::attr($e['attrs'], 'aria-label') ?? '');
+        $name = (string) (self::attr($e['attrs'], 'aria-label') ?? ($select ? self::attr($e['attrs'], 'name') ?? self::attr($e['attrs'], 'id') ?? '' : ''));
         $slug = trim((string) preg_replace('/[^a-z0-9]+/', '_', strtolower((string) (@iconv('UTF-8', 'ASCII//TRANSLIT', $name) ?: ''))), '_');
         return 'choix_' . ($slug !== '' ? mb_substr($slug, 0, 40) : $n);
+    }
+
+    /** @return int[] éléments du groupe qui sont des choix (sans la ligne « Choisissez… » d'un menu déroulant) */
+    private static function choiceKids(array $els, array $group): array
+    {
+        return array_values(array_filter($group['children'], fn ($c) => !($els[$c]['tag'] === 'option' && self::attr($els[$c]['attrs'], 'value') === '')));
     }
 
     /** @return string[] textes des boutons d'un groupe de choix */
     private static function choiceItems(string $html, array $els, array $group): array
     {
-        return array_map(fn ($c) => str_replace(["\u{00A0}", "\u{202F}"], ' ', self::text($html, $els[$c])), $group['children']);
+        return array_map(fn ($c) => str_replace(["\u{00A0}", "\u{202F}"], ' ', self::text($html, $els[$c])), self::choiceKids($els, $group));
+    }
+
+    /** Le premier choix reste celui sélectionné d'avance (si le site en marque un). */
+    private static function keepFirstActive(array $first, string $part): string
+    {
+        if (!preg_match('/\sclass\s*=\s*"[^"]*\b(is-)?active\b/i', $first['attrs']) || preg_match('/^<[^>]*\sclass\s*=\s*"[^"]*\b(is-)?active\b/i', $part)) {
+            return $part;
+        }
+        $cls = preg_match('/\bis-active\b/', $first['attrs']) ? 'is-active' : 'active';
+        return preg_match('/^<[^>]*\sclass\s*=\s*"/i', $part) ? (string) preg_replace('/(\sclass\s*=\s*")([^"]*)"/i', '$1$2 ' . $cls . '"', $part, 1)
+            : (string) preg_replace('/^<(\w+)/', '<$1 class="' . $cls . '"', $part, 1);
+    }
+
+    /**
+     * Groupe de choix ajouté à une fiche qui n'en avait pas, sur le modèle du même groupe d'une autre fiche
+     * (mêmes balises et classes : le site le fait fonctionner comme les autres). Aucun lien de paiement n'est recopié.
+     */
+    private static function newChoiceGroup(string $html, array $els, int $tplId, array $lines): string
+    {
+        $g = $els[$tplId];
+        $kids = array_map(fn ($c) => $els[$c], self::choiceKids($els, $g));
+        $old = self::choiceItems($html, $els, $g);
+        $parts = [];
+        foreach ($lines as $i => $l) {
+            $k = min($i, count($kids) - 1);
+            $parts[] = self::choiceButton($html, $kids[$k], $old[$k], $l, true);
+        }
+        $parts[0] = self::keepFirstActive($kids[0], $parts[0]);
+        $sep = count($kids) > 1 ? substr($html, $kids[0]['end'], $kids[1]['start'] - $kids[0]['end']) : "\n";
+        $placeholder = $g['children'] && $g['children'][0] !== self::choiceKids($els, $g)[0] ? substr($html, $els[$g['children'][0]]['start'], $els[$g['children'][0]]['end'] - $els[$g['children'][0]]['start']) . $sep : '';
+        return substr($html, $g['start'], $g['openEnd'] - $g['start']) . $placeholder . implode($sep, $parts) . substr($html, $g['closeStart'], $g['end'] - $g['closeStart']);
     }
 
     /** Bouton de choix réécrit avec un nouveau texte (prix et valeurs cachées suivent). */
@@ -205,7 +244,7 @@ final class HtmlCards
         $attrs = $btn['attrs'];
         $label = fn (string $t) => trim((string) preg_split('/\s*[·•|–—]\s*|\s+-\s+/u', $t)[0]);
         $amount = preg_match('/(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur)/iu', $new, $pm) ? str_replace(',', '.', $pm[1]) : null;
-        $attrs = (string) preg_replace_callback('/(\sdata-([\w-]+)\s*=\s*)("([^"]*)"|\'([^\']*)\')/i', function ($m) use ($old, $new, $label, $amount, $copy) {
+        $attrs = (string) preg_replace_callback('/(\s(?:data-([\w-]+)|value)\s*=\s*)("([^"]*)"|\'([^\']*)\')/i', function ($m) use ($old, $new, $label, $amount, $copy) {
             $v = html_entity_decode($m[4] !== '' || $m[3][0] === '"' ? $m[4] : ($m[5] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
             $set = fn (string $x) => $m[1] . '"' . htmlspecialchars($x, ENT_QUOTES) . '"';
             if (preg_match('#^(https?:)?//#i', $v)) {
@@ -667,7 +706,8 @@ final class HtmlCards
     }
 
     /** Fiche réécrite avec de nouvelles valeurs (seuls les textes, la photo et son texte alternatif changent). */
-    public static function patch(string $html, array $card, array $values, bool $clone = false): string
+    /** @param array $siblings autres fiches du même groupe (modèle pour un groupe de choix ajouté) */
+    public static function patch(string $html, array $card, array $values, bool $clone = false, array $siblings = []): string
     {
         $base = $card['start'];
         $chunk = substr($html, $base, $card['end'] - $base);
@@ -709,7 +749,7 @@ final class HtmlCards
                 continue;
             }
             $els ??= self::elements($html);
-            $kids = array_map(fn ($c) => $els[$c], $els[$g['id']]['children']);
+            $kids = array_map(fn ($c) => $els[$c], self::choiceKids($els, $els[$g['id']]));
             $old = self::choiceItems($html, $els, $els[$g['id']]);
             $lines = array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $values[$key])), fn ($l) => $l !== ''));
             if ($lines === $old || !$lines) {
@@ -742,17 +782,46 @@ final class HtmlCards
                 $parts[] = !$copy && $lines[$i] === $old[$k] ? substr($html, $btn['start'], $btn['end'] - $btn['start'])
                     : self::choiceButton($html, $btn, $old[$k], $lines[$i], $copy);
             }
-            $first = $kids[0];
-            $hadActive = (bool) preg_match('/\sclass\s*=\s*"[^"]*\b(is-)?active\b/i', $first['attrs']);
-            if ($hadActive && !preg_match('/^<[^>]*\sclass\s*=\s*"[^"]*\b(is-)?active\b/i', $parts[0])) {
-                // Le premier choix reste celui sélectionné d'avance.
-                $cls = preg_match('/\bis-active\b/', $first['attrs']) ? 'is-active' : 'active';
-                $parts[0] = preg_match('/^<[^>]*\sclass\s*=\s*"/i', $parts[0]) ? (string) preg_replace('/(\sclass\s*=\s*")/i', '$1' . $cls . ' ', $parts[0], 1)
-                    : (string) preg_replace('/^<(\w+)/', '<$1 class="' . $cls . '"', $parts[0], 1);
-                $parts[0] = (string) preg_replace('/(class=")([^"]*)\s+"/', '$1$2"', $parts[0]);
-            }
+            $parts[0] = self::keepFirstActive($kids[0], $parts[0]);
             $sep = count($kids) > 1 ? substr($html, $kids[0]['end'], $kids[1]['start'] - $kids[0]['end']) : "\n";
             $edits[] = [$kids[0]['start'] - $base, end($kids)['end'] - $base, implode($sep, $parts)];
+        }
+        // Choix demandés sur une fiche qui n'en a pas : groupe recopié d'une autre fiche, au même endroit qu'elle.
+        foreach ($values as $key => $v) {
+            $lines = str_starts_with((string) $key, 'choix_') && !isset($f['groups'][$key])
+                ? array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $v)), fn ($l) => $l !== '')) : [];
+            $tpl = $tplCard = null;
+            foreach ($lines ? $siblings : [] as $sib) {
+                if (isset($sib['fields']['groups'][$key])) {
+                    $tpl = $sib['fields']['groups'][$key]['id'];
+                    $tplCard = $sib;
+                    break;
+                }
+            }
+            if ($tpl === null) {
+                continue;
+            }
+            $els ??= self::elements($html);
+            $group = self::newChoiceGroup($html, $els, $tpl, $lines);
+            $box = $els[$tpl]['parent'];
+            $sig = self::signature($els[$box]);
+            $at = null;
+            // Le conteneur des choix (« cake-options ») existe déjà dans la fiche : le groupe y est ajouté à la fin.
+            foreach (self::descendants($els, (int) array_key_first(array_filter($els, fn ($e) => $e['start'] === $card['start']))) as $d) {
+                if (self::signature($els[$d]) === $sig && $sig !== 'div.') {
+                    $at = $els[$d]['closeStart'];
+                    break;
+                }
+            }
+            if ($at === null) {
+                // Sinon juste après la description (ou le prix, ou le nom), avec son conteneur s'il en a un.
+                $after = $f['desc'] ?? $f['price'] ?? $f['title'];
+                $at = $after['end'];
+                if ($els[$box]['start'] !== $tplCard['start']) {
+                    $group = substr($html, $els[$box]['start'], $els[$box]['openEnd'] - $els[$box]['start']) . $group . substr($html, $els[$box]['closeStart'], $els[$box]['end'] - $els[$box]['closeStart']);
+                }
+            }
+            $edits[] = [$at - $base, $at - $base, $group];
         }
         if ($f['img'] && $f['img']['tag'] !== 'img') {
             $attrs = $f['img']['attrs'];

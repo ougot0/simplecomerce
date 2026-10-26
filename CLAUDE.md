@@ -309,6 +309,12 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 (5) : il rappelle de ne rien mettre en ligne avant la réponse d'Apple (rien ne part : pas de secrets OVH).
+  **Version V** (sites reliés par fichiers) : `HtmlCards` lit aussi les **menus déroulants** `<select>` d'une fiche (ligne
+  « Choisissez… » `value=""` gardée hors de la liste, `value` suit le texte) ; et **ajoute des choix à une fiche qui n'en a
+  pas** en recopiant le groupe d'une autre fiche du même site (mêmes balises/classes → le JavaScript du site le fait marcher),
+  dans le même conteneur (« cake-options ») ou après la description, sans lien de paiement (`patch(..., $siblings)`).
+  Site sans aucun système de choix : passer par le catalogue hébergé (version U). 121 vérifications.
 - 26/10/2026 (4) : demande « pour tout type de commerce : tailles à tel prix, dimensions, détails, boîtes à composer ».
   **Version U** (catalogue hébergé) : champs `details` (textarea, un détail par ligne) et `options` (repeater : `nom`,
   `type` un|plusieurs, `nombre`, `choix` = une option par ligne, « 40 cm · 55 € » remplace le prix, « Bougie · +2 € »

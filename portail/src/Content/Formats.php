@@ -163,9 +163,9 @@ final class Formats
                     $chunks[] = substr($src, $c['start'], $c['end'] - $c['start']);
                 } elseif (isset($cards[$i]) && !isset($used[$i])) {
                     $used[$i] = true;
-                    $chunks[] = HtmlCards::patch($src, $cards[$i], $item);
+                    $chunks[] = HtmlCards::patch($src, $cards[$i], $item, false, $cards);
                 } else {
-                    $chunks[] = HtmlCards::patch($src, $cards[count($cards) - 1], $item, true);
+                    $chunks[] = HtmlCards::patch($src, $cards[count($cards) - 1], $item, true, $cards);
                 }
             }
             $first = $cards[0]['start'];

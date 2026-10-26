@@ -330,7 +330,7 @@ test('Choix des fiches (tailles, parfums)', function () {
     $out = Formats::serialize($p, $d);
     check(str_contains($out, 'data-price="85" data-serves="14-16 pers" data-pay="#">14-16 pers · 85 €</button>'), 'choix ajouté, sans le lien de paiement copié');
     check(str_contains($out, 'data-pay="https://buy.stripe.com/b">10-12 pers'), 'choix existant gardé tel quel');
-    check(!str_contains(substr($out, 0, strpos($out, 'Tarte')), 'data-kind="Parvé"') && str_contains($out, 'is-active opt" data-kind="Halavi"'), 'choix retiré, le premier reste sélectionné');
+    check(!str_contains(substr($out, 0, strpos($out, 'Tarte')), 'data-kind="Parvé"') && str_contains($out, 'class="opt is-active" data-kind="Halavi"'), 'choix retiré, le premier reste sélectionné');
     check(substr_count($out, 'data-kind="Parvé"') === 1, 'autre fiche inchangée');
 });
 
@@ -348,6 +348,31 @@ test('Choix des produits du catalogue (tailles, boîtes)', function () {
     check(!$O::resolve($p, [0, [1, 1], 0])['ok'], 'boîte incomplète refusée');
     check(!$O::resolve($p, [7, [4, 0], 0])['ok'], 'choix inexistant refusé');
     check($O::resolve(['nom' => 'Vase', 'prix' => 12], [])['prix'] === 12.0, 'produit sans choix inchangé');
+});
+
+test('Choix ajoutés à une fiche et menus déroulants', function () {
+    $with = '<article class="cake"><h3>Fraisier</h3><span class="price">45 €</span><p class="desc">Génoise et fraises fraîches de saison.</p>'
+        . '<div class="cake-options"><div class="opt-group" role="group" aria-label="Taille"><button class="opt is-active" data-price="45" data-pay="https://buy.stripe.com/a">Petit · 45 €</button>'
+        . '<button class="opt" data-price="65" data-pay="https://buy.stripe.com/b">Grand · 65 €</button></div></div></article>';
+    $without = '<article class="cake"><h3>Cookies</h3><span class="price">30 €</span><p class="desc">Cookies fondants faits maison.</p></article>';
+    $html = '<main>' . $with . $without . '</main>';
+    $p = Formats::parse($html, 'html');
+    $k = array_key_first($p['data']);
+    $d = $p['data'];
+    $d[$k][1]['choix_taille'] = "Boîte de 10 · 30 €\nBoîte de 20 · 60 €";
+    $out = Formats::serialize($p, $d);
+    $cookies = substr($out, strpos($out, 'Cookies'));
+    check(str_contains($cookies, '<div class="cake-options"><div class="opt-group" role="group" aria-label="Taille"><button class="opt is-active" data-price="30" data-pay="#">Boîte de 10 · 30 €</button>'), 'groupe de choix ajouté à une fiche qui n\'en avait pas');
+    check(str_contains($cookies, 'data-price="60" data-pay="#">Boîte de 20 · 60 €</button></div></div></article>') && !str_contains($cookies, 'stripe'), 'sans lien de paiement recopié');
+    check(Formats::parse($out, 'html')['data'][$k][1]['choix_taille'] === "Boîte de 10 · 30 €\nBoîte de 20 · 60 €", 'relu ensuite comme les autres');
+    $sel = '<main>' . str_repeat('<div class="item"><h3>Vase</h3><span class="price">20 €</span><select name="taille"><option value="">Choisissez une taille</option><option value="S">S · 20 €</option><option value="L">L · 35 €</option></select></div>', 2) . '</main>';
+    $p = Formats::parse($sel, 'html');
+    $k = array_key_first($p['data']);
+    check(($p['data'][$k][0]['choix_taille'] ?? '') === "S · 20 €\nL · 35 €", 'menu déroulant lu, sans la ligne « Choisissez »');
+    $d = $p['data'];
+    $d[$k][0]['choix_taille'] = "S · 20 €\nL · 35 €\nXL · 50 €";
+    $out = Formats::serialize($p, $d);
+    check(str_contains($out, '<option value="">Choisissez une taille</option><option value="S">S · 20 €</option><option value="L">L · 35 €</option><option value="XL">XL · 50 €</option>'), 'option ajoutée au menu déroulant');
 });
 
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";

@@ -57,7 +57,7 @@ function sc_data_dir(): string
 define('SC_DATA', sc_data_dir());
 define('SC_STORAGE', SC_DATA . '/storage');
 /** Version affichée dans l'administration : sert à vérifier qu'une mise à jour est bien en ligne. */
-define('SC_VERSION', '26 octobre 2026 — U');
+define('SC_VERSION', '26 octobre 2026 — V');
 
 // Erreur grave de PHP (fichier manquant ou abîmé…) : le serveur n'afficherait qu'une page « Erreur interne ».
 // On note le détail dans storage/erreurs.txt (à envoyer à la personne qui s'occupe du portail) et on le dit simplement.
