@@ -309,6 +309,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 (7) : « continue de tout faire, sans casser la vérification d'Apple » (rien ne part : pas de secrets OVH).
+  **Version X** : **Shopify** — champ `nomChoix` + `declinaisons` non figées (nom modifiable) ; `syncVariants` : produit sans
+  choix → `productOptionsCreate(variantStrategy: CREATE)` ; sinon `productVariantsBulkDelete/Update(optionValues)/Create`
+  (« M / Noir » = une valeur par choix) ; liste vidée = rien supprimé. **WooCommerce** — `nomChoix` + `declinaisons`
+  (nom, prix, stock, variationId) ; `syncVariations` : produit passé en `variable`, attributs `variation: true` suivant les
+  lignes, `/variations/batch` create/update/delete. Testés **contre des imitations seulement** (`Http::$fake`, rempli
+  uniquement par tests/run.php en CLI) : à vérifier sur une vraie boutique Shopify et un vrai WooCommerce. 130 vérifications.
 - 26/10/2026 (6) : « en fonction du commerce, proposer les bonnes cases ; toutes les options faites par le développeur doivent
   apparaître ». **Version W** : `HtmlCards` lit aussi les **ronds/cases à cocher** (`<label><input type=radio|checkbox> M</label>`,
   groupe nommé par sa `<legend>`, ajout = copie non cochée, même `name`). (Fichiers de données : listes et sous-listes déjà

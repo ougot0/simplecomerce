@@ -16,7 +16,7 @@ use SimpleCommerce\Support\Http;
 final class ShopifyAdapter extends BaseAdapter
 {
     public const DOMAIN_RE = '/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/';
-    private const FIELDS = 'id title descriptionHtml status media(first: 30) { nodes { id ... on MediaImage { image { url } } } } variants(first: 100) { nodes { id title price compareAtPrice inventoryQuantity inventoryItem { id tracked } } }';
+    private const FIELDS = 'id title descriptionHtml status options { name } media(first: 30) { nodes { id ... on MediaImage { image { url } } } } variants(first: 100) { nodes { id title price compareAtPrice inventoryQuantity inventoryItem { id tracked } } }';
     /** Version de l'API utilisée (Shopify garde chaque version un an : à relever chaque année). */
     public const API_VERSION = '2026-07';
     private ?string $location = null;
@@ -68,8 +68,10 @@ final class ShopifyAdapter extends BaseAdapter
                     ['key' => 'titre', 'label' => 'Nom du produit', 'type' => 'text', 'required' => true, 'maxLength' => 255],
                     ['key' => 'photos', 'label' => 'Photos', 'type' => 'gallery', 'aspect' => 'libre', 'maxWidth' => 2048],
                     ['key' => 'description', 'label' => 'Description', 'type' => 'richtext'],
-                    ['key' => 'declinaisons', 'label' => 'Prix et stock', 'type' => 'repeater', 'fixedRows' => true, 'itemLabel' => 'déclinaison', 'fields' => [
-                        ['key' => 'nom', 'label' => 'Déclinaison', 'type' => 'text', 'readOnly' => true],
+                    ['key' => 'nomChoix', 'label' => 'Nom du choix', 'type' => 'text', 'maxLength' => 60,
+                        'help' => 'Par exemple « Taille » ou « Couleur ». Pour deux choix à la fois : « Taille / Couleur ».'],
+                    ['key' => 'declinaisons', 'label' => 'Tailles, couleurs… avec leur prix et leur stock', 'type' => 'repeater', 'itemLabel' => 'déclinaison', 'fields' => [
+                        ['key' => 'nom', 'label' => 'Déclinaison', 'type' => 'text', 'maxLength' => 120, 'help' => 'Par exemple « M ». Pour deux choix à la fois : « M / Noir ».'],
                         ['key' => 'prix', 'label' => 'Prix', 'type' => 'price', 'required' => true, 'priceFormat' => ['store' => 'number']],
                         ['key' => 'prixBarre', 'label' => 'Prix barré', 'type' => 'price', 'priceFormat' => ['store' => 'number'], 'help' => 'Ancien prix affiché barré (facultatif).'],
                         ['key' => 'stock', 'label' => 'Stock', 'type' => 'number', 'min' => 0, 'help' => "Laissé vide si le stock n'est pas suivi."],
@@ -169,6 +171,7 @@ final class ShopifyAdapter extends BaseAdapter
             'titre' => $p['title'],
             'photos' => array_values(array_filter(array_map(fn ($m) => $m['image']['url'] ?? null, $p['media']['nodes']))),
             'description' => $p['descriptionHtml'],
+            'nomChoix' => implode(' / ', array_filter(array_column($p['options'] ?? [], 'name'), fn ($n) => $n !== 'Title')),
             'declinaisons' => $variants,
             'enVente' => $p['status'] === 'ACTIVE',
             'prixAffiche' => $min === null ? '' : ((count(array_unique($prices)) > 1 ? 'dès ' : '') . number_format($min, 2, ',', ' ') . ' €'),
@@ -263,9 +266,83 @@ final class ShopifyAdapter extends BaseAdapter
         return $this->location;
     }
 
+    /**
+     * Déclinaisons ajoutées, renommées ou retirées (« S », « M / Noir »…). Ensuite applyVariants met prix et stock.
+     * Shopify demande que chaque déclinaison corresponde à une valeur de chaque choix du produit (Taille, Couleur…).
+     */
+    private function syncVariants(array $product, array $rows, string $optionName): array
+    {
+        $variants = $product['variants']['nodes'];
+        $rows = array_values(array_filter($rows, fn ($r) => trim((string) ($r['nom'] ?? '')) !== '' || !empty($r['variantId'])));
+        if (!$rows) {
+            return $product; // une liste vidée par erreur ne supprime rien : Shopify garde au moins une déclinaison
+        }
+        $names = array_values(array_filter(array_column($product['options'] ?? [], 'name'), fn ($n) => $n !== 'Title'));
+        $split = fn (string $nom) => array_map('trim', explode(' / ', $nom));
+        $kept = array_filter(array_column($rows, 'variantId'));
+        $new = array_values(array_filter($rows, fn ($r) => empty($r['variantId'])));
+        $changed = false;
+        // Produit sans choix (« Prix unique ») : on crée le choix avec toutes les nouvelles valeurs ; Shopify fabrique
+        // une déclinaison par valeur et la déclinaison unique devient la première.
+        if (!$names && $new) {
+            $optionName = trim(explode(' / ', $optionName)[0]) ?: 'Taille';
+            $values = array_values(array_unique(array_map(fn ($r) => trim((string) $r['nom']), $new)));
+            $d = $this->gql('mutation($productId: ID!, $options: [OptionCreateInput!]!) { productOptionsCreate(productId: $productId, options: $options, variantStrategy: CREATE) { userErrors { field message } } }',
+                ['productId' => $product['id'], 'options' => [['name' => $optionName, 'values' => array_map(fn ($v) => ['name' => $v], $values)]]]);
+            $this->userErrors($d['productOptionsCreate']['userErrors']);
+            return $this->product(self::num($product['id'])) ?? $product;
+        }
+        $toValues = function (string $nom) use ($names, $split): array {
+            $parts = $split($nom);
+            if (count($parts) !== count($names)) {
+                throw new AdapterError('invalid', 'Écrivez la déclinaison « ' . $nom . ' » avec une valeur pour chaque choix : ' . implode(' / ', $names) . ' (par exemple « ' . implode(' / ', array_map(fn ($n) => mb_strtoupper(mb_substr($n, 0, 1)) . '…', $names)) . ' »).');
+            }
+            return array_map(fn ($n, $v) => ['optionName' => $n, 'name' => $v], $names, $parts);
+        };
+        $gone = array_values(array_filter($variants, fn ($v) => !in_array($v['id'], $kept, true)));
+        if ($gone && count($gone) < count($variants) + count($new)) {
+            $d = $this->gql('mutation($productId: ID!, $variantsIds: [ID!]!) { productVariantsBulkDelete(productId: $productId, variantsIds: $variantsIds) { userErrors { field message } } }',
+                ['productId' => $product['id'], 'variantsIds' => array_column($gone, 'id')]);
+            $this->userErrors($d['productVariantsBulkDelete']['userErrors']);
+            $changed = true;
+        }
+        $renames = [];
+        foreach ($rows as $r) {
+            foreach ($variants as $v) {
+                if ($v['id'] === ($r['variantId'] ?? null) && trim((string) $r['nom']) !== '' && trim((string) $r['nom']) !== $v['title'] && $v['title'] !== 'Default Title') {
+                    $renames[] = ['id' => $v['id'], 'optionValues' => $toValues(trim((string) $r['nom']))];
+                }
+            }
+        }
+        if ($renames) {
+            $d = $this->gql('mutation($productId: ID!, $variants: [ProductVariantsBulkInput!]!) { productVariantsBulkUpdate(productId: $productId, variants: $variants) { userErrors { field message } } }', ['productId' => $product['id'], 'variants' => $renames]);
+            $this->userErrors($d['productVariantsBulkUpdate']['userErrors']);
+            $changed = true;
+        }
+        if ($new) {
+            $create = array_map(fn ($r) => ['optionValues' => $toValues(trim((string) $r['nom']))]
+                + (isset($r['prix']) && $r['prix'] !== '' && $r['prix'] !== null ? ['price' => number_format((float) $r['prix'], 2, '.', '')] : []), $new);
+            $d = $this->gql('mutation($productId: ID!, $variants: [ProductVariantsBulkInput!]!) { productVariantsBulkCreate(productId: $productId, variants: $variants) { userErrors { field message } } }', ['productId' => $product['id'], 'variants' => $create]);
+            $this->userErrors($d['productVariantsBulkCreate']['userErrors']);
+            $changed = true;
+        }
+        return $changed ? ($this->product(self::num($product['id'])) ?? $product) : $product;
+    }
+
     private function applyVariants(array $product, array $rows): void
     {
         $variants = $product['variants']['nodes'];
+        // Lignes nouvelles : retrouvées par leur nom après leur création.
+        foreach ($rows as &$row) {
+            if (empty($row['variantId'])) {
+                foreach ($variants as $cand) {
+                    if ($cand['title'] === trim((string) ($row['nom'] ?? ''))) {
+                        $row['variantId'] = $cand['id'];
+                    }
+                }
+            }
+        }
+        unset($row);
         $updates = [];
         $stock = [];
         foreach ($rows as $i => $row) {
@@ -275,7 +352,7 @@ final class ShopifyAdapter extends BaseAdapter
                     $v = $cand;
                 }
             }
-            $v ??= $variants[$i] ?? null;
+            $v ??= empty($row['nom']) ? ($variants[$i] ?? null) : null;
             if (!$v) {
                 continue;
             }
@@ -332,7 +409,14 @@ final class ShopifyAdapter extends BaseAdapter
             ['product' => ['title' => $data['titre'], 'descriptionHtml' => $data['description'] ?? '', 'status' => !empty($data['enVente']) ? 'ACTIVE' : 'DRAFT'], 'media' => $add]);
         $this->userErrors($d['productCreate']['userErrors']);
         $p = $d['productCreate']['product'];
-        $this->applyVariants($p, array_slice($data['declinaisons'] ?? [], 0, 1));
+        $rows = $data['declinaisons'] ?? [];
+        $named = array_values(array_filter($rows, fn ($r) => trim((string) ($r['nom'] ?? '')) !== '' && ($r['nom'] ?? '') !== 'Prix unique'));
+        if ($named) {
+            $p = $this->syncVariants($p, $named, (string) ($data['nomChoix'] ?? ''));
+            $this->applyVariants($p, $named);
+        } else {
+            $this->applyVariants($p, array_slice($rows, 0, 1));
+        }
         if (!empty($data['enVente'])) {
             $this->publishOnline($p['id']);
         }
@@ -366,6 +450,7 @@ final class ShopifyAdapter extends BaseAdapter
             $d = $this->gql('mutation($productId: ID!, $mediaIds: [ID!]!) { productDeleteMedia(productId: $productId, mediaIds: $mediaIds) { deletedMediaIds mediaUserErrors { field message } } }', ['productId' => $p['id'], 'mediaIds' => $remove]);
             $this->userErrors($d['productDeleteMedia']['mediaUserErrors']);
         }
+        $p = $this->syncVariants($p, $data['declinaisons'] ?? [], (string) ($data['nomChoix'] ?? ''));
         $this->applyVariants($p, $data['declinaisons'] ?? []);
         $fresh = $this->product($id);
         return ['id' => $id, 'before' => $before, 'after' => Values::pick($section, $fresh ? $this->toData($fresh) : array_replace($before, $data)), 'ref' => $p['id']];

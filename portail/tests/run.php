@@ -396,5 +396,103 @@ test('Suggestions selon le métier', function () {
     check(!isset($T::decorate($site('Gâteaux'), $sec)['fields'][0]['presets']), 'suggestions seulement pour le catalogue hébergé');
 });
 
+test('Shopify : déclinaisons ajoutées, renommées, retirées', function () {
+    $calls = [];
+    $state = ['options' => [], 'variants' => [['id' => 'gid://shopify/ProductVariant/1', 'title' => 'Default Title', 'price' => '20.00', 'compareAtPrice' => null, 'inventoryQuantity' => 0, 'inventoryItem' => null]]];
+    $next = 2;
+    \SimpleCommerce\Support\Http::$fake = function ($m, $url, $h, $body) use (&$calls, &$state, &$next) {
+        $q = json_decode($body, true);
+        $vars = $q['variables'];
+        $name = preg_match('/\{\s*(\w+)\(/', $q['query'], $mm) ? $mm[1] : '';
+        $calls[] = [$name, $vars];
+        $product = fn () => ['id' => 'gid://shopify/Product/9', 'title' => 'Vase', 'descriptionHtml' => '', 'status' => 'ACTIVE', 'options' => $state['options'] ?: [['name' => 'Title']], 'media' => ['nodes' => []], 'variants' => ['nodes' => $state['variants']]];
+        $data = match ($name) {
+            'product' => ['product' => $product()],
+            'productUpdate' => ['productUpdate' => ['product' => ['id' => 'x'], 'userErrors' => []]],
+            'productOptionsCreate' => (function () use (&$state, &$next, $vars) {
+                $o = $vars['options'][0];
+                $state['options'] = [['name' => $o['name']]];
+                $vals = array_column($o['values'], 'name');
+                $state['variants'][0]['title'] = $vals[0];
+                foreach (array_slice($vals, 1) as $v) { $state['variants'][] = ['id' => 'gid://shopify/ProductVariant/' . $next++, 'title' => $v, 'price' => '20.00', 'compareAtPrice' => null, 'inventoryQuantity' => 0, 'inventoryItem' => null]; }
+                return ['productOptionsCreate' => ['userErrors' => []]];
+            })(),
+            'productVariantsBulkDelete' => (function () use (&$state, $vars) {
+                $state['variants'] = array_values(array_filter($state['variants'], fn ($v) => !in_array($v['id'], $vars['variantsIds'], true)));
+                return ['productVariantsBulkDelete' => ['userErrors' => []]];
+            })(),
+            'productVariantsBulkCreate' => (function () use (&$state, &$next, $vars) {
+                foreach ($vars['variants'] as $v) { $state['variants'][] = ['id' => 'gid://shopify/ProductVariant/' . $next++, 'title' => implode(' / ', array_column($v['optionValues'], 'name')), 'price' => $v['price'] ?? '0.00', 'compareAtPrice' => null, 'inventoryQuantity' => 0, 'inventoryItem' => null]; }
+                return ['productVariantsBulkCreate' => ['userErrors' => []]];
+            })(),
+            'productVariantsBulkUpdate' => (function () use (&$state, $vars) {
+                foreach ($vars['variants'] as $u) { foreach ($state['variants'] as &$v) { if ($v['id'] === $u['id']) {
+                    if (isset($u['price'])) { $v['price'] = $u['price']; }
+                    if (isset($u['optionValues'])) { $v['title'] = implode(' / ', array_column($u['optionValues'], 'name')); }
+                } } unset($v); }
+                return ['productVariantsBulkUpdate' => ['userErrors' => []]];
+            })(),
+            default => [],
+        };
+        return ['status' => 200, 'body' => json_encode(['data' => $data]), 'headers' => []];
+    };
+    try {
+        $a = new \SimpleCommerce\Adapters\ShopifyAdapter('test.myshopify.com', 'jeton');
+        $sec = \SimpleCommerce\Content\ContentSchema::parse(['version' => 1, 'sections' => \SimpleCommerce\Adapters\ShopifyAdapter::sections()])['sections'][0];
+        $rows = [['nom' => 'Petit', 'prix' => 20], ['nom' => 'Grand', 'prix' => 35]];
+        $a->updateEntry($sec, '9', ['titre' => 'Vase', 'nomChoix' => 'Taille', 'declinaisons' => $rows, 'enVente' => true, 'photos' => []], null, []);
+        $titles = array_column($state['variants'], 'price', 'title');
+        check(in_array('productOptionsCreate', array_column($calls, 0), true) && $titles === ['Petit' => '20.00', 'Grand' => '35.00'], 'Shopify : choix « Taille » créé avec ses prix');
+        $calls = [];
+        $ids = array_column($state['variants'], 'id', 'title');
+        $rows = [['nom' => 'Moyen', 'prix' => 25, 'variantId' => $ids['Petit']], ['nom' => 'Très grand', 'prix' => 50]];
+        $a->updateEntry($sec, '9', ['titre' => 'Vase', 'nomChoix' => 'Taille', 'declinaisons' => $rows, 'enVente' => true, 'photos' => []], null, []);
+        check(array_column($state['variants'], 'price', 'title') === ['Moyen' => '25.00', 'Très grand' => '50.00'], 'Shopify : renommée, retirée et ajoutée');
+    } finally {
+        \SimpleCommerce\Support\Http::$fake = null;
+    }
+});
+
+test('WooCommerce : produit simple qui reçoit des déclinaisons', function () {
+    $prod = ['id' => 5, 'type' => 'simple', 'name' => 'Pull', 'images' => [], 'regular_price' => '40', 'sale_price' => '', 'manage_stock' => false, 'stock_quantity' => null,
+        'short_description' => '', 'description' => '', 'status' => 'publish', 'attributes' => []];
+    $vars = [];
+    $next = 100;
+    \SimpleCommerce\Support\Http::$fake = function ($m, $url, $h, $body) use (&$prod, &$vars, &$next) {
+        $path = parse_url($url, PHP_URL_PATH);
+        $b = is_string($body) ? json_decode($body, true) : null;
+        $out = null;
+        if (str_ends_with($path, '/variations/batch')) {
+            foreach ($b['create'] ?? [] as $c) { $vars[] = ['id' => $next++] + $c; }
+            foreach ($b['update'] ?? [] as $u) { foreach ($vars as &$v) { if ($v['id'] === $u['id']) { $v = $u + $v; } } unset($v); }
+            $vars = array_values(array_filter($vars, fn ($v) => !in_array($v['id'], $b['delete'] ?? [], true)));
+            $out = ['create' => [], 'update' => []];
+        } elseif (str_contains($path, '/variations')) {
+            $out = $vars;
+        } elseif ($m === 'PUT') {
+            $prod = array_replace($prod, $b);
+            $out = $prod;
+        } else {
+            $out = $prod;
+        }
+        return ['status' => 200, 'body' => json_encode($out), 'headers' => []];
+    };
+    try {
+        $a = new \SimpleCommerce\Adapters\WordPressAdapter('https://boutique.example', 'u', 'p', 'ck', 'cs');
+        $sec = \SimpleCommerce\Content\ContentSchema::parse(['version' => 1, 'sections' => \SimpleCommerce\Adapters\WordPressAdapter::sections(true)])['sections'][0];
+        $data = ['nom' => 'Pull', 'prix' => '40', 'enVente' => true, 'photos' => [], 'nomChoix' => 'Taille',
+            'declinaisons' => [['nom' => 'S', 'prix' => '40', 'stock' => 3], ['nom' => 'M', 'prix' => '42', 'stock' => '']]];
+        $r = $a->updateEntry($sec, '5', $data, null, []);
+        check($prod['type'] === 'variable' && $prod['attributes'][0]['name'] === 'Taille' && $prod['attributes'][0]['options'] === ['S', 'M'], 'WooCommerce : produit devenu « variable » avec le choix Taille');
+        check(array_column($r['after']['declinaisons'], 'nom') === ['S', 'M'] && $r['after']['declinaisons'][0]['stock'] === 3, 'WooCommerce : déclinaisons créées avec prix et stock');
+        $d2 = $r['after'];
+        $d2['declinaisons'] = [$d2['declinaisons'][1], ['nom' => 'L', 'prix' => '45', 'stock' => '']];
+        $r2 = $a->updateEntry($sec, '5', $d2, null, []);
+        check(array_column($r2['after']['declinaisons'], 'nom') === ['M', 'L'] && $prod['attributes'][0]['options'] === ['M', 'L'], 'WooCommerce : déclinaison retirée et ajoutée');
+    } finally {
+        \SimpleCommerce\Support\Http::$fake = null;
+    }
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

@@ -11,6 +11,9 @@ use SimpleCommerce\Adapters\AdapterError;
  */
 final class Http
 {
+    /** Vérifications automatiques seulement (tests/run.php) : imitation d'un service, jamais remplie en production. */
+    public static ?\Closure $fake = null;
+
     /**
      * @param array<string, string> $headers
      * @param string|array|null $body tableau = formulaire multipart
@@ -18,6 +21,9 @@ final class Http
      */
     public static function request(string $method, string $url, array $headers = [], string|array|null $body = null, int $timeout = 25): array
     {
+        if (self::$fake !== null && PHP_SAPI === 'cli') {
+            return (self::$fake)($method, $url, $headers, $body);
+        }
         $ch = curl_init($url);
         // L'adresse IP est vérifiée (pas de réseau interne) puis imposée à cURL pour cette requête.
         $parts = parse_url($url);

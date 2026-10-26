@@ -43,6 +43,14 @@ final class WordPressAdapter extends BaseAdapter
                 ['key' => 'prix', 'label' => 'Prix', 'type' => 'price', 'required' => true, 'priceFormat' => ['store' => 'string', 'decimal' => '.']],
                 ['key' => 'prixPromo', 'label' => 'Prix soldé', 'type' => 'price', 'priceFormat' => ['store' => 'string', 'decimal' => '.'], 'help' => 'Facultatif : remplace le prix tant qu\'il est rempli.'],
                 ['key' => 'stock', 'label' => 'Stock', 'type' => 'number', 'min' => 0, 'help' => 'Laissez vide si vous ne suivez pas le stock.'],
+                ['key' => 'nomChoix', 'label' => 'Nom du choix', 'type' => 'text', 'maxLength' => 60,
+                    'help' => 'Par exemple « Taille » ou « Couleur ». Pour deux choix à la fois : « Taille / Couleur ».'],
+                ['key' => 'declinaisons', 'label' => 'Tailles, couleurs… avec leur prix et leur stock', 'type' => 'repeater', 'itemLabel' => 'déclinaison', 'fields' => [
+                    ['key' => 'nom', 'label' => 'Déclinaison', 'type' => 'text', 'maxLength' => 120, 'help' => 'Par exemple « M ». Pour deux choix à la fois : « M / Noir ».'],
+                    ['key' => 'prix', 'label' => 'Prix', 'type' => 'price', 'priceFormat' => ['store' => 'string', 'decimal' => '.']],
+                    ['key' => 'stock', 'label' => 'Stock', 'type' => 'number', 'min' => 0, 'help' => 'Laissez vide si vous ne suivez pas le stock.'],
+                    ['key' => 'variationId', 'label' => 'Référence', 'type' => 'number', 'hidden' => true],
+                ]],
                 ['key' => 'resume', 'label' => 'Description courte', 'type' => 'richtext', 'maxLength' => 600],
                 ['key' => 'description', 'label' => 'Description', 'type' => 'richtext'],
                 ['key' => 'enVente', 'label' => 'En vente sur le site', 'type' => 'boolean'],
@@ -141,9 +149,95 @@ final class WordPressAdapter extends BaseAdapter
         ];
     }
 
+    /** @return array<int, array{nom: string, prix: string, stock: ?int, variationId: int}> déclinaisons d'un produit « variable » */
+    private function variations(array $p): array
+    {
+        if (($p['type'] ?? '') !== 'variable') {
+            return [];
+        }
+        $out = [];
+        foreach ($this->api('GET', "/wc/v3/products/{$p['id']}/variations?per_page=100&orderby=menu_order&order=asc", null, true)['data'] ?? [] as $v) {
+            $out[] = ['nom' => implode(' / ', array_column($v['attributes'] ?? [], 'option')), 'prix' => (string) ($v['regular_price'] ?? ''),
+                'stock' => !empty($v['manage_stock']) ? $v['stock_quantity'] : null, 'variationId' => (int) $v['id']];
+        }
+        return $out;
+    }
+
+    /** Choix du produit utilisés pour les déclinaisons (« Taille », « Couleur »). @return array<int, array> */
+    private static function variationAttributes(array $p): array
+    {
+        return array_values(array_filter($p['attributes'] ?? [], fn ($a) => !empty($a['variation'])));
+    }
+
+    /**
+     * Déclinaisons ajoutées, modifiées ou retirées. Un produit simple qui reçoit des déclinaisons devient « variable » :
+     * WooCommerce affiche alors le choix sur la fiche du produit.
+     */
+    private function syncVariations(array $raw, array $data): void
+    {
+        $rows = array_values(array_filter((array) ($data['declinaisons'] ?? []), fn ($r) => trim((string) ($r['nom'] ?? '')) !== ''));
+        if (!$rows) {
+            return; // liste vide : rien n'est supprimé (un produit garde ses déclinaisons tant qu'on ne les retire pas une à une)
+        }
+        $id = $raw['id'];
+        $attrs = self::variationAttributes($raw);
+        $names = $attrs ? array_column($attrs, 'name') : array_map('trim', explode(' / ', trim((string) ($data['nomChoix'] ?? '')) ?: 'Taille'));
+        $split = function (string $nom) use ($names): array {
+            $parts = array_map('trim', explode(' / ', $nom));
+            if (count($parts) !== count($names)) {
+                throw new AdapterError('invalid', 'Écrivez la déclinaison « ' . $nom . ' » avec une valeur pour chaque choix : ' . implode(' / ', $names) . '.');
+            }
+            return $parts;
+        };
+        // Les valeurs de chaque choix suivent les déclinaisons écrites (« S, M, L »).
+        $values = array_fill(0, count($names), []);
+        foreach ($rows as $r) {
+            foreach ($split(trim((string) $r['nom'])) as $i => $v) {
+                $values[$i][$v] = true;
+            }
+        }
+        $others = array_values(array_filter($raw['attributes'] ?? [], fn ($a) => empty($a['variation'])));
+        $newAttrs = array_map(fn ($n, $i) => array_filter(['id' => $attrs[$i]['id'] ?? null], fn ($x) => $x) + ['name' => $n, 'options' => array_keys($values[$i]), 'variation' => true, 'visible' => true],
+            $names, array_keys($names));
+        $this->api('PUT', "/wc/v3/products/$id", ['type' => 'variable', 'attributes' => array_merge($others, $newAttrs)], true);
+        $current = array_column($this->variations(['id' => $id, 'type' => 'variable']), null, 'variationId');
+        $toAttrs = fn (string $nom) => array_map(fn ($n, $o) => ['name' => $n, 'option' => $o], $names, $split($nom));
+        $one = function (array $r) use ($toAttrs): array {
+            $stock = $r['stock'] ?? null;
+            return ['regular_price' => (string) ($r['prix'] ?? ''), 'attributes' => $toAttrs(trim((string) $r['nom']))]
+                + ($stock === null || $stock === '' ? ['manage_stock' => false] : ['manage_stock' => true, 'stock_quantity' => (int) $stock]);
+        };
+        $batch = ['create' => [], 'update' => [], 'delete' => []];
+        $kept = [];
+        foreach ($rows as $r) {
+            $vid = (int) ($r['variationId'] ?? 0);
+            if ($vid && isset($current[$vid])) {
+                $kept[] = $vid;
+                $batch['update'][] = ['id' => $vid] + $one($r);
+            } else {
+                $batch['create'][] = $one($r);
+            }
+        }
+        $batch['delete'] = array_values(array_diff(array_keys($current), $kept));
+        $batch = array_filter($batch);
+        if ($batch) {
+            $r = $this->api('POST', "/wc/v3/products/$id/variations/batch", $batch, true)['data'] ?? [];
+            foreach (['create', 'update'] as $k) {
+                foreach ($r[$k] ?? [] as $item) {
+                    if (!empty($item['error'])) {
+                        throw new AdapterError('invalid', 'WooCommerce a refusé une déclinaison : ' . ($item['error']['message'] ?? ''));
+                    }
+                }
+            }
+        }
+    }
+
     private function productToData(array $p): array
     {
+        $variations = $this->variations($p);
         return [
+            'nomChoix' => implode(' / ', array_column(self::variationAttributes($p), 'name')),
+            'declinaisons' => $variations,
             'nom' => self::decode($p['name']), 'photos' => array_column($p['images'], 'src'), 'prix' => $p['regular_price'], 'prixPromo' => $p['sale_price'],
             'stock' => $p['manage_stock'] ? $p['stock_quantity'] : null, 'resume' => $p['short_description'], 'description' => $p['description'], 'enVente' => $p['status'] === 'publish',
         ];
@@ -242,6 +336,10 @@ final class WordPressAdapter extends BaseAdapter
         $type = $section['remote']['type'] ?? 'posts';
         if ($type === 'woocommerce') {
             $p = $this->api('POST', '/wc/v3/products', $this->productPayload($data, null, $ctx), true)['data'];
+            if (!empty($data['declinaisons'])) {
+                $this->syncVariations($p, $data);
+                $p = $this->api('GET', "/wc/v3/products/{$p['id']}", null, true)['data'];
+            }
             return ['id' => (string) $p['id'], 'before' => null, 'after' => Values::pick($section, $this->productToData($p))];
         }
         $p = $this->api('POST', "/wp/v2/$type", $this->postPayload($data, $ctx, $type))['data'];
@@ -261,6 +359,10 @@ final class WordPressAdapter extends BaseAdapter
         if ($type === 'woocommerce') {
             $raw = $this->api('GET', "/wc/v3/products/$id", null, true)['data'];
             $p = $this->api('PUT', "/wc/v3/products/$id", $this->productPayload($merged, $raw, $ctx), true)['data'];
+            if (array_key_exists('declinaisons', $data) && json_encode($data['declinaisons']) !== json_encode($current['data']['declinaisons'] ?? [])) {
+                $this->syncVariations($p, $merged);
+                $p = $this->api('GET', "/wc/v3/products/$id", null, true)['data'];
+            }
             return ['id' => $id, 'before' => $current['data'], 'after' => Values::pick($section, $this->productToData($p))];
         }
         $this->api('POST', "/wp/v2/$type/$id", $this->postPayload($merged, $ctx, $type));
