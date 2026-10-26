@@ -1,0 +1,98 @@
+# Mise en ligne automatique du portail chez OVH : plus de zip ni de WinSCP.
+# À chaque modification de portail/ sur la branche de travail, GitHub envoie les fichiers du portail par SFTP dans le
+# dossier du portail chez OVH (par défaut « simplecommerce/public »). Le dossier voisin « simplecommerce-donnees »
+# (comptes, base, config.php) n'est jamais touché, et rien n'est effacé chez OVH (page d'accueil accueil.html comprise).
+#
+# Tant que les 3 secrets ci-dessous ne sont pas enregistrés dans GitHub, rien n'est envoyé (l'étape est sautée) :
+#   OVH_SFTP_SERVEUR       ex. ftp.cluster0XX.hosting.ovh.net (OVH → Hébergements → onglet FTP-SSH, « Serveur FTP »)
+#   OVH_SFTP_UTILISATEUR   l'identifiant FTP principal
+#   OVH_SFTP_MOT_DE_PASSE  son mot de passe
+# Variable facultative OVH_DOSSIER : dossier du portail depuis la racine de l'hébergement (défaut simplecommerce/public).
+name: Mise en ligne OVH
+
+on:
+  push:
+    branches: ['claude/brave-feynman-zya4u2']
+    paths:
+      - 'portail/**'
+      - '.github/workflows/portail-ovh.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Un seul envoi à la fois ; un nouvel envoi attend la fin du précédent (jamais deux envois mélangés).
+concurrency:
+  group: portail-ovh
+  cancel-in-progress: false
+
+jobs:
+  envoi:
+    name: Envoi chez OVH
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SERVEUR: ${{ secrets.OVH_SFTP_SERVEUR }}
+      UTILISATEUR: ${{ secrets.OVH_SFTP_UTILISATEUR }}
+      MOT_DE_PASSE: ${{ secrets.OVH_SFTP_MOT_DE_PASSE }}
+      DOSSIER: ${{ vars.OVH_DOSSIER || 'simplecommerce/public' }}
+    steps:
+      - name: Accès OVH enregistrés ?
+        id: acces
+        run: |
+          if [ -z "$SERVEUR" ] || [ -z "$UTILISATEUR" ] || [ -z "$MOT_DE_PASSE" ]; then
+            echo "::notice::Accès OVH pas encore enregistrés dans GitHub : rien n'est envoyé."
+            echo "pret=non" >> "$GITHUB_OUTPUT"
+          else
+            echo "pret=oui" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.acces.outputs.pret == 'oui'
+
+      - uses: shivammathur/setup-php@v2
+        if: steps.acces.outputs.pret == 'oui'
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, sodium, curl, gd, mbstring, intl, ftp
+          coverage: none
+
+      - name: Vérifier le code avant l'envoi (rien n'est envoyé si une vérification échoue)
+        if: steps.acces.outputs.pret == 'oui'
+        run: |
+          find portail/src portail/public portail/templates portail/bin -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+          php portail/tests/run.php
+
+      - name: Préparer les fichiers
+        if: steps.acces.outputs.pret == 'oui'
+        run: |
+          mkdir envoi
+          git archive HEAD portail | tar -x -C envoi
+          rm -rf envoi/portail/tests envoi/portail/demo
+          # Garde-fou : ces fichiers ne doivent jamais partir (ils écraseraient les données du serveur).
+          rm -rf envoi/portail/config.php envoi/portail/storage/*.sqlite envoi/portail/simplecommerce-donnees
+
+      - name: Envoyer par SFTP
+        if: steps.acces.outputs.pret == 'oui'
+        run: |
+          sudo apt-get install -y -qq lftp > /dev/null
+          # Mot de passe passé par une variable d'environnement (jamais dans la commande ni dans le journal).
+          export LFTP_PASSWORD="$MOT_DE_PASSE"
+          lftp --env-password -u "$UTILISATEUR" "sftp://$SERVEUR" <<EOF
+          set sftp:auto-confirm yes
+          set net:max-retries 3
+          set net:timeout 30
+          set cmd:fail-exit yes
+          mirror --reverse --no-perms --parallel=6 --verbose=1 envoi/portail/ "$DOSSIER/"
+          EOF
+
+      - name: Le site répond ?
+        if: steps.acces.outputs.pret == 'oui'
+        run: |
+          sleep 5
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://simplecommercess.com/)
+          echo "simplecommercess.com répond : $code"
+          if [ "$code" -ge 500 ]; then
+            echo "::error::Le portail répond en erreur ($code) après l'envoi."
+            exit 1
+          fi

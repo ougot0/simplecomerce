@@ -225,7 +225,9 @@ Autres fichiers utiles : `docs/PREPARER-UN-SITE.md` (comment rendre un site modi
 6. OVH → Plus → Tâches planifiées → `simplecommerce/bin/cron.php`, PHP 8.3, toutes les heures.
 7. Plus tard : acheter le domaine (Noms de domaine → Commander), l'ajouter au multisite (même dossier),
    changer `'url'` dans `config.php`.
-8. Mise à jour : depuis la version E, remplacer tout le dossier du portail est sans risque : `config.php` et `storage/`
+8. **Depuis le 26/10/2026 : mise en ligne automatique par GitHub** (`portail-ovh.yml`, secrets OVH_SFTP_*) dès qu'un
+   changement de `portail/` est poussé sur la branche de travail ; le zip à la main reste possible en secours.
+   Mise à jour : depuis la version E, remplacer tout le dossier du portail est sans risque : `config.php` et `storage/`
    sont dans le dossier voisin `simplecommerce-donnees/` (à ne jamais supprimer ni écraser).
 
 **Nom de domaine acheté (12/10/2026) : `simplecommercess.com`** (deux « s » à la fin), SSL Let's Encrypt actif.
@@ -307,6 +309,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 (3) : il ne veut plus envoyer le zip à la main → **mise en ligne automatique** :
+  `.github/workflows/portail-ovh.yml` (push sur `portail/**` de la branche de travail, ou « Run workflow ») : vérifie le
+  code (php -l + tests), puis `lftp mirror --reverse` du portail (sans tests/demo) par SFTP vers `simplecommerce/public`
+  (variable `OVH_DOSSIER`). Ne supprime rien chez OVH, ne touche jamais `simplecommerce-donnees`. Sauté tant que les secrets
+  GitHub `OVH_SFTP_SERVEUR`, `OVH_SFTP_UTILISATEUR`, `OVH_SFTP_MOT_DE_PASSE` n'existent pas (c'est lui qui les saisit dans
+  GitHub, jamais dans la conversation ; il attend la réponse d'Apple avant). Copie testée sur dossier local (lftp file://),
+  SFTP réel pas testé (serveur SFTP local refusé dans la session).
 - 26/10/2026 (2) : « tu peux pas actualiser tout seul ? » → **version T** : `Sites::refreshIfNew` relit les rubriques
   d'un site une fois par version du portail (extras `readWith` = `SC_VERSION`), à l'ouverture du site ou d'une rubrique
   (`SiteController::home/section`). Plus besoin de « Relire le contenu du site » après une mise à jour. Testé dans la démo.
