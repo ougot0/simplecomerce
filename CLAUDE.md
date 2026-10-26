@@ -309,6 +309,10 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 (8) : il a collé la « recette » GitHub → OVH qui marche pour son autre site (SFTP port 22 car OVH Perso refuse
+  le FTPS, secret `OVH_FTP_PASSWORD`). `portail-ovh.yml` aligné : mot de passe `OVH_FTP_PASSWORD` (ou l'ancien nom),
+  identifiant par défaut `coumaoq`, serveur = secret ou variable `OVH_SFTP_SERVEUR`, `sftp://…:22`. Les fichiers du
+  portail sont déjà anti-cache (`app.css?v=` d'après la date des fichiers). Toujours rien d'envoyé (pas de secrets).
 - 26/10/2026 (7) : « continue de tout faire, sans casser la vérification d'Apple » (rien ne part : pas de secrets OVH).
   **Version X** : **Shopify** — champ `nomChoix` + `declinaisons` non figées (nom modifiable) ; `syncVariants` : produit sans
   choix → `productOptionsCreate(variantStrategy: CREATE)` ; sinon `productVariantsBulkDelete/Update(optionValues)/Create`
