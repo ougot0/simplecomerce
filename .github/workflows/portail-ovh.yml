@@ -6,7 +6,7 @@
 # Connexion en SFTP (port 22) : OVH mutualisé refuse le FTPS. Tant que le mot de passe n'est pas enregistré dans GitHub,
 # rien n'est envoyé (l'étape est sautée). Réglages (Settings → Secrets and variables → Actions) :
 #   secret OVH_FTP_PASSWORD     le mot de passe FTP/SFTP OVH (même nom que pour les autres sites ; OVH_SFTP_MOT_DE_PASSE accepté)
-#   secret OVH_SFTP_SERVEUR     ex. ftp.cluster0XX.hosting.ovh.net (OVH → Hébergements → onglet FTP-SSH) ; ou variable du même nom
+#   OVH_SFTP_SERVEUR            serveur (secret ou variable ; défaut ftp.cluster131.hosting.ovh.net, celui du propriétaire)
 #   OVH_SFTP_UTILISATEUR        identifiant FTP (secret ou variable ; défaut coumaoq)
 #   variable OVH_DOSSIER        dossier du portail depuis le dossier personnel (défaut simplecommerce/public)
 name: Mise en ligne OVH
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      SERVEUR: ${{ secrets.OVH_SFTP_SERVEUR || vars.OVH_SFTP_SERVEUR }}
+      SERVEUR: ${{ secrets.OVH_SFTP_SERVEUR || vars.OVH_SFTP_SERVEUR || 'ftp.cluster131.hosting.ovh.net' }}
       UTILISATEUR: ${{ secrets.OVH_SFTP_UTILISATEUR || vars.OVH_SFTP_UTILISATEUR || 'coumaoq' }}
       MOT_DE_PASSE: ${{ secrets.OVH_FTP_PASSWORD || secrets.OVH_SFTP_MOT_DE_PASSE }}
       DOSSIER: ${{ vars.OVH_DOSSIER || 'simplecommerce/public' }}
