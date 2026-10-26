@@ -64,7 +64,13 @@ $viewer = $ctx['viewer'];
             <div class="inline-fields"><input id="stock-alert" name="stockAlert" type="number" min="0" max="999" class="short" value="<?= e((string) \SimpleCommerce\Services\Shop::threshold($site)) ?>"><span>pièces ou moins d'un produit</span></div>
             <span class="help">Un e-mail est envoyé quand un produit descend à ce niveau, puis quand il est épuisé. Mettez 0 pour ne pas être prévenu.</span></div>
         <label class="checkbox"><input type="checkbox" name="weeklyDigest" value="1" <?= (Sites::extras($site)['weeklyDigest'] ?? true) ? 'checked' : '' ?>><span>Recevoir le résumé du lundi par e-mail<br><span class="help">Chaque lundi matin : visites, commandes, rendez-vous, avis et modifications de la semaine.</span></span></label>
-        <?php if ($site['connector'] === 'catalogue'): $x = Sites::extras($site) ?>
+        <?php if ($site['connector'] === 'catalogue'): $x = Sites::extras($site); $metier = (string) ($x['metier'] ?? '') ?>
+        <div class="field"><label for="metier">Votre activité</label>
+            <select id="metier" name="metier" class="medium">
+                <option value=""<?= $metier === '' ? ' selected' : '' ?>>Deviner d'après mes produits (<?= e(\SimpleCommerce\Services\Trades::LIST[\SimpleCommerce\Services\Trades::guess($site)]['label'] ?? '') ?>)</option>
+                <?php foreach (\SimpleCommerce\Services\Trades::LIST as $k => $t): ?><option value="<?= e($k) ?>"<?= $metier === $k ? ' selected' : '' ?>><?= e($t['label']) ?></option><?php endforeach ?>
+            </select>
+            <span class="help">Elle choisit les suggestions proposées dans la fiche d'un produit : tailles et couleurs pour la mode, parts et parfums pour une pâtisserie, dimensions et matière pour un objet…</span></div>
         <label class="checkbox"><input type="checkbox" name="orders" value="1" <?= !empty($x['orders']) ? 'checked' : '' ?>><span>Recevoir des commandes depuis mon site<br><span class="help">Vos visiteurs ajoutent des produits à un panier et vous envoient leur commande. Vous la recevez par e-mail et dans « Commandes ». Le paiement se règle directement avec le client (sur place, virement…).</span></span></label>
         <fieldset class="fieldset-plain"><legend>Vos informations pour les factures</legend>
             <div class="field"><label for="m-name">Nom de la boutique ou de l'entreprise</label><input id="m-name" name="legalName" type="text" maxlength="120" value="<?= e((string) ($x['legalName'] ?? $site['name'])) ?>"></div>

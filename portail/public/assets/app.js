@@ -121,6 +121,39 @@
   function renumber(container) {
     $$("[data-pos]", container).forEach(function (cell, i) { cell.textContent = String(i + 1); });
   }
+  function addRow(holder) {
+    var tpl = holder.querySelector(":scope > template");
+    var html = tpl.innerHTML.replace(/__ROW__/g, "n" + Date.now().toString(36) + rowCounter++);
+    var wrap = document.createElement("div");
+    wrap.innerHTML = html;
+    var row = wrap.firstElementChild;
+    $("[data-items]", holder).appendChild(row);
+    enhance(row);
+    return row;
+  }
+  // Suggestions selon le métier : une ligne de choix déjà remplie, ou un début de détail.
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest ? e.target.closest("[data-preset],[data-append-line]") : null;
+    if (!t) return;
+    if (t.hasAttribute("data-preset")) {
+      var p = JSON.parse(t.getAttribute("data-preset"));
+      var row = addRow(t.closest("[data-repeater]"));
+      Object.keys(p).forEach(function (k) {
+        var f = row.querySelector('[name$="[' + k + ']"]');
+        if (f) { f.value = p[k]; f.dispatchEvent(new Event("input", { bubbles: true })); }
+      });
+      row.scrollIntoView({ block: "nearest" });
+      var n = row.querySelector('[name$="[nom]"]');
+      if (n) n.focus();
+    } else {
+      var ta = document.getElementById(t.getAttribute("data-target"));
+      if (!ta) return;
+      ta.value = ta.value.replace(/\s*$/, "") + (ta.value.trim() ? "\n" : "") + t.getAttribute("data-append-line");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+  });
   document.addEventListener("click", function (e) {
     var t = e.target.closest ? e.target.closest("[data-add],[data-remove],[data-move]") : null;
     if (!t) return;
@@ -128,13 +161,7 @@
     if (!holder) return;
     var items = $("[data-items]", holder);
     if (t.hasAttribute("data-add")) {
-      var tpl = holder.querySelector(":scope > template");
-      var html = tpl.innerHTML.replace(/__ROW__/g, "n" + Date.now().toString(36) + rowCounter++);
-      var wrap = document.createElement("div");
-      wrap.innerHTML = html;
-      var row = wrap.firstElementChild;
-      items.appendChild(row);
-      enhance(row);
+      var row = addRow(holder);
       var first = row.querySelector("input:not([type=hidden]),textarea,select");
       if (first) first.focus();
     } else if (t.hasAttribute("data-remove")) {

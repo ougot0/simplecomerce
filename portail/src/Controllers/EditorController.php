@@ -30,7 +30,7 @@ final class EditorController
         $base = "/s/{$ctx['site']['slug']}/r/{$section['key']}";
         $isSingleton = ($section['kind'] ?? '') === 'singleton';
         return SiteController::page($ctx, 'site/editor', $e + [
-            'section' => $section,
+            'section' => \SimpleCommerce\Services\Trades::decorate($ctx['site'], $section),
             'error' => null,
             'conflict' => false,
             'errors' => [],

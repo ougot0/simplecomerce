@@ -309,6 +309,14 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 26/10/2026 (6) : « en fonction du commerce, proposer les bonnes cases ; toutes les options faites par le développeur doivent
+  apparaître ». **Version W** : `HtmlCards` lit aussi les **ronds/cases à cocher** (`<label><input type=radio|checkbox> M</label>`,
+  groupe nommé par sa `<legend>`, ajout = copie non cochée, même `name`). (Fichiers de données : listes et sous-listes déjà
+  lues.) **`Services\Trades`** : 8 métiers (pâtisserie, mode, bijoux, objets/3D, beauté, fleurs, épicerie, autre) avec
+  choix et détails suggérés ; métier choisi dans Réglages → Boutique (« Votre activité », extras `metier`) ou deviné d'après
+  les noms (`guess`). Catalogue hébergé seulement : `Trades::decorate` ajoute `presets` aux champs `options`/`details` →
+  boutons « + Taille », « + Allergènes »… (`sc_presets` dans fields.php ; app.js `data-preset` = ligne déjà remplie,
+  `data-append-line`). Testé au navigateur. 125 vérifications.
 - 26/10/2026 (5) : il rappelle de ne rien mettre en ligne avant la réponse d'Apple (rien ne part : pas de secrets OVH).
   **Version V** (sites reliés par fichiers) : `HtmlCards` lit aussi les **menus déroulants** `<select>` d'une fiche (ligne
   « Choisissez… » `value=""` gardée hors de la liste, `value` suit le texte) ; et **ajoute des choix à une fiche qui n'en a

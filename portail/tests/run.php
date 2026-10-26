@@ -375,5 +375,26 @@ test('Choix ajoutés à une fiche et menus déroulants', function () {
     check(str_contains($out, '<option value="">Choisissez une taille</option><option value="S">S · 20 €</option><option value="L">L · 35 €</option><option value="XL">XL · 50 €</option>'), 'option ajoutée au menu déroulant');
 });
 
+test('Ronds et cases à cocher dans les fiches', function () {
+    $card = '<div class="product"><h3>Tee-shirt</h3><span class="price">20 €</span><p>Coton bio, coupe droite et confortable.</p>'
+        . '<fieldset><legend>Taille</legend><label><input type="radio" name="t1" value="S" checked> S</label><label><input type="radio" name="t1" value="M"> M</label></fieldset></div>';
+    $p = Formats::parse('<main>' . $card . $card . '</main>', 'html');
+    $k = array_key_first($p['data']);
+    check(($p['data'][$k][0]['choix_taille'] ?? '') === "S\nM", 'ronds à cocher lus, groupe nommé par sa légende');
+    $d = $p['data'];
+    $d[$k][0]['choix_taille'] = "S\nM\nXL";
+    $out = Formats::serialize($p, $d);
+    check(str_contains($out, '<label><input type="radio" name="t1" value="M"> M</label><label><input type="radio" name="t1" value="XL"> XL</label></fieldset>'), 'rond ajouté, même nom de groupe, non coché');
+});
+
+test('Suggestions selon le métier', function () {
+    $T = \SimpleCommerce\Services\Trades::class;
+    $site = fn ($name) => ['id' => 'x', 'name' => $name, 'connector' => 'demo', 'config' => []];
+    check($T::guess($site('Atelier des gâteaux et tartes')) === 'patisserie' && $T::guess($site('Bijoux de Léa : bagues et colliers')) === 'bijoux'
+        && $T::guess($site('Mon impression 3D : vases et lampes')) === 'objets' && $T::guess($site('Zébulon')) === 'autre', 'métier deviné d\'après le nom');
+    $sec = ['key' => 'produits', 'fields' => [['key' => 'options', 'type' => 'repeater']]];
+    check(!isset($T::decorate($site('Gâteaux'), $sec)['fields'][0]['presets']), 'suggestions seulement pour le catalogue hébergé');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

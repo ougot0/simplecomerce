@@ -178,7 +178,8 @@ final class HtmlCards
         $class = (string) self::attr($e['attrs'], 'class');
         $select = $e['tag'] === 'select'; // menu déroulant « Choisissez une taille »
         $kids = self::choiceKids($els, $e);
-        if (count($kids) < 2 || !($select || self::attr($e['attrs'], 'role') === 'group' || preg_match('/opt|choi|variant|size|taille|format|parfum|saveur/i', $class))) {
+        $inputs = $kids && !array_filter($kids, fn ($c) => self::choiceInput($els, $els[$c]) === null);
+        if (count($kids) < 2 || !($select || $inputs || $e['tag'] === 'fieldset' || self::attr($e['attrs'], 'role') === 'group' || preg_match('/opt|choi|variant|size|taille|format|parfum|saveur/i', $class))) {
             return null;
         }
         $tags = array_unique(array_map(fn ($c) => $els[$c]['tag'], $kids));
@@ -186,19 +187,37 @@ final class HtmlCards
             return null;
         }
         foreach ($kids as $c) {
-            if (!self::isLeaf($els, $els[$c]) || self::text($html, $els[$c]) === '') {
+            if (!(self::isLeaf($els, $els[$c]) || self::choiceInput($els, $els[$c]) !== null) || self::text($html, $els[$c]) === '') {
                 return null;
             }
         }
-        $name = (string) (self::attr($e['attrs'], 'aria-label') ?? ($select ? self::attr($e['attrs'], 'name') ?? self::attr($e['attrs'], 'id') ?? '' : ''));
+        // Ronds ou cases à cocher (« <label><input type="radio" name="taille"> M</label> ») : nom du groupe = sa légende.
+        $input = self::choiceInput($els, $els[$kids[0]]);
+        $legend = current(array_filter($e['children'], fn ($c) => $els[$c]['tag'] === 'legend'));
+        $name = (string) (self::attr($e['attrs'], 'aria-label') ?? ($legend !== false ? self::text($html, $els[$legend]) : null)
+            ?? ($select ? self::attr($e['attrs'], 'name') ?? self::attr($e['attrs'], 'id') : ($input ? self::attr($input['attrs'], 'name') : null)) ?? '');
         $slug = trim((string) preg_replace('/[^a-z0-9]+/', '_', strtolower((string) (@iconv('UTF-8', 'ASCII//TRANSLIT', $name) ?: ''))), '_');
         return 'choix_' . ($slug !== '' ? mb_substr($slug, 0, 40) : $n);
     }
 
-    /** @return int[] éléments du groupe qui sont des choix (sans la ligne « Choisissez… » d'un menu déroulant) */
+    /** @return int[] éléments du groupe qui sont des choix (sans la ligne « Choisissez… » d'un menu déroulant, ni la légende) */
     private static function choiceKids(array $els, array $group): array
     {
-        return array_values(array_filter($group['children'], fn ($c) => !($els[$c]['tag'] === 'option' && self::attr($els[$c]['attrs'], 'value') === '')));
+        return array_values(array_filter($group['children'], fn ($c) => $els[$c]['tag'] !== 'legend' && !($els[$c]['tag'] === 'option' && self::attr($els[$c]['attrs'], 'value') === '')));
+    }
+
+    /** Étiquette qui contient un rond ou une case à cocher (et du texte) : renvoie ce champ, sinon null. */
+    private static function choiceInput(array $els, array $label): ?array
+    {
+        if ($label['tag'] !== 'label') {
+            return null;
+        }
+        $inputs = array_values(array_filter($label['children'], fn ($c) => $els[$c]['tag'] === 'input'));
+        $others = array_filter($label['children'], fn ($c) => $els[$c]['tag'] !== 'input' && (!in_array($els[$c]['tag'], ['span', 'strong', 'em', 'b', 'i', 'small'], true) || $els[$c]['children']));
+        if (count($inputs) !== 1 || $others || !preg_match('/^(radio|checkbox)$/i', (string) self::attr($els[$inputs[0]]['attrs'], 'type'))) {
+            return null;
+        }
+        return $els[$inputs[0]];
     }
 
     /** @return string[] textes des boutons d'un groupe de choix */
@@ -267,6 +286,16 @@ final class HtmlCards
             $attrs = (string) preg_replace('/(\saria-(?:pressed|checked|selected)\s*=\s*")true"/i', '$1false"', $attrs);
         }
         $text = str_replace('&apos;', "'", htmlspecialchars($new, ENT_QUOTES | ENT_HTML5, 'UTF-8', false));
+        $inner = substr($html, $btn['openEnd'], $btn['closeStart'] - $btn['openEnd']);
+        if ($btn['tag'] === 'label' && preg_match('/^(\s*)(<input\b[^>]*>)(\s*)/i', $inner, $im)) {
+            // Rond ou case à cocher : le champ reste devant le texte, sa valeur suit (sans « coché » sur une copie).
+            $field = self::choiceButton('', ['tag' => 'x', 'attrs' => substr($im[2], 6, -1), 'openEnd' => 0, 'closeStart' => 0], $old, $new, $copy);
+            $field = '<input' . substr($field, 2, strpos($field, '>') - 2) . '>';
+            if ($copy) {
+                $field = (string) preg_replace('/\schecked(\s*=\s*("[^"]*"|\'[^\']*\'|\S+))?(?=[\s>\/])/i', '', $field);
+            }
+            $text = $im[1] . $field . ($im[3] !== '' ? $im[3] : ' ') . $text;
+        }
         return '<' . $btn['tag'] . $attrs . '>' . $text . '</' . $btn['tag'] . '>';
     }
 

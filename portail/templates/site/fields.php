@@ -85,6 +85,7 @@ if (!function_exists('sc_field')) {
                 $rows = min(14, max(4, (int) ceil(mb_strlen($str) / 70)));
                 return '<div class="' . $cls . '">' . sc_label($f, $id) . '<textarea id="' . e($id) . '" name="' . e($name) . '" rows="' . $rows . '"'
                     . (!empty($f['maxLength']) ? ' data-max="' . (int) $f['maxLength'] . '"' : '') . $preview . '>' . e($str) . '</textarea>' . sc_counter($f)
+                    . sc_presets($f['presets'] ?? [], fn ($p) => ['data-append-line' => $p, 'data-target' => $id], fn ($p) => rtrim($p, ' :'))
                     . sc_ai($f, $id, $ctx, false)
                     . ($f['type'] === 'markdown' ? '<span class="help">Mise en forme : **gras**, *italique*, une ligne vide entre deux paragraphes, « - » en début de ligne pour une liste.</span>' : '')
                     . sc_foot($f, $errors, $path) . '</div>';
@@ -154,9 +155,27 @@ if (!function_exists('sc_field')) {
                 $item = $f['itemLabel'] ?? 'ligne';
                 return '<fieldset class="group"><legend>' . e($f['label']) . '</legend><div class="repeater" data-repeater><input type="hidden" name="' . e($name) . '[_]" value=""><div class="repeater-rows" data-items>' . $rows . '</div>'
                     . ($fixed ? '' : '<template>' . $tpl . '</template><button type="button" class="btn btn-small" data-add>' . icon('plus') . ' ' . e(Text::addLabel($item)) . '</button>')
+                    . sc_presets($f['presets'] ?? [], fn ($p) => ['data-preset' => json_encode($p, JSON_UNESCAPED_UNICODE)], fn ($p) => $p['nom'])
                     . '</div>' . sc_foot($f, $errors, $path) . '</fieldset>';
         }
         return '';
+    }
+
+    /** Suggestions d'un clic selon le métier du commerçant (« + Taille », « + Allergènes »…). */
+    function sc_presets(array $presets, callable $attrs, callable $label): string
+    {
+        if (!$presets) {
+            return '';
+        }
+        $out = '<div class="presets"><span class="help">Suggestions pour votre activité :</span>';
+        foreach ($presets as $p) {
+            $a = '';
+            foreach ($attrs($p) as $k => $v) {
+                $a .= ' ' . $k . '="' . e((string) $v) . '"';
+            }
+            $out .= '<button type="button" class="chip"' . $a . '>' . icon('plus') . ' ' . e($label($p)) . '</button>';
+        }
+        return $out . '</div>';
     }
 
     function sc_repeater_row(array $f, array $row, string $name, string $key, string $path, array $ctx, mixed $index, bool $fixed): string
