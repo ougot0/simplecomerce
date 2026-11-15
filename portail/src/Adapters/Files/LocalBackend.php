@@ -6,7 +6,7 @@ namespace SimpleCommerce\Adapters\Files;
 use SimpleCommerce\Adapters\RetryableConflict;
 
 /** Dossier local : utilisé par la démonstration. */
-final class LocalBackend implements FileBackend
+final class LocalBackend implements FileBackend, Fingerprinted
 {
     public function __construct(private string $root)
     {
@@ -35,6 +35,18 @@ final class LocalBackend implements FileBackend
         }
         $content = (string) file_get_contents($full);
         return ['content' => $content, 'version' => hash('sha256', $content)];
+    }
+
+    /** Noms, tailles et dates des fichiers. */
+    public function fingerprint(): ?string
+    {
+        $parts = [];
+        foreach ($this->list('', 3) as $f) {
+            $st = @stat($this->abs($f));
+            $parts[] = $f . ':' . ($st['size'] ?? '') . ':' . ($st['mtime'] ?? '');
+        }
+        sort($parts);
+        return sha1(implode("\n", $parts));
     }
 
     public function list(string $dir, int $maxDepth = 3): array

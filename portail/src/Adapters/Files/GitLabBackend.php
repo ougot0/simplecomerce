@@ -8,7 +8,7 @@ use SimpleCommerce\Adapters\RetryableConflict;
 use SimpleCommerce\Support\Http;
 
 /** GitLab (gitlab.com ou serveur privé) : un commit avec plusieurs actions. */
-final class GitLabBackend implements FileBackend
+final class GitLabBackend implements FileBackend, Fingerprinted
 {
     public function __construct(private string $project, private string $branch, private string $token, private string $baseUrl = 'https://gitlab.com')
     {
@@ -18,6 +18,12 @@ final class GitLabBackend implements FileBackend
     {
         $url = rtrim($this->baseUrl, '/') . '/api/v4/projects/' . rawurlencode($this->project) . $path;
         return Http::json('GitLab', $method, $url, ['PRIVATE-TOKEN' => $this->token], $body);
+    }
+
+    /** Dernier commit de la branche. */
+    public function fingerprint(): ?string
+    {
+        return $this->api('GET', '/repository/branches/' . rawurlencode($this->branch))['data']['commit']['id'] ?? null;
     }
 
     public function test(): array

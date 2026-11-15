@@ -8,7 +8,7 @@ use SimpleCommerce\Adapters\RetryableConflict;
 use SimpleCommerce\Support\Http;
 
 /** GitHub : lecture par l'API Contents, écriture d'un seul commit par l'API Git Data. */
-final class GitHubBackend implements FileBackend
+final class GitHubBackend implements FileBackend, Fingerprinted
 {
     private ?array $tree = null;
 
@@ -29,6 +29,12 @@ final class GitHubBackend implements FileBackend
     private static function enc(string $p): string
     {
         return implode('/', array_map('rawurlencode', explode('/', $p)));
+    }
+
+    /** Dernier commit de la branche. */
+    public function fingerprint(): ?string
+    {
+        return $this->api('GET', '/branches/' . self::enc($this->branch))['commit']['sha'] ?? null;
     }
 
     public function test(): array

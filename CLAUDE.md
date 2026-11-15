@@ -309,6 +309,14 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 15/11/2026 : « mon copain a modifié son site sur GitHub, ça n'apparaît pas dans Simple Commerce ; si c'est modifié ailleurs il
+  faut que ce soit vu ; et actualise le site toi-même ». Cause : les rubriques d'un site n'étaient relues qu'à la liaison et
+  une fois par version du portail (et la version en ligne chez OVH datait d'avant). **Version Y** : interface
+  `Files\Fingerprinted` (GitHub/GitLab/Bitbucket = dernier commit de la branche ; SFTP/local = noms+tailles+dates sur
+  3 niveaux) ; `Sites::refreshIfNew` vérifie l'empreinte au plus toutes les 2 min à l'ouverture du site/d'une rubrique et
+  relit le site si elle a changé (FTP sans empreinte : relu toutes les 30 min) ; extras `readSig/readCheck/readAt`.
+  Testé dans la démo (liste ajoutée à la main dans les fichiers → rubrique apparue seule). **Mise en ligne automatique
+  réactivée** à sa demande (envoi à chaque push de `portail/`).
 - 26/10/2026 (9) : il veut ajouter les secrets tout de suite. `portail-ovh.yml` mis **en pause** (seulement « Run workflow »,
   plus d'envoi à chaque push — l'autre session pousse aussi sur la branche) jusqu'à la réponse d'Apple ; **à remettre ensuite**
   (bloc `push` noté en tête du fichier). Secret `OVH_FTP_PASSWORD` créé par lui le 26/10 ; serveur `ftp.cluster131.hosting.ovh.net` écrit dans le fichier, identifiant `coumaoq`.

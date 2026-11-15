@@ -8,7 +8,7 @@ use SimpleCommerce\Adapters\RetryableConflict;
 use SimpleCommerce\Support\Http;
 
 /** Bitbucket Cloud : écriture de plusieurs fichiers en un commit par l'API /src. */
-final class BitbucketBackend implements FileBackend
+final class BitbucketBackend implements FileBackend, Fingerprinted
 {
     public function __construct(private string $workspace, private string $repo, private string $branch, private string $token, private ?string $username = null)
     {
@@ -22,6 +22,12 @@ final class BitbucketBackend implements FileBackend
     private function auth(): array
     {
         return ['Authorization' => $this->username ? 'Basic ' . base64_encode($this->username . ':' . $this->token) : 'Bearer ' . $this->token];
+    }
+
+    /** Dernier commit de la branche. */
+    public function fingerprint(): ?string
+    {
+        return Http::json('Bitbucket', 'GET', $this->base() . '/refs/branches/' . rawurlencode($this->branch), $this->auth())['data']['target']['hash'] ?? null;
     }
 
     public function test(): array

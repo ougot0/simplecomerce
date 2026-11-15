@@ -6,6 +6,7 @@ namespace SimpleCommerce\Services;
 use SimpleCommerce\Adapters\Adapter;
 use SimpleCommerce\Adapters\AdapterError;
 use SimpleCommerce\Adapters\Files\FileSiteAdapter;
+use SimpleCommerce\Adapters\Files\Fingerprinted;
 use SimpleCommerce\Adapters\Files\SftpBackend;
 use SimpleCommerce\Adapters\Registry;
 use SimpleCommerce\Content\ContentSchema;
@@ -127,10 +128,34 @@ final class Sites
      */
     public static function refreshIfNew(array $site): bool
     {
-        if ((self::extras($site)['readWith'] ?? '') === SC_VERSION || !Repo::schema($site['id'])) {
+        if (!Repo::schema($site['id'])) {
             return false;
         }
-        self::setExtras($site, ['readWith' => SC_VERSION]); // une seule tentative par version, même si la lecture échoue
+        $x = self::extras($site);
+        $now = time();
+        $newVersion = ($x['readWith'] ?? '') !== SC_VERSION;
+        $files = in_array($site['connector'], Translation::FILE_CONNECTORS, true);
+        // Site modifié ailleurs (le développeur sur GitHub, un envoi FTP…) : vérifié au plus toutes les 2 minutes.
+        if (!$newVersion && (!$files || $now - (int) ($x['readCheck'] ?? 0) < 120)) {
+            return false;
+        }
+        $sig = null;
+        if ($files) {
+            try {
+                $sig = self::with($site, fn (Adapter $a) => $a instanceof FileSiteAdapter && $a->backend instanceof Fingerprinted ? $a->backend->fingerprint() : null);
+            } catch (\Throwable $e) {
+                self::setExtras($site, ['readCheck' => $now]); // site injoignable : on réessaiera plus tard
+                return false;
+            }
+        }
+        $changed = $sig !== null ? $sig !== ($x['readSig'] ?? null)
+            : $files && $now - (int) ($x['readAt'] ?? 0) >= 1800; // sans empreinte (FTP) : relu toutes les 30 minutes
+        if (!$newVersion && !$changed) {
+            self::setExtras($site, ['readCheck' => $now]);
+            return false;
+        }
+        // Une seule tentative par version et par état du site, même si la lecture échoue.
+        self::setExtras($site, ['readWith' => SC_VERSION, 'readSig' => $sig, 'readCheck' => $now, 'readAt' => $now]);
         self::rediscover($site, null);
         return true;
     }

@@ -14,7 +14,7 @@ use SimpleCommerce\Adapters\RetryableConflict;
  * Écriture atomique : fichier temporaire puis renommage, pour que le site ne lise jamais un fichier à moitié écrit.
  * L'empreinte du serveur est mémorisée à la première connexion et vérifiée ensuite.
  */
-final class SftpBackend implements FileBackend
+final class SftpBackend implements FileBackend, Fingerprinted
 {
     private ?SFTP $sftp = null;
     public ?string $seenFingerprint = null;
@@ -112,6 +112,33 @@ final class SftpBackend implements FileBackend
             throw new AdapterError('network', 'Lecture impossible sur le serveur.', $full);
         }
         return ['content' => $content, 'version' => hash('sha256', $content)];
+    }
+
+    /** Noms, tailles et dates des fichiers (3 niveaux de dossiers). */
+    public function fingerprint(): ?string
+    {
+        $sftp = $this->connect();
+        $parts = [];
+        $walk = function (string $rel, int $depth) use (&$walk, &$parts, $sftp) {
+            $items = $sftp->rawlist($this->abs($rel));
+            foreach (is_array($items) ? $items : [] as $name => $attr) {
+                $name = (string) $name;
+                if ($name === '' || $name[0] === '.' || $name === 'node_modules') {
+                    continue;
+                }
+                $child = $rel === '' ? $name : "$rel/$name";
+                if (($attr['type'] ?? 0) === NET_SFTP_TYPE_DIRECTORY) {
+                    if ($depth < 3) {
+                        $walk($child, $depth + 1);
+                    }
+                } else {
+                    $parts[] = $child . ':' . ($attr['size'] ?? '') . ':' . ($attr['mtime'] ?? '');
+                }
+            }
+        };
+        $walk('', 1);
+        sort($parts);
+        return sha1(implode("\n", $parts));
     }
 
     public function list(string $dir, int $maxDepth = 3): array
