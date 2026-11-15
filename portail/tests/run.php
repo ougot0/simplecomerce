@@ -262,6 +262,9 @@ test('Version anglaise', function () {
 });
 
 test('Confirmation de l\'adresse ouverte dans un autre navigateur', function () {
+    if (!\SimpleCommerce\Schema::isInstalled()) {
+        \SimpleCommerce\Schema::install(); // installation toute neuve (vérifications faites par GitHub avant la mise en ligne)
+    }
     $R = \SimpleCommerce\Repo::class;
     $A = \SimpleCommerce\Services\Auth::class;
     $u = $R::createUser('v-' . bin2hex(random_bytes(4)) . '@test.invalid', 'Val', 'mot-de-passe-9');
