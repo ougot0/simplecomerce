@@ -316,7 +316,9 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
   3 niveaux) ; `Sites::refreshIfNew` vérifie l'empreinte au plus toutes les 2 min à l'ouverture du site/d'une rubrique et
   relit le site si elle a changé (FTP sans empreinte : relu toutes les 30 min) ; extras `readSig/readCheck/readAt`.
   Testé dans la démo (liste ajoutée à la main dans les fichiers → rubrique apparue seule). **Mise en ligne automatique
-  réactivée** à sa demande (envoi à chaque push de `portail/`).
+  réactivée** à sa demande (envoi à chaque push de `portail/`). 1er envoi raté (un test supposait la base déjà créée ; corrigé),
+  2e envoi **réussi** (4 185 fichiers vers `/home/coumaoq/simplecommerce/public/`, simplecommercess.com répond 200) :
+  **version Y en ligne chez lui le 15/11/2026**, sans zip.
 - 26/10/2026 (9) : il veut ajouter les secrets tout de suite. `portail-ovh.yml` mis **en pause** (seulement « Run workflow »,
   plus d'envoi à chaque push — l'autre session pousse aussi sur la branche) jusqu'à la réponse d'Apple ; **à remettre ensuite**
   (bloc `push` noté en tête du fichier). Secret `OVH_FTP_PASSWORD` créé par lui le 26/10 ; serveur `ftp.cluster131.hosting.ovh.net` écrit dans le fichier, identifiant `coumaoq`.
