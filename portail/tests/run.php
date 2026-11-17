@@ -639,5 +639,31 @@ test('Site fait main avec dossier data : réglages, cases oui/non, vente en bout
     check(substr($page2, 0, $card2['start']) . $on . substr($page2, $card2['end']) === $page, 'remis en ligne : page identique à l\'origine');
 });
 
+test('Tout le texte d\'une page : boutons, liens, menu, tableaux', function () {
+    $H = \SimpleCommerce\Content\HtmlCards::class;
+    $page = "<html><body><nav><a href=\"index.html\">Accueil</a><a href=\"#carte\">La carte</a><a href=\"panier.html\">Panier <span class=\"n\">0</span></a></nav>\n"
+        . "<h1>Bienvenue chez nous</h1><p>Une pâtisserie de quartier, tout est fait maison.</p>\n"
+        . "<a class=\"btn\" href=\"https://www.instagram.com/x/\">Suivre sur Instagram</a>\n"
+        . "<table><tr><td>Lundi</td><td>9h – 19h</td></tr></table><ul><li>Sans lactose</li></ul></body></html>\n";
+    $t = $H::texts($page);
+    $by = [];
+    foreach ($t as $k => $x) {
+        $by[$H::textValue($page, $x)] = $k;
+    }
+    check(isset($by['Accueil'], $by['La carte'], $by['Suivre sur Instagram'], $by['Lundi'], $by['9h – 19h'], $by['Sans lactose'], $by['https://www.instagram.com/x/']), 'menu, bouton, adresse du lien, tableau et liste proposés');
+    check(isset($by['Bienvenue chez nous']) && str_starts_with($by['Bienvenue chez nous'], 'titre') && str_starts_with($by['Une pâtisserie de quartier, tout est fait maison.'], 'texte'), 'titres et paragraphes gardent leurs noms d\'avant');
+    check(!array_filter(array_keys($by), fn ($v) => str_contains($v, 'Panier')), 'texte mêlé à un compteur du site laissé tel quel');
+    $edit = function ($html, $key, $value) use ($H) {
+        [$a, $b, $txt] = $H::textEdit($html, $H::texts($html)[$key], $value);
+        return substr($html, 0, $a) . $txt . substr($html, $b);
+    };
+    $p2 = $edit($page, $by['Suivre sur Instagram'], 'Nous suivre');
+    $p2 = $edit($p2, $by['https://www.instagram.com/x/'], 'https://www.instagram.com/y/');
+    $p2 = $edit($p2, $by['Lundi'], 'Lun.');
+    check(str_contains($p2, '<a class="btn" href="https://www.instagram.com/y/">Nous suivre</a>') && str_contains($p2, '<td>Lun.</td>'), 'bouton, lien et tableau modifiés sur place');
+    $p3 = $edit($page, $by['https://www.instagram.com/x/'], 'javascript:alert(1)');
+    check($p3 === $page, 'adresse « javascript: » refusée');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

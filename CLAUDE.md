@@ -309,6 +309,15 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (11) : « tout ce qui est écrit dans le site doit être modifiable : textes, boutons, produits, tout ». **Version Z11** :
+  `HtmlCards::texts` propose désormais (hors fiches de produits) : **boutons et liens** (`boutonN`, libellé « Menu / Bouton /
+  Lien »), **adresse des liens** (`lienN`, « javascript:/data: » refusés, pas les ancres `#`), et les petits textes
+  (`motN` : listes, tableaux, horaires, légendes, étiquettes de formulaire, div/span feuilles), 400 max par page.
+  Clés `titreN/texteN/photoN` inchangées (mêmes numéros qu'avant). Un texte mêlé à d'autres balises (« Panier <span>0</span> »)
+  n'est pas proposé en entier (ses morceaux le sont) pour ne pas casser ce que le code du site met à jour ; jamais deux fois
+  le même texte (`insideAny`). Testé sur une copie de Bakers (22 boutons, 5 liens, 36 textes en plus) et dans la démo
+  (bouton modifié et publié). Restent non modifiables : textes écrits dans les fichiers PHP et ceux fabriqués par le JavaScript
+  du site (ex. listes générées depuis un fichier de données, déjà modifiables par leur fichier). 165 vérifications.
 - 17/11/2026 (10) : Bakers relié au bon dossier n'affichait plus que « Bakers produits » (l'ancienne rubrique « Ouverture du site »
   venait d'un autre site du dossier racine). Demande : « choisir ce qu'on vend en ligne ou seulement en boutique, quel que soit le
   paiement (Stripe, Square…) » + options manquantes. **Version Z10** : (1) site fait main (`index.html` à la racine, pas d'outil de

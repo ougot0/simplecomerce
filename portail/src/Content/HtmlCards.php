@@ -431,18 +431,29 @@ final class HtmlCards
      * @param array<int, array{0: int, 1: int}> $exclude zones déjà couvertes par des fiches
      * @return array<string, array{el: array, kind: string, label: string}>
      */
+    /** Petits textes de mise en page (listes, tableaux, légendes…) proposés en plus des titres et paragraphes. */
+    private const SMALL_TEXT = ['li', 'span', 'small', 'strong', 'em', 'b', 'td', 'th', 'dt', 'dd', 'blockquote', 'address', 'caption',
+        'label', 'legend', 'div', 'cite', 'time', 'q', 'h5', 'h6', 'summary'];
+
+    /**
+     * Tout ce qui s'écrit dans une page, hors fiches de produits : titres, paragraphes, photos, boutons et liens (texte et
+     * adresse), menu, listes, tableaux, légendes… Les clés « titreN / texteN / photoN » des premières versions sont gardées.
+     */
     public static function texts(string $html, array $exclude = []): array
     {
         $els = self::elements($html);
         $out = [];
-        $count = ['titre' => 0, 'texte' => 0, 'photo' => 0];
+        $picked = [];
+        $count = ['titre' => 0, 'texte' => 0, 'photo' => 0, 'bouton' => 0, 'lien' => 0, 'mot' => 0];
         foreach ($els as $id => $e) {
-            if (count($out) >= 60) {
+            if (count($out) >= 400) {
                 break;
             }
             $isHeading = (bool) preg_match('/^h[1-4]$/', $e['tag']);
             $bg = $e['tag'] !== 'img' ? self::bgUrl($e['attrs']) : null;
-            if (!$isHeading && !in_array($e['tag'], ['p', 'img', 'figcaption'], true) && $bg === null) {
+            $isButton = in_array($e['tag'], ['a', 'button'], true);
+            $isSmall = in_array($e['tag'], self::SMALL_TEXT, true);
+            if (!$isHeading && !$isButton && !$isSmall && !in_array($e['tag'], ['p', 'img', 'figcaption'], true) && $bg === null) {
                 continue;
             }
             foreach ($exclude as [$a, $b]) {
@@ -450,12 +461,17 @@ final class HtmlCards
                     continue 2;
                 }
             }
-            if (self::insideTag($els, $id, -1, ['nav', 'a', 'button', 'form', 'select', 'label', 'noscript', 'template', 'svg'])) {
+            if (self::insideTag($els, $id, -1, ['select', 'option', 'noscript', 'template', 'svg', 'script', 'style', 'head'])
+                || str_contains($e['attrs'], 'data-sc-') || self::insideAny($els, $id, $picked)) {
                 continue;
             }
+            $inButton = self::insideTag($els, $id, -1, ['a', 'button']);
+            $inNav = $e['tag'] === 'nav' || self::insideTag($els, $id, -1, ['nav', 'header']);
+            // Avant : seuls les titres, paragraphes et photos hors menu, liens, boutons et formulaires étaient proposés.
+            $old = !$isButton && !$isSmall && !self::insideTag($els, $id, -1, ['nav', 'a', 'button', 'form', 'label']);
             if ($e['tag'] === 'img' || $bg !== null) {
                 $src = $bg ?? self::attr($e['attrs'], 'src');
-                if (!$src || str_starts_with($src, 'data:') || preg_match('/\.svg(\?|$)|logo|icon|favicon/i', $src)) {
+                if (!$old || !$src || str_starts_with($src, 'data:') || preg_match('/\.svg(\?|$)|logo|icon|favicon/i', $src)) {
                     continue;
                 }
                 $alt = (string) ($bg !== null ? self::attr($e['attrs'], 'aria-label') : self::attr($e['attrs'], 'alt'));
@@ -467,14 +483,52 @@ final class HtmlCards
                 continue;
             }
             $t = self::text($html, $e);
-            if (mb_strlen($t) < 3) {
+            if ($old && mb_strlen($t) >= 3) {
+                $kind = $isHeading ? 'titre' : 'texte';
+                $out[$kind . (++$count[$kind])] = ['el' => $e, 'kind' => $kind, 'label' => ($isHeading ? 'Titre' : 'Texte') . ' : « ' . mb_strimwidth($t, 0, 50, '…') . ' »'];
+                $picked[$id] = true;
                 continue;
             }
-            $kind = $isHeading ? 'titre' : 'texte';
-            $key = $kind . (++$count[$kind]);
-            $out[$key] = ['el' => $e, 'kind' => $kind, 'label' => ($isHeading ? 'Titre' : 'Texte') . ' : « ' . mb_strimwidth($t, 0, 50, '…') . ' »'];
+            // Texte mêlé à d'autres balises (« Panier <span>0</span> », compteur rempli par le site) : chaque morceau à part,
+            // pour ne jamais casser ce que le code du site met à jour.
+            if (!preg_match('/\p{L}.*\p{L}/su', $t) || ($old && !$isButton) || array_filter($e['children'], fn ($c) => $els[$c]['tag'] !== 'br')) {
+                continue;
+            }
+            $short = mb_strimwidth($t, 0, 40, '…');
+            if ($isButton || $inButton) {
+                $where = $inNav ? 'Menu' : ($e['tag'] === 'button' || preg_match('/btn|button|bouton|cta/i', (string) self::attr($e['attrs'], 'class')) ? 'Bouton' : 'Lien');
+                $out['bouton' . (++$count['bouton'])] = ['el' => $e, 'kind' => 'bouton', 'label' => "$where : « $short »"];
+                $picked[$id] = true;
+                $a = $e['tag'] === 'a' ? $e : null;
+                if (!$a) {
+                    for ($p = $e['parent']; $p >= 0; $p = $els[$p]['parent']) {
+                        if ($els[$p]['tag'] === 'a') {
+                            $a = $els[$p];
+                            break;
+                        }
+                    }
+                }
+                $href = $a ? self::attr($a['attrs'], 'href') : null;
+                if ($href !== null && $href !== '' && !str_starts_with($href, '#') && !preg_match('/^\s*javascript:/i', $href)) {
+                    $out['lien' . (++$count['lien'])] = ['el' => $a, 'kind' => 'href', 'label' => "Adresse du lien « $short »"];
+                }
+                continue;
+            }
+            $out['mot' . (++$count['mot'])] = ['el' => $e, 'kind' => 'mot', 'label' => ($inNav ? 'En-tête' : 'Texte') . " : « $short »"];
+            $picked[$id] = true;
         }
         return $out;
+    }
+
+    /** L'élément est-il à l'intérieur d'un élément déjà proposé (pour ne pas modifier deux fois le même texte) ? */
+    private static function insideAny(array $els, int $id, array $picked): bool
+    {
+        for ($p = $els[$id]['parent']; $p >= 0; $p = $els[$p]['parent']) {
+            if (isset($picked[$p])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function textValue(string $html, array $t): string
@@ -482,6 +536,7 @@ final class HtmlCards
         return match ($t['kind']) {
             'img' => (string) self::attr($t['el']['attrs'], 'src'),
             'bg' => (string) self::bgUrl($t['el']['attrs']),
+            'href' => (string) self::attr($t['el']['attrs'], 'href'),
             default => self::text($html, $t['el']),
         };
     }
@@ -490,6 +545,14 @@ final class HtmlCards
     public static function textEdit(string $html, array $t, string $value): array
     {
         $el = $t['el'];
+        if ($t['kind'] === 'href') {
+            // Adresse d'un lien : jamais de « javascript: » ni de « data: ».
+            if (preg_match('/^\s*(javascript|data|vbscript):/i', $value) || preg_match('/[\s"\'<>]/', trim($value))) {
+                $value = (string) self::attr($el['attrs'], 'href');
+            }
+            $attrs = preg_replace_callback('/(\shref\s*=\s*)("[^"]*"|\'[^\']*\'|[^\s>]+)/i', fn ($m) => $m[1] . '"' . htmlspecialchars(trim($value), ENT_QUOTES) . '"', $el['attrs'], 1);
+            return [$el['start'] + 2, $el['start'] + 2 + strlen($el['attrs']), $attrs];
+        }
         if ($t['kind'] === 'img') {
             $attrs = preg_replace_callback('/(\ssrc\s*=\s*)("[^"]*"|\'[^\']*\'|[^\s>]+)/i', fn ($m) => $m[1] . '"' . htmlspecialchars($value, ENT_QUOTES) . '"', $el['attrs'], 1);
             return [$el['start'], $el['openEnd'], '<img' . $attrs . '>'];

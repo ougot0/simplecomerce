@@ -331,7 +331,7 @@ final class Infer
                             if (str_starts_with($fl['key'], 'photo')) {
                                 $fl['type'] = 'image';
                                 $fl['aspect'] = 'libre';
-                            } elseif (str_starts_with($fl['key'], 'titre')) {
+                            } elseif (preg_match('/^(titre|bouton|lien)\d/', $fl['key'])) {
                                 $fl['type'] = 'text';
                             } elseif (in_array($fl['type'], ['url', 'date', 'email', 'phone', 'select', 'image', 'price'], true)) {
                                 $fl['type'] = 'textarea';
