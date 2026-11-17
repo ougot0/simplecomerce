@@ -35,8 +35,15 @@ final class SiteController
     {
         $ok = Req::query('ok', 20);
         $flash = Session::takeFlash();
-        if (!empty(Sites::extras($ctx['site'])['wrongFolder'])) {
-            $flash[] = ['kind' => 'error', 'text' => Sites::extras($ctx['site'])['wrongFolder']];
+        $x = Sites::extras($ctx['site']);
+        foreach (['wrongFolder', 'liveMismatch'] as $k) {
+            if (!empty($x[$k])) {
+                $flash[] = ['kind' => 'error', 'text' => $x[$k]];
+            }
+        }
+        if (!empty($x['folderNotice'])) {
+            $flash[] = ['kind' => 'ok', 'text' => $x['folderNotice']];
+            Sites::setExtras($ctx['site'], ['folderNotice' => null]);
         }
         if ($ok !== '' && array_key_exists($ok, self::FLASH)) {
             $flash[] = ['kind' => $ok === 'brouillon' || $ok === 'programme' ? 'warn' : 'ok', 'text' => self::FLASH[$ok] ?? ($ok === 'visibilite' ? 'Enregistré. ' : 'Publié sur votre site. ') . Sites::delayText($ctx['site'])];
@@ -47,6 +54,8 @@ final class SiteController
 
     public static function home(array $p): Response
     {
+        $ctx = Access::site($p['slug']);
+        Sites::liveCheckIfDue($ctx['site']);
         $ctx = Access::site($p['slug']);
         if (Sites::refreshIfNew($ctx['site'])) {
             $ctx = Access::site($p['slug']);

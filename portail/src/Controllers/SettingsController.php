@@ -336,6 +336,7 @@ final class SettingsController
             $saved = Repo::site($site['id']) ?? $site;
             Sites::setExtras($saved, ['readSig' => null, 'readCheck' => time()]);
             Sites::rediscover(Repo::site($site['id']) ?? $saved, $v['user']['id']);
+            Sites::liveCheckIfDue(Repo::site($site['id']) ?? $saved, true);
         }
         Session::flash($t['report']['ok'] ? 'Enregistré. La connexion fonctionne.' : 'Enregistré, mais la connexion ne fonctionne pas encore.', $t['report']['ok'] ? 'ok' : 'warn');
         return Response::redirect("/s/{$site['slug']}/reglages#connexion");

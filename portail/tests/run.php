@@ -593,5 +593,15 @@ test('Bouton « Ouverte » du site : bandeau et boutons bloqués', function () {
     check(!str_contains((string) file_get_contents("$dir/index.html"), 'data-sc-fermeture'), 'recocher « Ouverte » retire le bandeau');
 });
 
+test('Le dossier relié est-il celui affiché en ligne ?', function () {
+    $L = \SimpleCommerce\Services\LiveCheck::class;
+    $page = '<html><head><title>Bakers</title><script>var x=1</script></head><body><h1>Bienvenue chez Bakers</h1><p>Pâtisserie et coffee shop, Paris 17. Fait maison, 100 % sans lactose.</p><button>Ajouter au panier</button></body></html>';
+    $closed = \SimpleCommerce\Adapters\Files\FileSiteAdapter::closureBlock($page, 'Pré-ouverture');
+    $other = '<html><body><h1>Restaurant Zohar</h1><p>Cuisine méditerranéenne immersive, réservez votre table dès maintenant.</p></body></html>';
+    check($L::same($page, $closed), 'même site reconnu, avec ou sans bandeau de fermeture');
+    check(!$L::same($page, $other), 'un autre site n\'est pas confondu');
+    check($L::same(str_replace('Bienvenue', 'Bienvenue <?php echo "x"; ?>', $page), $page), 'page PHP comparée à sa page en ligne');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

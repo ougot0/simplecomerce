@@ -309,6 +309,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (8) : capture : portail « fermé », mais commandesbakers.com inchangé (même le drapeau `ouverte` du développeur sans
+  effet) → le portail modifie très probablement **un autre dossier** que celui affiché par le domaine. « Règle le problème ».
+  **Version Z8** : `Services\LiveCheck` compare la page d'accueil en ligne (`public_url`, 3 redirections max) à celle du dossier
+  relié (texte visible, `similar_text` ≥ 70 %) ; si différent, parcourt les dossiers du compte SFTP/FTP (racine `/`, 2 niveaux)
+  et, si **un seul** contient la page en ligne, change `remoteRoot` tout seul + relit le site + message vert ; sinon message
+  rouge `liveMismatch` sur chaque page du site. `Sites::liveCheckIfDue` : à l'ouverture du site (1×/6 h et à chaque version)
+  et après Enregistrer dans Réglages → Connexion. Pas testé contre son vrai hébergement (accès refusé). 150 vérifications.
 - 17/11/2026 (7) : toujours rien sur commandesbakers.com (« ça marche pas » ; « il n'y a que le bouton ouvrir »). **Version Z7** :
   bandeau et versions posés aussi dans les **fichiers PHP** qui contiennent `<body>` (dont un en-tête commun), hors
   api/admin/vendor (`pageFiles()`), au cas où la page en ligne ne soit pas un `.html` ; et dans la rubrique ouvert/fermé,

@@ -170,6 +170,32 @@ final class Sites
         return true;
     }
 
+    /**
+     * Vérifie (au plus toutes les 6 heures, et après chaque mise à jour du portail) que le dossier relié est bien celui
+     * qu'affiche l'adresse du site ; se corrige tout seul si le bon dossier est trouvé, sinon prévient sur chaque page.
+     */
+    public static function liveCheckIfDue(array $site, bool $force = false): void
+    {
+        $x = self::extras($site);
+        if (!$force && ($x['liveWith'] ?? '') === SC_VERSION && time() - (int) ($x['liveAt'] ?? 0) < 6 * 3600) {
+            return;
+        }
+        self::setExtras($site, ['liveWith' => SC_VERSION, 'liveAt' => time()]);
+        $r = LiveCheck::run($site);
+        $host = (string) (parse_url((string) $site['public_url'], PHP_URL_HOST) ?: 'votre site');
+        if ($r['state'] === 'fixed') {
+            $fresh = Repo::site($site['id']) ?? $site;
+            self::setExtras($fresh, ['liveMismatch' => null, 'readSig' => null, 'readCheck' => 0,
+                'folderNotice' => "Simple Commerce a trouvé le dossier qui est vraiment affiché sur $host ({$r['folder']}) et s'y est relié : vos modifications y seront désormais publiées. Refaites la dernière modification si elle n'apparaît pas."]);
+            self::rediscover(Repo::site($site['id']) ?? $fresh, null);
+        } elseif ($r['state'] === 'mismatch') {
+            self::setExtras($site, ['liveMismatch' => "Attention : les fichiers que Simple Commerce modifie ne sont pas ceux affichés sur $host. Vos modifications n'apparaissent donc pas en ligne. "
+                . 'Dans Réglages → Connexion, indiquez le dossier exact du site (chez OVH : onglet Multisite, colonne « Dossier racine »), ou reliez le site par le service qui le met en ligne (GitHub…).']);
+        } elseif ($r['state'] === 'ok' && !empty($x['liveMismatch'])) {
+            self::setExtras($site, ['liveMismatch' => null]);
+        }
+    }
+
     /** Clé publique du site (scripts à coller : catalogue, statistiques, avis). Créée à la première demande. */
     public static function publicKey(array $site): string
     {
