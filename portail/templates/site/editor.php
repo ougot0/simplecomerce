@@ -54,6 +54,19 @@ $scheduledLocal = !empty($draft['publish_at']) ? date('Y-m-d\TH:i', strtotime($d
         <?php if ($draft): ?>
         <div class="notice notice-warn"><p><?= $draft['publish_at'] ? 'Version programmée : elle sera publiée automatiquement le ' . e(Text::date($draft['publish_at'], false, true)) . ' à ' . e(date('G \h i', strtotime($draft['publish_at']))) . '.' : 'Vous modifiez un brouillon : il n\'est pas encore visible sur votre site.' ?></p></div>
         <?php endif ?>
+        <?php if (($flag = \SimpleCommerce\Controllers\EditorController::openFlag($section)) !== null):
+            $closing = (bool) preg_match('/(ferme|closed)/i', $flag);
+            $isClosed = $closing ? (($values[$flag] ?? false) === true) : (($values[$flag] ?? true) === false); ?>
+        <div class="open-switch">
+            <p class="open-switch-state"><?= $isClosed ? '<strong>Votre site est fermé.</strong> Vos visiteurs voient le message ci-dessous et ne peuvent pas commander.' : '<strong>Votre site est ouvert.</strong> Vos visiteurs peuvent commander.' ?></p>
+            <?php if ($isClosed): ?>
+            <button class="btn btn-primary" type="submit" name="basculer" value="ouvrir"><?= icon('check') ?> Rouvrir le site</button>
+            <?php else: ?>
+            <button class="btn btn-danger" type="submit" name="basculer" value="fermer">Fermer le site</button>
+            <?php endif ?>
+            <p class="help">Fermer affiche le message ci-dessous en haut de toutes vos pages et bloque les boutons pour commander.</p>
+        </div>
+        <?php endif ?>
         <?php if ($error): ?>
         <div class="notice notice-error" role="alert"><p><?= e($error) ?></p><?php if ($conflict): ?><p><a href="">Recharger la page</a></p><?php endif ?></div>
         <?php endif ?>

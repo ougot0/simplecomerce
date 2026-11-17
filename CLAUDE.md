@@ -309,6 +309,12 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (7) : toujours rien sur commandesbakers.com (« ça marche pas » ; « il n'y a que le bouton ouvrir »). **Version Z7** :
+  bandeau et versions posés aussi dans les **fichiers PHP** qui contiennent `<body>` (dont un en-tête commun), hors
+  api/admin/vendor (`pageFiles()`), au cas où la page en ligne ne soit pas un `.html` ; et dans la rubrique ouvert/fermé,
+  encadré « Votre site est ouvert/fermé » + gros bouton **« Fermer le site » / « Rouvrir le site »** (`basculer`,
+  `EditorController::openFlag`). Testé dans la démo (site `ouvtest`). Cause exacte chez lui toujours inconnue : il a refusé
+  l'accès réseau à commandesbakers.com. 147 vérifications.
 - 17/11/2026 (6) : il utilise le bouton « Ouverte » de la rubrique « Ouverture du site » (réglage écrit par le développeur), pas
   Réglages → Fermeture. **Version Z6** : `updateSingleton` d'une rubrique `isOpenSwitch` pose/retire aussi le bandeau et le
   blocage des boutons (`closureWrites`, partagé avec `setStatus`), message = premier champ texte de la rubrique ; clé

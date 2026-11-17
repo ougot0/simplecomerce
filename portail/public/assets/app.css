@@ -2152,3 +2152,8 @@ input.short {
 .chip{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:inherit;font-size:.86rem;cursor:pointer}
 .chip:hover{border-color:var(--ink)}
 .chip svg{width:14px;height:14px}
+
+/* Rubrique « ouvert / fermé » : gros bouton Fermer / Rouvrir */
+.open-switch{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-2);margin-bottom:16px}
+.open-switch-state{margin:0}
+.open-switch .btn{align-self:flex-start}

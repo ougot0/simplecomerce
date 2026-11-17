@@ -514,7 +514,7 @@ final class FileSiteAdapter implements Adapter
         foreach ($writes as $i => $w) {
             $byPath[$w['path']] = $i;
         }
-        foreach (array_slice($this->htmlPages(), 0, 40) as $page) {
+        foreach ($this->pageFiles(40) as $page) {
             if (isset($byPath[$page])) {
                 $current = $writes[$byPath[$page]]['content'];
             } else {
@@ -1179,9 +1179,9 @@ final class FileSiteAdapter implements Adapter
     private function closureWrites(?string $message): array
     {
         $writes = [];
-        foreach (array_slice($this->htmlPages(), 0, 200) as $page) {
+        foreach ($this->pageFiles(200) as $page) {
             $raw = $this->backend->read($page);
-            if (!$raw) {
+            if (!$raw || ($message !== null && !preg_match('#<body\b#i', $raw['content']))) {
                 continue;
             }
             $this->versions[$page] = $raw['version'];
@@ -1191,6 +1191,19 @@ final class FileSiteAdapter implements Adapter
             }
         }
         return $writes;
+    }
+
+    /**
+     * Fichiers qui produisent les pages du site : pages HTML, et fichiers PHP qui écrivent la page (y compris un en-tête
+     * commun « header.php » inclus par toutes les pages) — on y repère la balise <body>.
+     * @return string[]
+     */
+    private function pageFiles(int $max): array
+    {
+        $files = array_values(array_filter($this->backend->list('', 3), fn ($f) => preg_match('/\.(html?|php)$/i', $f) && !preg_match(self::SKIP_SCAN, $f)
+            && !preg_match('#(^|/)(api|admin|vendor|wp-admin|wp-includes|cgi-bin)/#i', $f)));
+        usort($files, fn ($a, $b) => [!preg_match(self::HOME_PAGE, $a), substr_count($a, '/'), $a] <=> [!preg_match(self::HOME_PAGE, $b), substr_count($b, '/'), $b]);
+        return array_slice($files, 0, $max);
     }
 
     /** Ajoute (message) ou retire (null) le bandeau de fermeture d'une page, sans toucher au reste. */

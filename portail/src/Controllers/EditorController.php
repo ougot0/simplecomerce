@@ -151,6 +151,20 @@ final class EditorController
         return $t ? $t->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z') : null;
     }
 
+    /** Interrupteur « ouvert / fermé » d'une rubrique écrite par le développeur (sinon null). */
+    public static function openFlag(array $section): ?string
+    {
+        if (!\SimpleCommerce\Adapters\Files\FileSiteAdapter::isOpenSwitch($section)) {
+            return null;
+        }
+        foreach ($section['fields'] as $f) {
+            if ($f['type'] === 'boolean' && preg_match('/(open|ouvert|ferme|closed|actif|enabled|status)/i', $f['key'])) {
+                return $f['key'];
+            }
+        }
+        return null;
+    }
+
     public static function save(array $p): Response
     {
         $ctx = Access::site($p['slug']);
@@ -166,6 +180,13 @@ final class EditorController
         $mode = in_array(Req::str('mode'), ['draft', 'schedule'], true) ? Req::str('mode') : 'publish';
         $raw = $_POST['data'] ?? [];
         $input = FormInput::coerce($section['fields'], is_array($raw) ? $raw : []);
+        // Boutons « Fermer le site » / « Rouvrir le site » d'une rubrique ouvert / fermé : ils règlent l'interrupteur.
+        $toggle = Req::str('basculer', 10);
+        if (in_array($toggle, ['fermer', 'ouvrir'], true) && ($flag = self::openFlag($section)) !== null) {
+            $closing = (bool) preg_match('/(ferme|closed)/i', $flag);
+            $input[$flag] = $toggle === 'fermer' ? $closing : !$closing;
+            $mode = 'publish';
+        }
         $fingerprint = Req::str('fingerprint', 64);
         $back = fn (array $extra, int $status = 422) => self::editor($ctx, $section, $extra + ['entryId' => $entryId, 'draft' => $draft, 'fingerprint' => $fingerprint, 'values' => $input + ($extra['values'] ?? [])], $status);
 
