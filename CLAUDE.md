@@ -309,6 +309,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 : **grave** — un de ses sites (« Commandesbakers ») relié par SFTP au dossier de **tout l'hébergement** affichait les
+  rubriques de ses 5 sites (restaurant, architecte, Ougot…) : risque d'écrire sur un autre site. **Version Z** :
+  `FileSiteAdapter::siteFolders()` (pas de page d'accueil à la racine + ≥ 2 sous-dossiers ayant chacun leur index) →
+  `init()` lève `AdapterError('several_sites')` : rien n'est lu ni écrit, la liaison est refusée (test en échec) ;
+  `Sites::rediscover` vide alors les rubriques du site déjà relié et note `extras.wrongFolder` (message rouge sur chaque page
+  du site : « indiquez le dossier de ce site dans Réglages → Connexion »). Enregistrer la connexion relit le site tout de
+  suite. Corrigé au passage : `$v` (visiteur) écrasé par la boucle dans `SettingsController::connection`. 134 vérifications.
 - 15/11/2026 : « mon copain a modifié son site sur GitHub, ça n'apparaît pas dans Simple Commerce ; si c'est modifié ailleurs il
   faut que ce soit vu ; et actualise le site toi-même ». Cause : les rubriques d'un site n'étaient relues qu'à la liaison et
   une fois par version du portail (et la version en ligne chez OVH datait d'avant). **Version Y** : interface

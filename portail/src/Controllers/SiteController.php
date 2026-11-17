@@ -35,6 +35,9 @@ final class SiteController
     {
         $ok = Req::query('ok', 20);
         $flash = Session::takeFlash();
+        if (!empty(Sites::extras($ctx['site'])['wrongFolder'])) {
+            $flash[] = ['kind' => 'error', 'text' => Sites::extras($ctx['site'])['wrongFolder']];
+        }
         if ($ok !== '' && array_key_exists($ok, self::FLASH)) {
             $flash[] = ['kind' => $ok === 'brouillon' || $ok === 'programme' ? 'warn' : 'ok', 'text' => self::FLASH[$ok] ?? ($ok === 'visibilite' ? 'Enregistré. ' : 'Publié sur votre site. ') . Sites::delayText($ctx['site'])];
         }

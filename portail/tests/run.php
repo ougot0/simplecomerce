@@ -497,5 +497,22 @@ test('WooCommerce : produit simple qui reçoit des déclinaisons', function () {
     }
 });
 
+test('Dossier qui contient plusieurs sites', function () {
+    $dir = sys_get_temp_dir() . '/sc-hebergement-' . bin2hex(random_bytes(4));
+    $card = '<main>' . str_repeat('<article><h3>Gâteau</h3><span class="price">4 €</span></article>', 2) . '</main>';
+    foreach (['www', 'ougot', 'restaurant'] as $d) {
+        @mkdir("$dir/$d", 0777, true);
+        file_put_contents("$dir/$d/index.html", $card);
+    }
+    $open = fn ($root) => new FileSiteAdapter(new LocalBackend($root), ['contentDir' => 'auto', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => '', 'webRoot' => true]);
+    $t = $open($dir)->test();
+    check(!$t['ok'] && str_contains(json_encode($t['checks'], JSON_UNESCAPED_UNICODE), 'plusieurs sites'), 'dossier de tout l\'hébergement refusé à la liaison');
+    check(throws(fn () => $open($dir)->discover()), 'rien n\'est lu dans le dossier de plusieurs sites');
+    check($open("$dir/ougot")->test()['ok'], 'le dossier d\'un seul site est accepté');
+    @mkdir("$dir/ougot/blog", 0777, true);
+    file_put_contents("$dir/ougot/blog/index.html", $card);
+    check($open("$dir/ougot")->test()['ok'], 'un site avec un sous-dossier « blog » reste accepté');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

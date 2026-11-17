@@ -55,12 +55,21 @@ final class FileSiteAdapter implements Adapter
             return;
         }
         $this->resolved = true;
+        $files = $this->backend->list('', 3);
+        // Dossier qui contient plusieurs sites (le dossier principal d'un hébergement : www, autre-site…) : rien n'est lu
+        // ni écrit, sinon les pages et les options des autres sites se mélangeraient à celui-ci.
+        $sites = self::siteFolders($files);
+        if (count($sites) >= 2) {
+            $this->resolved = false;
+            throw new AdapterError('several_sites', 'Ce site est relié à un dossier qui contient plusieurs sites (' . implode(', ', array_slice($sites, 0, 6))
+                . (count($sites) > 6 ? '…' : '') . '). Dans Réglages → Connexion, indiquez le dossier de ce site seulement (par exemple « /' . $sites[0]
+                . ' »), puis enregistrez.');
+        }
         $needContent = $this->options['contentDir'] === 'auto';
         $needMedia = $this->options['media']['dir'] === 'auto';
         if (!$needContent && !$needMedia) {
             return;
         }
-        $files = $this->backend->list('', 3);
         if ($needContent) {
             $found = '';
             foreach (self::CONTENT_DIRS as $dir) {
@@ -81,6 +90,25 @@ final class FileSiteAdapter implements Adapter
             $base = $this->options['webRoot'] ? '' : ($has('public') ? 'public' : ($has('static') ? 'static' : ''));
             $this->options['media'] = ['dir' => $base ? "$base/images/simplecommerce" : 'images/simplecommerce', 'publicPrefix' => '/images/simplecommerce'];
         }
+    }
+
+    /**
+     * Sous-dossiers qui sont chacun un site à part (avec leur propre page d'accueil), quand le dossier lui-même n'a pas
+     * de page d'accueil : c'est alors le dossier principal d'un hébergement qui contient plusieurs sites.
+     * @param string[] $files @return string[]
+     */
+    public static function siteFolders(array $files): array
+    {
+        if (array_filter($files, fn ($f) => !str_contains($f, '/') && preg_match(self::HOME_PAGE, $f))) {
+            return [];
+        }
+        $sites = [];
+        foreach ($files as $f) {
+            if (preg_match('#^([^/]+)/(?:[^/]+/)?(index|accueil|home)\.(html?|php)$#i', $f, $m) && !in_array($m[1], ['assets', 'images', 'img', 'css', 'js', 'admin', 'vendor', 'node_modules'], true)) {
+                $sites[$m[1]] = true;
+            }
+        }
+        return array_keys($sites);
     }
 
     /**

@@ -116,6 +116,16 @@ final class Sites
         try {
             $found = self::discover($site);
             Repo::saveSchema($site['id'], self::mergeSchema(Repo::schema($site['id']), $found['schema']), $by);
+            if (!empty(self::extras($site)['wrongFolder'])) {
+                self::setExtras($site, ['wrongFolder' => null]);
+            }
+        } catch (AdapterError $e) {
+            if ($e->codeName === 'several_sites') {
+                // Relié au dossier de tout l'hébergement : les rubriques des autres sites sont retirées tout de suite.
+                Repo::saveSchema($site['id'], ['version' => 1, 'sections' => []], $by);
+                self::setExtras($site, ['wrongFolder' => $e->userMessage]);
+            }
+            Log::warn('relecture des rubriques échouée', ['site' => $site['slug'], 'err' => $e]);
         } catch (\Throwable $e) {
             Log::warn('relecture des rubriques échouée', ['site' => $site['slug'], 'err' => $e]);
         }

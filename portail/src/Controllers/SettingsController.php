@@ -284,9 +284,9 @@ final class SettingsController
         // sinon on pourrait les faire envoyer à un autre serveur. Dans ce cas, il faut les retaper.
         $fresh = Registry::parse($site['connector'], $values, null);
         $moved = false;
-        foreach ($fresh['config'] as $k => $v) {
+        foreach ($fresh['config'] as $k => $val) {
             if (!in_array($k, ['hostPreset', 'hostFingerprint', 'publicKey', 'extras', 'contentDir', 'mediaDir', 'mediaPublicPrefix', 'remoteRoot', 'branch'], true)
-                && (string) $v !== (string) ($site['config'][$k] ?? '')) {
+                && (string) $val !== (string) ($site['config'][$k] ?? '')) {
                 $moved = true;
             }
         }
@@ -331,6 +331,12 @@ final class SettingsController
             Sites::storeSecrets($site['id'], $parsed['secrets'], $v['user']['id']);
         }
         Access::audit($v, 'connection_updated', ['fields' => $changed, 'ok' => $t['report']['ok']], $site['id']);
+        if ($t['report']['ok']) {
+            // Dossier ou accès changés : le contenu du site est relu tout de suite (rubriques des autres sites retirées).
+            $saved = Repo::site($site['id']) ?? $site;
+            Sites::setExtras($saved, ['readSig' => null, 'readCheck' => time()]);
+            Sites::rediscover(Repo::site($site['id']) ?? $saved, $v['user']['id']);
+        }
         Session::flash($t['report']['ok'] ? 'Enregistré. La connexion fonctionne.' : 'Enregistré, mais la connexion ne fonctionne pas encore.', $t['report']['ok'] ? 'ok' : 'warn');
         return Response::redirect("/s/{$site['slug']}/reglages#connexion");
     }
