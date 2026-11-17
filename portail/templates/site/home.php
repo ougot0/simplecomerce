@@ -34,10 +34,19 @@ $verbs = ['create' => 'ajouté', 'delete' => 'supprimé', 'reorder' => 'ordre mo
 <?php endif ?>
 
 <?php if (!empty($closure['closed'])): ?>
-<div class="notice notice-error closed-banner">
-    <p><?= icon('lock') ?> <strong>Votre site est fermé temporairement.</strong> Vos visiteurs voient : « <?= e($closure['message']) ?> »<?= $closure['reopenOn'] ? ' — réouverture le ' . e(Text::date($closure['reopenOn'], false, true)) : '' ?>.
-    <?= $role !== 'editor' ? '<a href="' . e($base) . '/reglages#fermeture">Rouvrir le site</a>' : 'Le propriétaire du site peut le rouvrir.' ?></p>
-</div>
+<form method="post" action="<?= e($base) ?>/reglages/fermeture?retour=accueil" class="notice notice-error closed-banner open-switch">
+    <?= csrf_field() ?>
+    <p><?= icon('lock') ?> <strong>Votre site est fermé.</strong> Vos visiteurs voient : « <?= e($closure['message']) ?> »<?= $closure['reopenOn'] ? ' — réouverture le ' . e(Text::date($closure['reopenOn'], false, true)) : '' ?>. Les boutons de commande sont bloqués.</p>
+    <?= $role !== 'editor' ? '<button class="btn btn-primary" type="submit" name="intent" value="open">Rouvrir le site</button>' : '<p class="small">Le propriétaire du site peut le rouvrir.</p>' ?>
+</form>
+<?php elseif (is_array($closure) && $role !== 'editor'): ?>
+<form method="post" action="<?= e($base) ?>/reglages/fermeture?retour=accueil" class="notice open-switch">
+    <?= csrf_field() ?>
+    <p><strong>Votre site est ouvert.</strong> Pour le fermer (pré-ouverture, congés, travaux), écrivez le message que verront vos visiteurs : les boutons de commande seront bloqués.</p>
+    <div class="copy-row"><input type="text" name="message" maxlength="300" value="Pré-ouverture : on ouvre bientôt !" aria-label="Message pour vos visiteurs">
+    <button class="btn btn-danger" type="submit" name="intent" value="close"><?= icon('lock') ?> Fermer le site</button></div>
+    <p class="small"><a href="<?= e($base) ?>/reglages#fermeture">Programmer une fermeture ou une date de réouverture</a></p>
+</form>
 <?php endif ?>
 
 <?php if ($drafts): ?>
@@ -90,6 +99,6 @@ $verbs = ['create' => 'ajouté', 'delete' => 'supprimé', 'reorder' => 'ordre mo
     <a href="<?= e($base) ?>/sauvegarde" class="quick"><?= icon('download') ?><span><strong>Télécharger une sauvegarde</strong><span class="muted small">Tout votre contenu dans un fichier, à garder chez vous.</span></span></a>
     <?php if ($role !== 'editor'): ?>
     <a href="<?= e($base) ?>/reglages#equipe" class="quick"><?= icon('users') ?><span><strong>Inviter un collègue</strong><span class="muted small">Il pourra modifier le site avec son propre compte.</span></span></a>
-    <a href="<?= e($base) ?>/reglages#fermeture" class="quick"><?= icon('lock') ?><span><strong>Fermer le site temporairement</strong><span class="muted small">Congés, travaux : un message à la place du site.</span></span></a>
+    <?php if (!is_array($closure)): ?><a href="<?= e($base) ?>/reglages#fermeture" class="quick"><?= icon('lock') ?><span><strong>Fermer le site temporairement</strong><span class="muted small">Congés, travaux : un message à la place du site.</span></span></a><?php endif ?>
     <?php endif ?>
 </section>

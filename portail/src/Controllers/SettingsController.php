@@ -191,7 +191,7 @@ final class SettingsController
                 Sites::setExtras($site, ['autoReopen' => $close && $reopen && Req::str('autoReopen') === '1' ? $reopen : null]);
                 Access::audit($v, $close ? 'site_closed' : 'site_reopened', $close ? ['reopenOn' => $reopen] : [], $site['id']);
                 Session::flash(($close ? 'Votre site est fermé temporairement. Vos visiteurs voient votre message. ' : 'Votre site est de nouveau ouvert. ') . Sites::delayText($site));
-                return Response::redirect($back . '#fermeture');
+                return Response::redirect(($_GET['retour'] ?? '') === 'accueil' ? "/s/{$site['slug']}" : $back . '#fermeture');
 
             case 'annuler-fermeture':
                 Sites::setExtras($site, ['plannedClosure' => null]);

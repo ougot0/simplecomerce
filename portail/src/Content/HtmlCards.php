@@ -122,8 +122,15 @@ final class HtmlCards
     {
         $title = $price = $desc = $img = $list = $tag = null;
         $groups = [];
+        $buy = [];
         foreach (self::descendants($els, $card) as $d) {
             $e = $els[$d];
+            if (str_contains($e['attrs'], 'data-sc-boutique') && !in_array($e['tag'], ['button', 'a', 'input'], true)) {
+                continue; // mention « En vente en boutique » posée par le portail
+            }
+            if (in_array($e['tag'], ['button', 'a', 'input'], true) && self::isOrderButton($html, $e)) {
+                $buy[] = $d;
+            }
             if (($key = self::choiceKey($html, $els, $e, count($groups) + 1)) !== null && !isset($groups[$key])) {
                 // Groupe de choix (« 6 à 8 pers. · 45 € / 10 à 12 pers. · 65 € », « Parvé / Halavi »…).
                 $groups[$key] = $d;
@@ -152,7 +159,14 @@ final class HtmlCards
                 $img = $d;
             }
         }
-        return $title !== null && ($price !== null || $img !== null || $desc !== null || $list !== null) ? ['title' => $title, 'price' => $price, 'desc' => $desc, 'img' => $img, 'list' => $list, 'tag' => $tag, 'groups' => $groups] : null;
+        return $title !== null && ($price !== null || $img !== null || $desc !== null || $list !== null) ? ['title' => $title, 'price' => $price, 'desc' => $desc, 'img' => $img, 'list' => $list, 'tag' => $tag, 'groups' => $groups, 'buy' => $buy] : null;
+    }
+
+    /** Bouton ou lien de commande (« Ajouter au panier », « Commander », lien Stripe / PayPal / Square…). */
+    private static function isOrderButton(string $html, array $e): bool
+    {
+        $words = self::text($html, $e) . ' ' . self::attr($e['attrs'], 'class') . ' ' . self::attr($e['attrs'], 'value') . ' ' . self::attr($e['attrs'], 'href') . ' ' . self::attr($e['attrs'], 'aria-label');
+        return (bool) preg_match('/(command|panier|ajout|achet|réserv|reserv|payer|buy|cart|order|checkout|stripe\.com|paypal|sumup|square\.(link|site)|add-to)/iu', $words);
     }
 
     /** Liste simple : uniquement des <li> sans sous-élément. */
@@ -728,6 +742,10 @@ final class HtmlCards
                 $out[$key] = implode("\n", self::choiceItems($html, $els, $els[$g['id']]));
             }
         }
+        if (!empty($f['buy'])) {
+            // Vendu en ligne tant qu'au moins un bouton de commande est affiché.
+            $out['commandeSurLeSite'] = (bool) array_filter($f['buy'], fn ($b) => !str_contains($b['attrs'], 'data-sc-boutique'));
+        }
         if ($f['img']) {
             $out['photo'] = (string) ($f['img']['tag'] === 'img' ? self::attr($f['img']['attrs'], 'src') : self::bgUrl($f['img']['attrs']));
         }
@@ -852,6 +870,23 @@ final class HtmlCards
             }
             $edits[] = [$at - $base, $at - $base, $group];
         }
+        if (!empty($f['buy']) && array_key_exists('commandeSurLeSite', $values) && is_bool($values['commandeSurLeSite'])
+            && $values['commandeSurLeSite'] !== (bool) array_filter($f['buy'], fn ($b) => !str_contains($b['attrs'], 'data-sc-boutique'))) {
+            // « En boutique seulement » : boutons de commande cachés et petite mention ; « en ligne » : tout remis comme avant.
+            $on = $values['commandeSurLeSite'];
+            foreach ($f['buy'] as $i => $b) {
+                $open = substr($html, $b['start'], $b['openEnd'] - $b['start']);
+                $new = $on ? (string) preg_replace('/ hidden data-sc-boutique(="")?/', '', $open)
+                    : (string) preg_replace('/^<' . preg_quote($b['tag'], '/') . '\b/i', '$0 hidden data-sc-boutique', $open);
+                if ($new !== $open) {
+                    $edits[] = [$b['start'] - $base, $b['openEnd'] - $base, $new];
+                }
+            }
+            $last = end($f['buy']);
+            if (!$on) {
+                $edits[] = [$last['end'] - $base, $last['end'] - $base, '<p data-sc-boutique>En vente en boutique</p>'];
+            }
+        }
         if ($f['img'] && $f['img']['tag'] !== 'img') {
             $attrs = $f['img']['attrs'];
             if ($clone && isset($values['nom'])) {
@@ -885,6 +920,9 @@ final class HtmlCards
         usort($edits, fn ($a, $b) => $b[0] <=> $a[0]);
         foreach ($edits as [$from, $to, $text]) {
             $chunk = substr($chunk, 0, $from) . $text . substr($chunk, $to);
+        }
+        if (array_key_exists('commandeSurLeSite', $values) && $values['commandeSurLeSite'] === true) {
+            $chunk = (string) preg_replace('#<p data-sc-boutique>En vente en boutique</p>#', '', $chunk);
         }
         if ($clone) {
             // Une copie ne garde pas les liens de paiement de la fiche d'origine : ils vendraient l'autre produit.

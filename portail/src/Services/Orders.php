@@ -99,7 +99,7 @@ final class Orders
             $id = $w['id'];
             $qty = $w['qte'];
             $p = $products[$id] ?? null;
-            if (!$p || $qty < 1 || $qty > 99 || (array_key_exists('disponible', $p) && $p['disponible'] === false)) {
+            if (!$p || $qty < 1 || $qty > 99 || (array_key_exists('disponible', $p) && $p['disponible'] === false) || ($p['vente'] ?? '') === 'boutique') {
                 continue;
             }
             $name = (string) ($p['nom'] ?? 'Produit');

@@ -603,5 +603,41 @@ test('Le dossier relié est-il celui affiché en ligne ?', function () {
     check($L::same(str_replace('Bienvenue', 'Bienvenue <?php echo "x"; ?>', $page), $page), 'page PHP comparée à sa page en ligne');
 });
 
+test('Site fait main avec dossier data : réglages, cases oui/non, vente en boutique', function () {
+    $dir = sys_get_temp_dir() . '/sc-bk-' . bin2hex(random_bytes(4));
+    mkdir("$dir/data", 0777, true);
+    file_put_contents("$dir/index.html", "<!doctype html><html><body><h1>Pâtisserie</h1><p>Bienvenue dans notre pâtisserie de quartier.</p></body></html>\n");
+    file_put_contents("$dir/config.js", "window.CONFIG = {\n  email: 'a@b.fr',\n  telephone: '01 02 03 04 05',\n  paiementEnLigne: true,\n  emailjs: { publicKey: 'abc' }\n};\n");
+    file_put_contents("$dir/data/produits.js", "window.PRODUITS = [\n  { nom: 'Tarte', prix: '7,50', sur_commande: 'oui', disponible: 'oui' },\n  { nom: 'Cookie', prix: '3,00', sur_commande: 'non', disponible: 'oui' }\n];\n");
+    $a = new FileSiteAdapter(new LocalBackend($dir), ['contentDir' => 'auto', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => '', 'webRoot' => true]);
+    $secs = ContentSchema::parse($a->discover()['schema'])['sections'];
+    $set = current(array_filter($secs, fn ($s) => FileSiteAdapter::isSettings($s)));
+    check($set !== false && $set['label'] === 'Réglages du site', 'réglages du site lus dans config.js');
+    check($set !== false && !array_filter($set['fields'], fn ($f) => $f['key'] === 'emailjs' && empty($f['hidden'])), 'clés techniques des réglages cachées');
+    check((bool) array_filter($secs, fn ($s) => FileSiteAdapter::isPageTexts($s)), 'textes de la page d\'accueil proposés aussi');
+    $prod = current(array_filter($secs, fn ($s) => $s['kind'] === 'collection' && str_contains($s['source']['file'] ?? '', 'produits')));
+    $f = current(array_filter($prod['fields'], fn ($f) => $f['key'] === 'sur_commande'));
+    check($f['type'] === 'boolean' && ($f['words'] ?? null) === ['oui', 'non'], '« oui / non » devient une case à cocher');
+    $e = $a->listEntries($prod);
+    check($e[0]['data']['sur_commande'] === true && $e[1]['data']['sur_commande'] === false, 'cases lues');
+    $ctx = ['summary' => 'x', 'author' => 't', 'changeId' => 'b', 'assets' => []];
+    $a->updateEntry($prod, $e[1]['id'], ['sur_commande' => true] + $e[1]['data'], $e[1]['data'], $ctx);
+    $js = (string) file_get_contents("$dir/data/produits.js");
+    check((bool) preg_match("/nom: 'Cookie',\\s*prix: '3,00',\\s*sur_commande: 'oui'/", $js) && str_contains($js, "{ nom: 'Tarte', prix: '7,50', sur_commande: 'oui', disponible: 'oui' }"), 'case réécrite « oui » dans le style du site');
+
+    // Fiches écrites dans la page, avec bouton « Ajouter au panier » : vendu en ligne ou en boutique seulement.
+    $page = "<!doctype html><html><body><h2>Nos gâteaux</h2><div class=\"grid\">\n<div class=\"card\"><h3>Fraisier</h3><p class=\"price\">40 €</p><button class=\"add\">Ajouter au panier</button></div>\n<div class=\"card\"><h3>Moka</h3><p class=\"price\">35 €</p><button class=\"add\">Ajouter au panier</button></div>\n</div></body></html>\n";
+    $cards = \SimpleCommerce\Content\HtmlCards::find($page);
+    $card = current($cards)['cards'][0];
+    check(\SimpleCommerce\Content\HtmlCards::values($page, $card)['commandeSurLeSite'] === true, 'bouton de commande reconnu sur une fiche');
+    $off = \SimpleCommerce\Content\HtmlCards::patch($page, $card, ['commandeSurLeSite' => false]);
+    check(str_contains($off, '<button hidden data-sc-boutique class="add">') && str_contains($off, 'En vente en boutique'), '« en boutique seulement » cache le bouton');
+    $page2 = substr($page, 0, $card['start']) . $off . substr($page, $card['end']);
+    $card2 = current(\SimpleCommerce\Content\HtmlCards::find($page2))['cards'][0];
+    check(\SimpleCommerce\Content\HtmlCards::values($page2, $card2) === ['nom' => 'Fraisier', 'prix' => '40 €', 'commandeSurLeSite' => false], 'fiche relue « en boutique », sans faux texte');
+    $on = \SimpleCommerce\Content\HtmlCards::patch($page2, $card2, ['commandeSurLeSite' => true]);
+    check(substr($page2, 0, $card2['start']) . $on . substr($page2, $card2['end']) === $page, 'remis en ligne : page identique à l\'origine');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

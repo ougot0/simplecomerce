@@ -94,6 +94,10 @@ final class DbBackend implements FileBackend
                     ['key' => 'stock', 'label' => 'Stock', 'type' => 'number', 'min' => 0, 'help' => 'Laissez vide si vous ne comptez pas. À 0, le produit est affiché « Épuisé ».'],
                     ['key' => 'pastille', 'label' => 'Pastille', 'type' => 'text', 'maxLength' => 24, 'help' => 'Petit mot affiché sur la photo : « Nouveau », « Promo », « Coup de cœur »… Laissez vide sinon.'],
                     ['key' => 'enAvant', 'label' => 'Mettre en avant', 'type' => 'boolean', 'help' => 'Le produit est affiché en premier sur votre site.'],
+                    ['key' => 'vente', 'label' => 'Comment ce produit se vend', 'type' => 'select', 'required' => true, 'options' => [
+                        ['value' => 'enligne', 'label' => 'En ligne : bouton « Ajouter au panier »'],
+                        ['value' => 'boutique', 'label' => 'En boutique seulement : prix affiché, sans bouton'],
+                    ], 'help' => 'Quel que soit votre moyen de paiement (Stripe, Square, en caisse…), vous choisissez ici ce qui se commande sur votre site.'],
                     ['key' => 'lien', 'label' => 'Lien pour commander', 'type' => 'url', 'help' => 'Facultatif : page de paiement, formulaire de contact… Un bouton « Commander » y mènera.'],
                     ['key' => 'disponible', 'label' => 'Visible sur mon site', 'type' => 'boolean', 'help' => 'Décochez pour cacher le produit sans l\'effacer.'],
                 ]],

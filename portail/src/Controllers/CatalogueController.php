@@ -53,6 +53,7 @@ final class CatalogueController
                 'epuise' => isset($p['stock']) && is_numeric($p['stock']) && (int) $p['stock'] <= 0,
                 'pastille' => mb_substr(trim((string) ($p['pastille'] ?? '')), 0, 24),
                 'enAvant' => ($p['enAvant'] ?? false) === true,
+                'boutique' => ($p['vente'] ?? '') === 'boutique',
                 'lien' => is_string($p['lien'] ?? null) && preg_match('#^https?://#i', $p['lien']) ? $p['lien'] : '',
             ];
         }

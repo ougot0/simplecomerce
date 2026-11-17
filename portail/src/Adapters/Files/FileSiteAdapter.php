@@ -80,6 +80,11 @@ final class FileSiteAdapter implements Adapter
                     }
                 }
             }
+            // Site fait main (page d'accueil HTML à la racine, sans outil de fabrication) dont les produits sont rangés dans
+            // un dossier « data »… : on lit tout le site (réglages, textes des pages, logo), pas seulement ce dossier.
+            if ($found !== '' && self::handMade($files) && !array_filter($files, fn ($f) => str_starts_with($f, "$found/") && in_array(Formats::fromPath($f), ['markdown', 'yaml'], true))) {
+                $found = '';
+            }
             $this->options['contentDir'] = $found;
             if ($found === '' && !array_filter($files, fn ($f) => !str_contains($f, '/') && preg_match(self::ROOT_FILE, $f))) {
                 $this->scanFiles = $this->findProductFiles($files);
@@ -90,6 +95,14 @@ final class FileSiteAdapter implements Adapter
             $base = $this->options['webRoot'] ? '' : ($has('public') ? 'public' : ($has('static') ? 'static' : ''));
             $this->options['media'] = ['dir' => $base ? "$base/images/simplecommerce" : 'images/simplecommerce', 'publicPrefix' => '/images/simplecommerce'];
         }
+    }
+
+    /** Page d'accueil HTML à la racine et aucun outil de fabrication de site (Jekyll, Hugo, React…). */
+    public static function handMade(array $files): bool
+    {
+        $root = array_filter($files, fn ($f) => !str_contains($f, '/'));
+        return (bool) array_filter($root, fn ($f) => preg_match('/^(index|accueil|home)\.html?$/i', $f))
+            && !array_filter($root, fn ($f) => preg_match('/^(package\.json|_config\.ya?ml|hugo\.(toml|ya?ml|json)|config\.toml|gemfile|astro\.config\..*|next\.config\..*|vite\.config\..*|eleventy\.config\..*|\.eleventy\.js|gatsby-config\..*|nuxt\.config\..*|svelte\.config\..*)$/i', $f));
     }
 
     /**
@@ -127,7 +140,7 @@ final class FileSiteAdapter implements Adapter
                 continue;
             }
             $r = Infer::schema([['path' => $f, 'text' => $raw['content']]]);
-            if (array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s) || self::isOpenSwitch($s) || self::isPageTexts($s))) {
+            if (array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s) || self::isOpenSwitch($s) || self::isPageTexts($s) || self::isSettings($s))) {
                 $found[] = $f;
             }
         }
@@ -138,7 +151,19 @@ final class FileSiteAdapter implements Adapter
     public static function isProductSection(array $s): bool
     {
         // Une liste dont les éléments ont un nom, et au moins un prix, une photo ou un texte (produits, projets, questions…).
-        return $s['kind'] === 'collection' && !empty($s['titleField']) && count(array_filter($s['fields'], fn ($f) => empty($f['hidden']))) >= 2;
+        $shown = array_filter($s['fields'], fn ($f) => empty($f['hidden']));
+        // Petites listes techniques du code (« { label, key } », « { code, value } ») : pas du contenu.
+        if (count($shown) <= 3 && array_filter($shown, fn ($f) => in_array(strtolower($f['key']), ['key', 'value', 'code', 'selector', 'id'], true))) {
+            return false;
+        }
+        return $s['kind'] === 'collection' && !empty($s['titleField']) && count($shown) >= 2;
+    }
+
+    /** Réglages écrits par le développeur dans un fichier JS/JSON (e-mail, téléphone, liens, options…). */
+    public static function isSettings(array $s): bool
+    {
+        return $s['kind'] === 'singleton' && in_array($s['source']['format'] ?? '', ['js', 'json'], true)
+            && count(array_filter($s['fields'], fn ($f) => empty($f['hidden']) && $f['type'] !== 'group')) >= 2;
     }
 
     /** Textes d'une page HTML (titres, paragraphes, photos). */
@@ -260,6 +285,7 @@ final class FileSiteAdapter implements Adapter
         if ($this->scanFiles !== null) {
             // Site fait main : on ne garde que les listes de produits et les réglages simples (ouverture…) des mêmes fichiers.
             $r['schema']['sections'] = array_values(array_filter($r['schema']['sections'], fn ($s) => self::isProductSection($s) || self::isPageTexts($s)
+                || self::isSettings($s)
                 || ($s['kind'] === 'singleton' && !empty($s['source']['path']) && array_filter($s['fields'], fn ($f) => $f['type'] === 'boolean'))));
             // Pages détachées (projet supprimé…) : plus aucune page n'y mène, on ne les propose plus.
             $linked = [];
@@ -281,11 +307,20 @@ final class FileSiteAdapter implements Adapter
                 $r['schema']['sections'][] = $logo;
             }
             // Ordre : ouvert/fermé, puis les listes (produits…), puis les textes des pages (accueil d'abord).
-            $rank = fn ($s) => self::isOpenSwitch($s) || ($s['source']['type'] ?? '') === 'logo' ? 0 : (self::isPageTexts($s) ? (preg_match(self::HOME_PAGE, $s['source']['file']) ? 2 : 3) : 1);
+            $rank = fn ($s) => self::isOpenSwitch($s) || ($s['source']['type'] ?? '') === 'logo' ? 0 : (self::isPageTexts($s) ? (preg_match(self::HOME_PAGE, $s['source']['file']) ? 3 : 4) : ($s['kind'] === 'singleton' ? 2 : 1));
             usort($r['schema']['sections'], fn ($a, $b) => $rank($a) <=> $rank($b));
             foreach ($r['schema']['sections'] as &$s) {
                 if (self::isOpenSwitch($s)) {
                     $s['label'] = 'Ouverture du site';
+                } elseif (self::isSettings($s)) {
+                    $s['label'] = preg_match('/config|reglage|setting|option|param/i', $s['key']) ? 'Réglages du site' : $s['label'];
+                    // Clés techniques (services d'envoi, identifiants…) : gardées dans le fichier, jamais montrées.
+                    foreach ($s['fields'] as &$f) {
+                        if ($f['type'] === 'group' || preg_match('/(key|token|secret|password|motdepasse|mdp|service|template|api|webhook|csv|^id$|id$)/i', $f['key'])) {
+                            $f['hidden'] = true;
+                        }
+                    }
+                    unset($f);
                 }
             }
             unset($s);
@@ -363,7 +398,7 @@ final class FileSiteAdapter implements Adapter
             $raw = array_map(fn ($i) => (array) $i, $list ?? []);
             $entries = [];
             foreach ($raw as $i => $item) {
-                $entries[] = ['id' => $this->itemId($section, $item, $i), 'data' => $item];
+                $entries[] = ['id' => $this->itemId($section, $item, $i), 'data' => self::fromWords($section, $item)];
             }
             return ['entries' => $entries, 'raw' => $raw, 'files' => []];
         }
@@ -386,7 +421,7 @@ final class FileSiteAdapter implements Adapter
                 // Les retours à la ligne finaux ne comptent pas : sinon une relecture ne serait jamais « identique ».
                 $data[$src['bodyField'] ?? 'body'] = rtrim($parsed['body'] ?? '');
             }
-            $entries[] = ['id' => $id, 'data' => $data];
+            $entries[] = ['id' => $id, 'data' => self::fromWords($section, $data)];
         }
         if (!empty($src['orderField'])) {
             $k = $src['orderField'];
@@ -426,7 +461,7 @@ final class FileSiteAdapter implements Adapter
             throw new AdapterError('not_found', 'Le fichier de cette rubrique est introuvable sur le site.', $src['file']);
         }
         $v = Paths::get($parsed['data'], $src['path'] ?? null);
-        return Values::pick($section, is_array($v) ? $v : []);
+        return Values::pick($section, self::fromWords($section, is_array($v) ? $v : []));
     }
 
     public function template(array $section): array
@@ -937,17 +972,40 @@ final class FileSiteAdapter implements Adapter
         return $target;
     }
 
+    /** Cases « oui / non » écrites en texte dans le site → vrai / faux pour le portail. */
+    private static function fromWords(array $section, array $item): array
+    {
+        foreach ($section['fields'] as $f) {
+            if (isset($f['words']) && array_key_exists($f['key'], $item) && is_string($item[$f['key']])) {
+                $item[$f['key']] = mb_strtolower(trim($item[$f['key']])) === $f['words'][0];
+            }
+        }
+        return $item;
+    }
+
+    /** Et dans l'autre sens, avec les mots du site. */
+    private static function toWords(array $section, array $item): array
+    {
+        foreach ($section['fields'] as $f) {
+            if (isset($f['words']) && is_bool($item[$f['key']] ?? null)) {
+                $item[$f['key']] = $item[$f['key']] ? $f['words'][0] : $f['words'][1];
+            }
+        }
+        return $item;
+    }
+
     private function writeCollectionFile(array $section, array $items): array
     {
         $src = $this->source($section);
         $path = $this->path($src['file']);
         $parsed = $this->file($path, $this->fileFormat($src));
-        $root = Paths::set($parsed['data'], $src['path'] ?? null, $items);
+        $root = Paths::set($parsed['data'], $src['path'] ?? null, array_map(fn ($i) => is_array($i) ? self::toWords($section, $i) : $i, $items));
         return ['path' => $path, 'content' => Formats::serialize($parsed, $root)];
     }
 
-    private function serializeFolderItem(array $src, array $item, ?array $existing): string
+    private function serializeFolderItem(array $section, array $src, array $item, ?array $existing): string
     {
+        $item = self::toWords($section, $item);
         if ($src['format'] === 'markdown') {
             $key = $src['bodyField'] ?? 'body';
             $body = (string) ($item[$key] ?? '');
@@ -985,7 +1043,7 @@ final class FileSiteAdapter implements Adapter
                 $orders = array_map(fn ($e) => (int) ($e['data'][$src['orderField']] ?? 0), $entries);
                 $item[$src['orderField']] = $orders ? max($orders) + 1 : 1;
             }
-            $writes[] = ['path' => Paths::join($this->path($src['folder']), $id . $ext), 'content' => $this->serializeFolderItem($src, $item, null)];
+            $writes[] = ['path' => Paths::join($this->path($src['folder']), $id . $ext), 'content' => $this->serializeFolderItem($section, $src, $item, null)];
             return [$writes, ['id' => $id, 'before' => null, 'after' => Values::pick($section, $item)]];
         });
     }
@@ -1008,7 +1066,7 @@ final class FileSiteAdapter implements Adapter
                 $writes[] = $this->writeCollectionFile($section, $raw);
             } else {
                 $path = $files[$id];
-                $writes[] = ['path' => $path, 'content' => $this->serializeFolderItem($src, $merged, $this->file($path, $src['format']))];
+                $writes[] = ['path' => $path, 'content' => $this->serializeFolderItem($section, $src, $merged, $this->file($path, $src['format']))];
             }
             return [$writes, ['id' => $id, 'before' => Values::pick($section, $current), 'after' => Values::pick($section, $merged)]];
         });
@@ -1043,7 +1101,7 @@ final class FileSiteAdapter implements Adapter
                         $raw[$index] = $merged;
                     }
                 } else {
-                    $writes[] = ['path' => $files[(string) $id], 'content' => $merged === null ? null : $this->serializeFolderItem($src, $merged, $this->file($files[(string) $id], $src['format']))];
+                    $writes[] = ['path' => $files[(string) $id], 'content' => $merged === null ? null : $this->serializeFolderItem($section, $src, $merged, $this->file($files[(string) $id], $src['format']))];
                 }
             }
             if ($src['type'] === 'file') {
@@ -1105,7 +1163,7 @@ final class FileSiteAdapter implements Adapter
                 }
                 $item = $entry['data'];
                 $item[$src['orderField']] = $i + 1;
-                $writes[] = ['path' => $files[$id], 'content' => $this->serializeFolderItem($src, $item, $this->file($files[$id], $src['format']))];
+                $writes[] = ['path' => $files[$id], 'content' => $this->serializeFolderItem($section, $src, $item, $this->file($files[$id], $src['format']))];
             }
             return [$writes, ['before' => null, 'after' => null, 'beforeOrder' => $before, 'afterOrder' => $orderedIds]];
         });
@@ -1128,10 +1186,10 @@ final class FileSiteAdapter implements Adapter
                 throw new AdapterError('not_found', 'Le fichier de cette rubrique est introuvable sur le site.', $src['file']);
             }
             $cur = Paths::get($parsed['data'], $src['path'] ?? null);
-            $current = is_array($cur) ? $cur : [];
+            $current = self::fromWords($section, is_array($cur) ? $cur : []);
             $this->assertExpected($section, $current, $expected);
             $merged = array_replace($current, $data);
-            $writes[] = ['path' => $path, 'content' => Formats::serialize($parsed, Paths::set($parsed['data'], $src['path'] ?? null, $merged))];
+            $writes[] = ['path' => $path, 'content' => Formats::serialize($parsed, Paths::set($parsed['data'], $src['path'] ?? null, self::toWords($section, $merged)))];
             if (self::isOpenSwitch($section)) {
                 // Réglage « ouvert / fermé » écrit par le développeur : le portail pose aussi le bandeau et bloque les
                 // boutons de commande, pour que la fermeture se voie même si le code du site ne l'affiche pas.

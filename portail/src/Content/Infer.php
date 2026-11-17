@@ -35,7 +35,11 @@ final class Infer
         'accueil' => 'Accueil', 'apropos' => 'À propos', 'heures' => 'Heures', 'reseaux' => 'Réseaux sociaux', 'produits' => 'Produits', 'produit' => 'Produit',
         'products' => 'Produits', 'product' => 'Produit', 'items' => 'Articles', 'articles' => 'Articles', 'catalogue' => 'Catalogue', 'catalog' => 'Catalogue',
         'open' => 'Site ouvert', 'ouvert' => 'Site ouvert', 'ouverte' => 'Ouverte', 'reopenat' => 'Réouverture prévue le', 'reouverture' => 'Réouverture prévue le', 'message' => 'Message affiché',
-        'boutique' => 'Boutique', 'shop' => 'Boutique', 'store' => 'Boutique', 'solde' => 'En solde', 'nouveaute' => 'Nouveauté',
+        'boutique' => 'Boutique', 'shop' => 'Boutique', 'store' => 'Boutique', 'solde' => 'En solde', 'nouveaute' => 'Nouveauté', 'nouveau' => 'Nouveauté',
+        'commandesurlesite' => 'Vendu en ligne (bouton de commande affiché)', 'surcommande' => 'Commande en ligne (bouton « Ajouter au panier »)', 'commandable' => 'Commande en ligne', 'enligne' => 'Vendu en ligne',
+        'formats' => 'Formats et prix (ex. « 6 personnes : 42 / 10 personnes : 70 »)', 'paiementenligne' => 'Paiement par carte en ligne',
+        'delaicommandeheures' => 'Délai de commande (en heures)', 'retraitapartirde' => 'Retrait à partir de', 'instagram' => 'Instagram',
+        'ubereats' => 'Uber Eats', 'facebook' => 'Facebook', 'tiktok' => 'TikTok', 'photoglace' => 'Photo (version glacée)', 'photocommande' => 'Photo (grand format)',
     ];
     private const ID_KEYS = ['id', '_id', 'uuid', 'slug', 'sku', 'ref', 'reference'];
     private const TITLE_KEYS = ['name', 'nom', 'title', 'titre', 'label', 'libelle'];
@@ -92,6 +96,10 @@ final class Infer
         if ($all('is_bool')) {
             return $base + ['type' => 'boolean'];
         }
+        if ($words = self::yesNo($present)) {
+            // « oui » / « non » écrits en texte : une case à cocher, réécrite avec les mêmes mots.
+            return $base + ['type' => 'boolean', 'words' => $words];
+        }
         if (preg_match(self::PRICE_KEY, $key) && $all(fn ($v) => is_int($v) || is_float($v) || (is_string($v) && preg_match('/\d/', $v) && strlen($v) < 20))) {
             return $base + ['type' => 'price', 'priceFormat' => Price::detect($present)];
         }
@@ -143,6 +151,29 @@ final class Infer
             return $base + ['type' => 'text'];
         }
         return $base + ['type' => 'text', 'hidden' => true];
+    }
+
+    /** Valeurs « oui / non » (ou « yes / no ») écrites en texte : les deux mots, sinon null. */
+    public static function yesNo(array $values): ?array
+    {
+        $low = [];
+        foreach ($values as $v) {
+            if (!is_string($v)) {
+                return null;
+            }
+            $low[] = mb_strtolower(trim($v));
+        }
+        $set = array_values(array_unique(array_filter($low, fn ($v) => $v !== '')));
+        if (!$set) {
+            return null;
+        }
+        if (!array_diff($set, ['oui', 'non'])) {
+            return ['oui', 'non'];
+        }
+        if (!array_diff($set, ['yes', 'no'])) {
+            return ['yes', 'no'];
+        }
+        return null;
     }
 
     public static function fields(array $samples): array

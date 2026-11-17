@@ -102,6 +102,7 @@ style.textContent = [
   '.sc-desc{margin:0;opacity:.8;font-size:.92em;line-height:1.45;white-space:pre-line}',
   '.sc-tag{font-size:.8em;font-weight:600;opacity:.75}',
   '.sc-btn{align-self:flex-start;display:inline-block;padding:8px 18px;border-radius:999px;border:1.5px solid currentColor;color:inherit;background:transparent;text-decoration:none;font:inherit;font-weight:600;cursor:pointer}',
+  '.sc-shop-only{margin:0;font-size:.9em;opacity:.75;font-style:italic}',
   '.sc-btn-main{background:#141210;border-color:#141210;color:#fff}',
   '.sc-btn[aria-disabled=true],.sc-btn:disabled{opacity:.4;pointer-events:none}',
   '.sc-empty{opacity:.7}',
@@ -288,7 +289,9 @@ D.produits.forEach(function (p) {
     }
     card.appendChild(fs);
   });
-  if (p.epuise) {
+  if (p.boutique) {
+    card.appendChild(el('p', 'sc-shop-only', 'En vente en boutique'));
+  } else if (p.epuise) {
     notifyForm(p, card);
   } else if (D.commandes && !D.ferme) {
     add = el('button', 'sc-btn', 'Ajouter au panier');

@@ -162,6 +162,10 @@ final class ContentSchema
                 $out[$k] = $f[$k] + 0;
             }
         }
+        // Case « oui / non » écrite en texte dans le site (« oui » / « non ») : les deux mots à réécrire.
+        if (isset($f['words']) && is_array($f['words']) && count($f['words']) === 2) {
+            $out['words'] = [mb_substr((string) $f['words'][0], 0, 10), mb_substr((string) $f['words'][1], 0, 10)];
+        }
         if (isset($f['options']) && is_array($f['options'])) {
             $out['options'] = array_values(array_map(fn ($o) => ['value' => (string) ($o['value'] ?? ''), 'label' => (string) ($o['label'] ?? $o['value'] ?? '')], $f['options']));
         }

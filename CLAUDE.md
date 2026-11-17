@@ -309,6 +309,18 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (10) : Bakers relié au bon dossier n'affichait plus que « Bakers produits » (l'ancienne rubrique « Ouverture du site »
+  venait d'un autre site du dossier racine). Demande : « choisir ce qu'on vend en ligne ou seulement en boutique, quel que soit le
+  paiement (Stripe, Square…) » + options manquantes. **Version Z10** : (1) site fait main (`index.html` à la racine, pas d'outil de
+  fabrication, `FileSiteAdapter::handMade`) dont les données sont dans `data/`… (js/json seulement) → tout le site est lu :
+  **Réglages du site** (`isSettings` : objet JS/JSON de réglages, clés techniques cachées), textes des pages, logo ; listes
+  techniques `{label,key}` écartées. (2) Valeurs « oui/non » écrites en texte → **cases à cocher** (`words` dans le champ,
+  `fromWords/toWords` dans FileSiteAdapter) : Bakers « sur_commande » = « Commande en ligne (bouton « Ajouter au panier ») »,
+  « disponible » (Masquer/Afficher), « nouveau ». (3) Fiches HTML avec bouton de commande : case **« Vendu en ligne (bouton de
+  commande affiché) »** (`commandeSurLeSite`) : décochée = boutons `hidden data-sc-boutique` + « En vente en boutique », recochée =
+  page identique. (4) Catalogue hébergé : champ **« Comment ce produit se vend »** (en ligne / en boutique seulement ; refusé au
+  serveur dans `Orders`), `Schema::VERSION` 7. (5) Page d'un site : encadré **« Votre site est ouvert — Fermer le site »** (message
+  « Pré-ouverture : on ouvre bientôt ! » proposé) / « Rouvrir le site » pour tous les sites qui se ferment par le portail. 160 vérif.
 - 17/11/2026 (9) : sa capture montre Bakers relié au dossier de tout l'hébergement (www, bakers, aminteriorss, ougot). Conseil :
   « Dossier du site sur le serveur » = `/bakers` (ou `/www`). **Version Z9** : si plusieurs dossiers ressemblent à la page en
   ligne, `LiveCheck` garde le plus proche (`score`, ≥ 5 points d'avance) ; sinon le message rouge **nomme les dossiers
