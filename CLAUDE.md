@@ -309,6 +309,9 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (5) : chez lui, toujours pas de bandeau sur commandesbakers.com. Cause : Bakers a un dossier `data/` (produits.js)
+  → `contentDir` = `data` → `htmlPages()` cherchait les pages **dans `data/`** (aucune) : ni bandeau (Z4) ni marque de
+  version (Z3). **Version Z5** : `htmlPages()` liste tout le dossier du site (`list('', 3)`). Test ajouté. 144 vérifications.
 - 17/11/2026 (4) : « quand c'est fermé, boutons pas cliquables + message “pré-ouverture, on ouvre bientôt” ». **Version Z4** :
   `FileSiteAdapter::setStatus` (Réglages → Fermeture, sites reliés par fichiers) ajoute aussi dans **chaque page HTML**
   (200 max) un bloc `<!-- simplecommerce-fermeture -->` juste après `<body>` : bandeau noir collant avec le message + petit

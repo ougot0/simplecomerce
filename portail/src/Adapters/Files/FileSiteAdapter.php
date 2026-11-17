@@ -631,7 +631,8 @@ final class FileSiteAdapter implements Adapter
     /** @return string[] pages HTML du site */
     private function htmlPages(): array
     {
-        $pages = array_values(array_filter($this->backend->list($this->options['contentDir'], 3), fn ($f) => Formats::fromPath($f) === 'html' && !preg_match(self::SKIP_SCAN, $f)));
+        // Les pages sont cherchées dans tout le dossier du site : un dossier de données (« data/produits.js ») n'en contient pas.
+        $pages = array_values(array_filter($this->backend->list('', 3), fn ($f) => Formats::fromPath($f) === 'html' && !preg_match(self::SKIP_SCAN, $f)));
         usort($pages, fn ($a, $b) => [!preg_match(self::HOME_PAGE, $a), substr_count($a, '/'), $a] <=> [!preg_match(self::HOME_PAGE, $b), substr_count($b, '/'), $b]);
         return array_slice($pages, 0, 200);
     }

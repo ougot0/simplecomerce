@@ -560,5 +560,15 @@ test('Fermeture : message sur toutes les pages et boutons de commande inactifs',
     check(file_get_contents("$dir/index.html") === $page && file_get_contents("$dir/contact.html") === $page, 'réouverture : pages remises exactement comme avant');
 });
 
+test('Fermeture d\'un site dont les produits sont dans un dossier « data »', function () {
+    $dir = sys_get_temp_dir() . '/sc-data-' . bin2hex(random_bytes(4));
+    @mkdir("$dir/data", 0777, true);
+    file_put_contents("$dir/index.html", "<html><body>\n<h1>Bakers</h1><script src=\"data/produits.js\"></script>\n</body></html>\n");
+    file_put_contents("$dir/data/produits.js", "const PRODUITS = [\n  { nom: 'Cookie', prix: 3 },\n  { nom: 'Tarte', prix: 30 }\n];\n");
+    $a = new FileSiteAdapter(new LocalBackend($dir), ['contentDir' => 'auto', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => '', 'webRoot' => true]);
+    $a->setStatus(['closed' => true, 'message' => 'Pré-ouverture', 'reopenOn' => null], ['summary' => 'x', 'author' => 't', 'changeId' => 'z', 'assets' => []]);
+    check(str_contains((string) file_get_contents("$dir/index.html"), 'data-sc-fermeture'), 'bandeau ajouté à la page d\'accueil malgré le dossier « data »');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);
