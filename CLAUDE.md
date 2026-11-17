@@ -309,6 +309,14 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 18/11/2026 : captures : le site « bakers » montrait « Textes de la page « Coumao » » (deux fois) + message rouge sans dossier
+  proposé → Bakers relié au dossier d'un autre site (Coumao), et aucun dossier de l'hébergement n'a été reconnu comme la page
+  en ligne. **Version Z13** : `LiveCheck` renvoie aussi `choices` (chaque site de l'hébergement : dossier, titre de sa page
+  d'accueil, ressemblance) → encadré **« Quel est le bon site ? »** sur la page du site (propriétaire, SFTP/FTP) avec un bouton
+  **« C'est celui-ci »** par site (POST `/s/{slug}/dossier`, `SiteController::chooseFolder`, dossier accepté seulement s'il est
+  dans la liste) : `remoteRoot` changé, rubriques relues, `extras.liveChosen` (plus de vérification contre ce choix tant que
+  le dossier ne change pas). Deux rubriques au même nom : le nom du fichier est ajouté (`discover` + `mergeSchema`).
+  169 vérifications.
 - 17/11/2026 (12) : « pas seulement ce site : pour tous les sites, des milliards d'utilisateurs, tout ce qui est modifiable ».
   **Version Z12** : **pages PHP** lues comme des pages HTML (`Formats::fromPath($p, true)` pour la détection seulement) : chaque
   bloc `<?php … ?>`/`<?= … ?>` est remplacé à la lecture par une marque (`\u{E000}n\u{E001}`) et remis tel quel à l'écriture

@@ -52,6 +52,27 @@ final class SiteController
         return Response::html(View::render($template, $vars, 'site'), $status);
     }
 
+    /** Le commerçant choisit lui-même, dans la liste des sites de son hébergement, celui qui est affiché à son adresse. */
+    public static function chooseFolder(array $p): Response
+    {
+        $ctx = Access::site($p['slug']);
+        $site = $ctx['site'];
+        $x = Sites::extras($site);
+        $dir = Req::str('dossier', 300);
+        $allowed = array_column((array) ($x['folderChoices'] ?? []), 'dir');
+        if ($ctx['role'] === 'editor' || !in_array($site['connector'], ['sftp', 'ftp'], true) || !in_array($dir, $allowed, true)) {
+            throw \SimpleCommerce\Http\Halt::notFound();
+        }
+        $old = (string) ($site['config']['remoteRoot'] ?? '');
+        Repo::updateSite($site['id'], ['config' => ['remoteRoot' => $dir] + $site['config']]);
+        $site = Repo::site($site['id']) ?? $site;
+        Sites::setExtras($site, ['liveChosen' => $dir, 'liveMismatch' => null, 'folderChoices' => null, 'wrongFolder' => null, 'readSig' => null, 'readCheck' => 0]);
+        Access::audit($ctx['viewer'], 'folder_chosen', ['from' => $old, 'to' => $dir], $site['id']);
+        Sites::rediscover(Repo::site($site['id']) ?? $site, $ctx['viewer']['effective']['id'] ?? null);
+        Session::flash("C'est noté : Simple Commerce modifie maintenant le dossier « $dir ». Vos rubriques ont été relues.");
+        return Response::redirect("/s/{$site['slug']}");
+    }
+
     public static function home(array $p): Response
     {
         $ctx = Access::site($p['slug']);

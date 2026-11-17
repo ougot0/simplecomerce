@@ -84,6 +84,7 @@ final class Sites
         foreach ($current['sections'] ?? [] as $s) {
             $old[$s['key']] = $s;
         }
+        $fresh = array_column($found['sections'], 'label');
         foreach ($found['sections'] as &$s) {
             if (!isset($old[$s['key']])) {
                 continue;
@@ -105,6 +106,14 @@ final class Sites
                 }
             }
             unset($f);
+        }
+        unset($s);
+        // Deux rubriques au même nom (deux pages au même titre) : on reprend les noms distincts de la nouvelle lecture.
+        $count = array_count_values(array_column($found['sections'], 'label'));
+        foreach ($found['sections'] as $i => &$s) {
+            if (($count[$s['label']] ?? 0) > 1 && isset($fresh[$i])) {
+                $s['label'] = $fresh[$i];
+            }
         }
         unset($s);
         return ContentSchema::parse($found);
@@ -181,6 +190,10 @@ final class Sites
             return;
         }
         self::setExtras($site, ['liveWith' => SC_VERSION, 'liveAt' => time()]);
+        // Dossier choisi par le commerçant lui-même dans la liste : on ne le contredit plus.
+        if (($x['liveChosen'] ?? null) !== null && ($x['liveChosen'] ?? '') === (string) ($site['config']['remoteRoot'] ?? '')) {
+            return;
+        }
         $r = LiveCheck::run($site);
         $host = (string) (parse_url((string) $site['public_url'], PHP_URL_HOST) ?: 'votre site');
         if ($r['state'] === 'fixed') {
@@ -190,9 +203,10 @@ final class Sites
             self::rediscover(Repo::site($site['id']) ?? $fresh, null);
         } elseif ($r['state'] === 'mismatch') {
             $c = $r['candidates'] ?? [];
-            self::setExtras($site, ['liveMismatch' => "Attention : les fichiers que Simple Commerce modifie ne sont pas ceux affichés sur $host. Vos modifications n'apparaissent donc pas en ligne. "
+            self::setExtras($site, ['folderChoices' => $r['choices'] ?? [], 'liveMismatch' => "Attention : les fichiers que Simple Commerce modifie ne sont pas ceux affichés sur $host. Vos modifications n'apparaissent donc pas en ligne. "
                 . ($c ? 'Dans Réglages → Connexion, mettez « ' . implode(' » ou « ', $c) . ' » dans « Dossier du site sur le serveur », puis enregistrez.'
-                    : 'Dans Réglages → Connexion, indiquez le dossier exact du site (chez OVH : onglet Multisite, colonne « Dossier racine »), ou reliez le site par le service qui le met en ligne (GitHub…).')]);
+                    : (!empty($r['choices']) ? 'Choisissez ci-dessous, dans la liste des sites de votre hébergement, celui qui s\'affiche à cette adresse.'
+                    : 'Dans Réglages → Connexion, indiquez le dossier exact du site (chez OVH : onglet Multisite, colonne « Dossier racine »), ou reliez le site par le service qui le met en ligne (GitHub…).'))]);
         } elseif ($r['state'] === 'ok' && !empty($x['liveMismatch'])) {
             self::setExtras($site, ['liveMismatch' => null]);
         }

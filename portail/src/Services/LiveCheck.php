@@ -47,13 +47,21 @@ final class LiveCheck
                 }
                 $matches = [];
                 $scores = [];
+                $choices = [];
                 foreach (array_slice(array_keys($dirs), 0, 30) as $dir) {
                     $html = self::home($backend, $dir);
-                    if ($html !== null && self::same($live, $html)) {
+                    if ($html === null) {
+                        continue;
+                    }
+                    $sc = self::score($live, $html);
+                    // Chaque site de l'hébergement, avec le nom de sa page d'accueil : le commerçant peut choisir le bon.
+                    $choices[] = ['dir' => '/' . $dir, 'title' => self::title($html, $dir), 'score' => (int) round($sc)];
+                    if ($sc >= 70) {
                         $matches[] = $dir;
-                        $scores[$dir] = self::score($live, $html);
+                        $scores[$dir] = $sc;
                     }
                 }
+                usort($choices, fn ($a, $b) => $b['score'] <=> $a['score']);
                 // Plusieurs copies du site : on garde la plus fidèle à la page en ligne, si elle se distingue nettement.
                 if (count($matches) > 1) {
                     arsort($scores);
@@ -74,11 +82,22 @@ final class LiveCheck
                 Log::info('dossier du site corrigé', ['site' => $site['slug'], 'from' => $current, 'to' => $folder]);
                 return ['state' => 'fixed', 'folder' => $folder];
             }
-            return ['state' => 'mismatch', 'candidates' => array_map(fn ($d) => '/' . $d, $matches)];
+            return ['state' => 'mismatch', 'candidates' => array_map(fn ($d) => '/' . $d, $matches), 'choices' => array_slice($choices, 0, 12)];
         } catch (\Throwable $e) {
             Log::warn('vérification du site en ligne impossible', ['site' => $site['slug'], 'err' => $e]);
             return ['state' => 'unknown'];
         }
+    }
+
+    /** Nom d'un site d'après sa page d'accueil (balise <title>, sinon premier grand titre, sinon le dossier). */
+    private static function title(string $html, string $dir): string
+    {
+        foreach (['#<title[^>]*>(.*?)</title>#is', '#<h1[^>]*>(.*?)</h1>#is'] as $re) {
+            if (preg_match($re, $html, $m) && ($t = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'))) !== '') {
+                return mb_strimwidth((string) preg_replace('/\s+/u', ' ', $t), 0, 70, '…');
+            }
+        }
+        return $dir;
     }
 
     /** Page d'accueil d'un dossier (null si aucune). */

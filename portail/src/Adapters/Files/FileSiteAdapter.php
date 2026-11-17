@@ -324,6 +324,14 @@ final class FileSiteAdapter implements Adapter
                 }
             }
             unset($s);
+            // Deux pages au même titre : le nom de la page est ajouté pour les distinguer.
+            $seen = array_count_values(array_column($r['schema']['sections'], 'label'));
+            foreach ($r['schema']['sections'] as &$s) {
+                if (($seen[$s['label']] ?? 0) > 1 && !empty($s['source']['file'])) {
+                    $s['label'] = mb_strimwidth($s['label'], 0, 60, '…') . ' (' . mb_strimwidth(basename($s['source']['file']), 0, 18, '…') . ')';
+                }
+            }
+            unset($s);
             $notes = ['Produits trouvés dans : ' . implode(', ', $this->scanFiles) . '.'];
         }
         if ($r['skipped']) {

@@ -33,6 +33,25 @@ $verbs = ['create' => 'ajouté', 'delete' => 'supprimé', 'reorder' => 'ordre mo
 </div>
 <?php endif ?>
 
+<?php $choices = (array) (Sites::extras($site)['folderChoices'] ?? []); ?>
+<?php if ($choices && !empty(Sites::extras($site)['liveMismatch']) && $role !== 'editor'): ?>
+<section class="notice folder-pick">
+    <p><strong>Quel est le bon site ?</strong> Voici les sites trouvés sur votre hébergement. Cliquez sur celui qui s'affiche à l'adresse <?= e((string) (parse_url((string) $site['public_url'], PHP_URL_HOST) ?: 'de votre site')) ?> : Simple Commerce ne modifiera plus que lui.</p>
+    <ul class="lines">
+        <?php foreach ($choices as $c): $current = $c['dir'] === (string) ($site['config']['remoteRoot'] ?? ''); ?>
+        <li>
+            <div class="line-main"><span class="line-title"><?= e($c['title']) ?></span>
+                <div class="muted small">Dossier <?= e($c['dir']) ?><?= $current ? ' · relié en ce moment' : '' ?><?= $c['score'] >= 50 ? ' · ressemble à la page en ligne' : '' ?></div></div>
+            <?php if (!$current): ?>
+            <form method="post" action="<?= e($base) ?>/dossier"><?= csrf_field() ?><input type="hidden" name="dossier" value="<?= e($c['dir']) ?>">
+                <button class="btn btn-small" type="submit">C'est celui-ci</button></form>
+            <?php endif ?>
+        </li>
+        <?php endforeach ?>
+    </ul>
+</section>
+<?php endif ?>
+
 <?php if (!empty($closure['closed'])): ?>
 <form method="post" action="<?= e($base) ?>/reglages/fermeture?retour=accueil" class="notice notice-error closed-banner open-switch">
     <?= csrf_field() ?>
