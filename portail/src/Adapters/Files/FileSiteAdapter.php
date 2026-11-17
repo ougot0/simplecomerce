@@ -473,6 +473,7 @@ final class FileSiteAdapter implements Adapter
         for ($attempt = 0; $attempt < self::ATTEMPTS; $attempt++) {
             $this->resetReads();
             [$writes, $result] = $build();
+            $writes = $this->bustCache($writes);
             $expected = [];
             $mediaDir = Paths::join($this->options['media']['dir']);
             foreach ($writes as $w) {
@@ -490,6 +491,67 @@ final class FileSiteAdapter implements Adapter
             }
         }
         throw $last ?? new ConflictError();
+    }
+
+    /**
+     * Un fichier de script, de style ou de données modifié peut rester des heures dans le navigateur des visiteurs
+     * (un site peut leur demander de le garder un jour) : on change sa marque de version (« config.js?v=… ») dans les
+     * pages qui le chargent, pour que la modification se voie tout de suite. Rien d'autre n'est touché dans ces pages.
+     * @param array<int, array{path: string, content: ?string}> $writes
+     */
+    private function bustCache(array $writes): array
+    {
+        $assets = [];
+        foreach ($writes as $w) {
+            if ($w['content'] !== null && preg_match('/\.(js|mjs|css|json)$/i', $w['path'])) {
+                $assets[$w['path']] = substr(sha1((string) $w['content']), 0, 8);
+            }
+        }
+        if (!$assets) {
+            return $writes;
+        }
+        $byPath = [];
+        foreach ($writes as $i => $w) {
+            $byPath[$w['path']] = $i;
+        }
+        foreach (array_slice($this->htmlPages(), 0, 40) as $page) {
+            if (isset($byPath[$page])) {
+                $current = $writes[$byPath[$page]]['content'];
+            } else {
+                $raw = $this->backend->read($page);
+                $current = $raw['content'] ?? null;
+                if ($raw && !array_key_exists($page, $this->versions)) {
+                    $this->versions[$page] = $raw['version']; // la page est réécrite seulement si elle n'a pas bougé
+                }
+            }
+            if (!is_string($current)) {
+                continue;
+            }
+            $html = (string) preg_replace_callback('/(<(?:script|link)\b[^>]*?\s(?:src|href)\s*=\s*["\'])([^"\'?#]+)(\?[^"\'#]*)?(["\'])/i', function ($m) use ($page, $assets) {
+                $target = str_starts_with($m[2], '/') ? ltrim($m[2], '/') : null;
+                if ($target === null) {
+                    try {
+                        $target = $this->linkTarget($page, $m[2]);
+                    } catch (\InvalidArgumentException) {
+                        return $m[0];
+                    }
+                }
+                if (!isset($assets[$target]) || (($m[3] ?? '') !== '' && !preg_match('/^\?v=[\w.-]*$/', $m[3]))) {
+                    return $m[0];
+                }
+                return $m[1] . $m[2] . '?v=' . $assets[$target] . $m[4];
+            }, $current);
+            if ($html === $current) {
+                continue;
+            }
+            if (isset($byPath[$page])) {
+                $writes[$byPath[$page]]['content'] = $html;
+            } else {
+                $byPath[$page] = count($writes);
+                $writes[] = ['path' => $page, 'content' => $html];
+            }
+        }
+        return $writes;
     }
 
     private function assertExpected(array $section, ?array $current, ?array $expected): void

@@ -524,5 +524,25 @@ test('Site chez l\'hébergeur mais envoyé depuis GitHub', function () {
     check((bool) preg_match('/[?&]v=[0-9a-f]{7}\b/', (string) file_get_contents("$dir/index.html")), 'empreinte d\'envoi reconnue dans la page');
 });
 
+test('Fichier de réglages modifié : les navigateurs prennent la nouvelle version', function () {
+    $dir = sys_get_temp_dir() . '/sc-cache-' . bin2hex(random_bytes(4));
+    @mkdir($dir, 0777, true);
+    file_put_contents("$dir/index.html", '<html><body><h1>Boutique</h1><p>Bienvenue dans notre boutique de quartier.</p><script src="config.js"></script><script src="https://exemple.com/x.js"></script></body></html>');
+    file_put_contents("$dir/config.js", "window.CFG = {\n  ouverte: true,\n  message: \"Nous sommes fermés\"\n};\n");
+    $a = new FileSiteAdapter(new LocalBackend($dir), ['contentDir' => 'auto', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => '', 'webRoot' => true]);
+    $schema = ContentSchema::parse($a->discover()['schema']);
+    $sec = current(array_filter($schema['sections'], fn ($s) => FileSiteAdapter::isOpenSwitch($s)));
+    check($sec !== false, 'réglage « ouverte » trouvé');
+    $cur = $a->getSingleton($sec);
+    $a->updateSingleton($sec, ['ouverte' => false] + $cur, $cur, ['summary' => 'Fermeture', 'author' => 'test', 'changeId' => 'x', 'assets' => []]);
+    $html = (string) file_get_contents("$dir/index.html");
+    check(str_contains((string) file_get_contents("$dir/config.js"), 'ouverte: false'), 'fermeture écrite');
+    check((bool) preg_match('#<script src="config\.js\?v=[0-9a-f]{8}"></script>#', $html) && str_contains($html, 'https://exemple.com/x.js"'), 'marque de version ajoutée au seul fichier modifié');
+    $v1 = $html;
+    $cur = $a->getSingleton($sec);
+    $a->updateSingleton($sec, ['ouverte' => true] + $cur, $cur, ['summary' => 'Réouverture', 'author' => 'test', 'changeId' => 'y', 'assets' => []]);
+    check(file_get_contents("$dir/index.html") !== $v1 && substr_count((string) file_get_contents("$dir/index.html"), '?v=') === 1, 'marque changée à chaque modification, sans s\'empiler');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

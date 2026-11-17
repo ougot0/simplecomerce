@@ -309,6 +309,14 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (3) : « le site ne se ferme pas » (Bakers, commandesbakers.com, rubrique « Ouverture du site » = drapeau `ouverte` dans un
+  fichier JS ; publication réussie). Cause : le `.htaccess` du site garde les scripts **1 jour** dans le navigateur
+  (`ExpiresByType application/javascript "access plus 1 day"`, dépôt `ougot0/bakers-`, branche
+  `claude/bakers-handover-guide-hopazu`, lu seulement ; `main` ne contient qu'un README). **Version Z3** :
+  `FileSiteAdapter::bustCache()` dans `run()` : quand un .js/.css/.json est écrit, les pages HTML (40 max) qui le chargent par
+  `<script src>`/`<link href>` reçoivent `?v=<8 car. de l'empreinte>` (remplace un `?v=` existant, n'ajoute rien s'il y a
+  d'autres paramètres), dans la même écriture. 140 vérifications. Accès réseau à commandesbakers.com refusé par lui (pas de
+  lecture du site en ligne).
 - 17/11/2026 (2) : « je ne veux plus remettre de fichiers ; et si un site est envoyé sur OVH par GitHub, tout doit se retrouver dans
   Simple Commerce, quelle que soit la façon dont c'est envoyé ». Rappel : Simple Commerce lui-même part déjà tout seul (Y, Z
   envoyés par GitHub, rien à faire). Pour les sites clients : la bonne liaison d'un site mis en ligne depuis GitHub est
