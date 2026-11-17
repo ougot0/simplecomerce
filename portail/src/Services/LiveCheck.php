@@ -19,7 +19,7 @@ final class LiveCheck
     private const HOSTING = ['sftp', 'ftp'];
     private const HOMES = ['index.html', 'index.htm', 'index.php', 'accueil.html', 'home.html'];
 
-    /** @return array{state: string, folder?: string} state : ok | fixed | mismatch | unknown */
+    /** @return array{state: string, folder?: string, candidates?: string[]} state : ok | fixed | mismatch | unknown */
     public static function run(array $site): array
     {
         if (!in_array($site['connector'], self::HOSTING, true) || empty($site['public_url'])) {
@@ -46,10 +46,21 @@ final class LiveCheck
                     }
                 }
                 $matches = [];
+                $scores = [];
                 foreach (array_slice(array_keys($dirs), 0, 30) as $dir) {
                     $html = self::home($backend, $dir);
                     if ($html !== null && self::same($live, $html)) {
                         $matches[] = $dir;
+                        $scores[$dir] = self::score($live, $html);
+                    }
+                }
+                // Plusieurs copies du site : on garde la plus fidèle à la page en ligne, si elle se distingue nettement.
+                if (count($matches) > 1) {
+                    arsort($scores);
+                    $best = array_slice($scores, 0, 2, true);
+                    $vals = array_values($best);
+                    if ($vals[0] - $vals[1] >= 5) {
+                        $matches = [array_key_first($best)];
                     }
                 }
             } finally {
@@ -63,7 +74,7 @@ final class LiveCheck
                 Log::info('dossier du site corrigé', ['site' => $site['slug'], 'from' => $current, 'to' => $folder]);
                 return ['state' => 'fixed', 'folder' => $folder];
             }
-            return ['state' => 'mismatch'];
+            return ['state' => 'mismatch', 'candidates' => array_map(fn ($d) => '/' . $d, $matches)];
         } catch (\Throwable $e) {
             Log::warn('vérification du site en ligne impossible', ['site' => $site['slug'], 'err' => $e]);
             return ['state' => 'unknown'];
@@ -109,11 +120,17 @@ final class LiveCheck
 
     public static function same(string $a, string $b): bool
     {
+        return self::score($a, $b) >= 70;
+    }
+
+    /** Ressemblance du texte visible de deux pages, de 0 à 100. */
+    public static function score(string $a, string $b): float
+    {
         [$ta, $tb] = [self::text($a), self::text($b)];
         if ($ta === '' || $tb === '') {
-            return false;
+            return 0.0;
         }
         similar_text($ta, $tb, $pct);
-        return $pct >= 70;
+        return $pct;
     }
 }

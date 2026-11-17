@@ -309,6 +309,10 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (9) : sa capture montre Bakers relié au dossier de tout l'hébergement (www, bakers, aminteriorss, ougot). Conseil :
+  « Dossier du site sur le serveur » = `/bakers` (ou `/www`). **Version Z9** : si plusieurs dossiers ressemblent à la page en
+  ligne, `LiveCheck` garde le plus proche (`score`, ≥ 5 points d'avance) ; sinon le message rouge **nomme les dossiers
+  possibles** (« mettez « /bakers » ou « /www » … »). 150 vérifications.
 - 17/11/2026 (8) : capture : portail « fermé », mais commandesbakers.com inchangé (même le drapeau `ouverte` du développeur sans
   effet) → le portail modifie très probablement **un autre dossier** que celui affiché par le domaine. « Règle le problème ».
   **Version Z8** : `Services\LiveCheck` compare la page d'accueil en ligne (`public_url`, 3 redirections max) à celle du dossier

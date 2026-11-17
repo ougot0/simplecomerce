@@ -189,8 +189,10 @@ final class Sites
                 'folderNotice' => "Simple Commerce a trouvé le dossier qui est vraiment affiché sur $host ({$r['folder']}) et s'y est relié : vos modifications y seront désormais publiées. Refaites la dernière modification si elle n'apparaît pas."]);
             self::rediscover(Repo::site($site['id']) ?? $fresh, null);
         } elseif ($r['state'] === 'mismatch') {
+            $c = $r['candidates'] ?? [];
             self::setExtras($site, ['liveMismatch' => "Attention : les fichiers que Simple Commerce modifie ne sont pas ceux affichés sur $host. Vos modifications n'apparaissent donc pas en ligne. "
-                . 'Dans Réglages → Connexion, indiquez le dossier exact du site (chez OVH : onglet Multisite, colonne « Dossier racine »), ou reliez le site par le service qui le met en ligne (GitHub…).']);
+                . ($c ? 'Dans Réglages → Connexion, mettez « ' . implode(' » ou « ', $c) . ' » dans « Dossier du site sur le serveur », puis enregistrez.'
+                    : 'Dans Réglages → Connexion, indiquez le dossier exact du site (chez OVH : onglet Multisite, colonne « Dossier racine »), ou reliez le site par le service qui le met en ligne (GitHub…).')]);
         } elseif ($r['state'] === 'ok' && !empty($x['liveMismatch'])) {
             self::setExtras($site, ['liveMismatch' => null]);
         }
