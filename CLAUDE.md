@@ -309,6 +309,10 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (6) : il utilise le bouton « Ouverte » de la rubrique « Ouverture du site » (réglage écrit par le développeur), pas
+  Réglages → Fermeture. **Version Z6** : `updateSingleton` d'une rubrique `isOpenSwitch` pose/retire aussi le bandeau et le
+  blocage des boutons (`closureWrites`, partagé avec `setStatus`), message = premier champ texte de la rubrique ; clé
+  « ferme/closed » = fermé si vrai, sinon fermé si faux. Annulation via l'historique = même chemin. 147 vérifications.
 - 17/11/2026 (5) : chez lui, toujours pas de bandeau sur commandesbakers.com. Cause : Bakers a un dossier `data/` (produits.js)
   → `contentDir` = `data` → `htmlPages()` cherchait les pages **dans `data/`** (aucune) : ni bandeau (Z4) ni marque de
   version (Z3). **Version Z5** : `htmlPages()` liste tout le dossier du site (`list('', 3)`). Test ajouté. 144 vérifications.

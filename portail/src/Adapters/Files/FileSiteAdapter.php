@@ -1132,6 +1132,15 @@ final class FileSiteAdapter implements Adapter
             $this->assertExpected($section, $current, $expected);
             $merged = array_replace($current, $data);
             $writes[] = ['path' => $path, 'content' => Formats::serialize($parsed, Paths::set($parsed['data'], $src['path'] ?? null, $merged))];
+            if (self::isOpenSwitch($section)) {
+                // Réglage « ouvert / fermé » écrit par le développeur : le portail pose aussi le bandeau et bloque les
+                // boutons de commande, pour que la fermeture se voie même si le code du site ne l'affiche pas.
+                $flag = current(array_filter($section['fields'], fn ($f) => $f['type'] === 'boolean' && preg_match('/(open|ouvert|ferme|closed|actif|enabled|status)/i', $f['key'])));
+                $closing = (bool) preg_match('/(ferme|closed)/i', $flag['key']);
+                $closed = $closing ? ($merged[$flag['key']] ?? false) === true : ($merged[$flag['key']] ?? true) === false;
+                $msg = current(array_filter($section['fields'], fn ($f) => in_array($f['type'], ['text', 'textarea', 'richtext'], true) && empty($f['hidden'])));
+                array_push($writes, ...$this->closureWrites($closed ? strip_tags((string) ($msg ? ($merged[$msg['key']] ?? '') : '')) : null));
+            }
             return [$writes, ['before' => Values::pick($section, $current), 'after' => Values::pick($section, $merged)]];
         });
     }
@@ -1157,22 +1166,31 @@ final class FileSiteAdapter implements Adapter
             $before = Status::toFile($parsed ? Status::fromFile($parsed['data']) : Status::OPEN);
             $after = Status::toFile($status);
             $text = $parsed ? Formats::serialize($parsed, $after) : Formats::create('json', $after);
-            $writes = [['path' => $path, 'content' => $text]];
-            // Toutes les pages affichent le message et les boutons de commande deviennent inactifs, même si le site
-            // ne sait pas lire le fichier d'état : rien à préparer chez le développeur. Retiré sans trace à la réouverture.
-            foreach (array_slice($this->htmlPages(), 0, 200) as $page) {
-                $raw = $this->backend->read($page);
-                if (!$raw) {
-                    continue;
-                }
-                $this->versions[$page] = $raw['version'];
-                $html = self::closureBlock($raw['content'], !empty($status['closed']) ? (string) ($status['message'] ?? '') : null);
-                if ($html !== $raw['content']) {
-                    $writes[] = ['path' => $page, 'content' => $html];
-                }
-            }
+            $writes = array_merge([['path' => $path, 'content' => $text]], $this->closureWrites(!empty($status['closed']) ? (string) ($status['message'] ?? '') : null));
             return [$writes, ['before' => $before, 'after' => $after]];
         });
+    }
+
+    /**
+     * Toutes les pages affichent le message et les boutons de commande deviennent inactifs, même si le site ne sait pas
+     * lire le fichier d'état : rien à préparer chez le développeur. Retiré sans trace à la réouverture ($message null).
+     * @return array<int, array{path: string, content: string}>
+     */
+    private function closureWrites(?string $message): array
+    {
+        $writes = [];
+        foreach (array_slice($this->htmlPages(), 0, 200) as $page) {
+            $raw = $this->backend->read($page);
+            if (!$raw) {
+                continue;
+            }
+            $this->versions[$page] = $raw['version'];
+            $html = self::closureBlock($raw['content'], $message);
+            if ($html !== $raw['content']) {
+                $writes[] = ['path' => $page, 'content' => $html];
+            }
+        }
+        return $writes;
     }
 
     /** Ajoute (message) ou retire (null) le bandeau de fermeture d'une page, sans toucher au reste. */

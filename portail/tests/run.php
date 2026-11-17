@@ -570,5 +570,28 @@ test('Fermeture d\'un site dont les produits sont dans un dossier « data »', f
     check(str_contains((string) file_get_contents("$dir/index.html"), 'data-sc-fermeture'), 'bandeau ajouté à la page d\'accueil malgré le dossier « data »');
 });
 
+test('Bouton « Ouverte » du site : bandeau et boutons bloqués', function () {
+    $dir = sys_get_temp_dir() . '/sc-ouv-' . bin2hex(random_bytes(4));
+    @mkdir("$dir/data", 0777, true);
+    $page = "<html><body>\n<h1>Bakers</h1><p>Pâtisserie et coffee shop.</p><script src=\"config.js\"></script>\n</body></html>\n";
+    file_put_contents("$dir/index.html", $page);
+    file_put_contents("$dir/data/produits.js", "const PRODUITS = [\n  { nom: 'Cookie', prix: 3 },\n  { nom: 'Tarte', prix: 30 }\n];\n");
+    file_put_contents("$dir/data/boutique.js", "window.BOUTIQUE = {\n  ouverte: true,\n  message: \"Pré-ouverture : on ouvre bientôt\"\n};\n");
+    $a = new FileSiteAdapter(new LocalBackend($dir), ['contentDir' => 'auto', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => '', 'webRoot' => true]);
+    $sec = current(array_filter(ContentSchema::parse($a->discover()['schema'])['sections'], fn ($s) => FileSiteAdapter::isOpenSwitch($s)));
+    check($sec !== false, 'réglage « ouverte » trouvé (site avec dossier data)');
+    if ($sec === false) {
+        return;
+    }
+    $ctx = ['summary' => 'x', 'author' => 't', 'changeId' => 'o', 'assets' => []];
+    $cur = $a->getSingleton($sec);
+    $a->updateSingleton($sec, ['ouverte' => false] + $cur, $cur, $ctx);
+    $html = (string) file_get_contents("$dir/index.html");
+    check(str_contains($html, 'data-sc-fermeture') && str_contains($html, 'Pré-ouverture : on ouvre bientôt'), 'décocher « Ouverte » pose le bandeau avec le message');
+    $cur = $a->getSingleton($sec);
+    $a->updateSingleton($sec, ['ouverte' => true] + $cur, $cur, $ctx);
+    check(!str_contains((string) file_get_contents("$dir/index.html"), 'data-sc-fermeture'), 'recocher « Ouverte » retire le bandeau');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);
