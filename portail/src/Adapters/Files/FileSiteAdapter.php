@@ -34,7 +34,7 @@ final class FileSiteAdapter implements Adapter
     private ?array $scanFiles = null;
     /** Page d'accueil d'un site (index.html, ou accueil.html / home.html). */
     private const HOME_PAGE = '#(^|/)(index|accueil|home)\.(html?|php)$#i';
-    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git)(/|$)|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$|-en\.html?$|(^|/)(rendez-vous|avis|horaires)\.html$#i';
+    private const SKIP_SCAN = '#(^|/)(node_modules|vendor|vendors|lib|libs|plugins|dist|build|\.git|api|admin|wp-admin|wp-includes|cgi-bin)(/|$)|(^|/)(config|connexion|db|database|functions|wp-config|commande|paiement|webhook)[\w-]*\.php$|\.min\.js$|(jquery|bootstrap|stripe|analytics|gtag|swiper|slick|lightbox|polyfill|chunk|bundle|package(-lock)?|tsconfig|manifest|composer)[^/]*$|-en\.html?$|(^|/)(rendez-vous|avis|horaires)\.html$#i';
     /** @var array<string, ?string> versions lues pendant une opération */
     private array $versions = [];
     /** @var array<string, ?array> fichiers lus pendant une opération */
@@ -101,7 +101,7 @@ final class FileSiteAdapter implements Adapter
     public static function handMade(array $files): bool
     {
         $root = array_filter($files, fn ($f) => !str_contains($f, '/'));
-        return (bool) array_filter($root, fn ($f) => preg_match('/^(index|accueil|home)\.html?$/i', $f))
+        return (bool) array_filter($root, fn ($f) => preg_match('/^(index|accueil|home)\.(html?|php)$/i', $f))
             && !array_filter($root, fn ($f) => preg_match('/^(package\.json|_config\.ya?ml|hugo\.(toml|ya?ml|json)|config\.toml|gemfile|astro\.config\..*|next\.config\..*|vite\.config\..*|eleventy\.config\..*|\.eleventy\.js|gatsby-config\..*|nuxt\.config\..*|svelte\.config\..*)$/i', $f));
     }
 
@@ -133,7 +133,7 @@ final class FileSiteAdapter implements Adapter
     private function findProductFiles(array $files): array
     {
         $found = [];
-        $candidates = array_values(array_filter($files, fn ($f) => in_array(Formats::fromPath($f), ['js', 'json', 'html'], true) && !preg_match(self::SKIP_SCAN, $f)));
+        $candidates = array_values(array_filter($files, fn ($f) => in_array(Formats::fromPath($f, true), ['js', 'json', 'html'], true) && !preg_match(self::SKIP_SCAN, $f)));
         foreach (array_slice($candidates, 0, 60) as $f) {
             $raw = $this->backend->read($f);
             if (!$raw || strlen($raw['content']) > 400_000) {
@@ -290,7 +290,7 @@ final class FileSiteAdapter implements Adapter
             // Pages détachées (projet supprimé…) : plus aucune page n'y mène, on ne les propose plus.
             $linked = [];
             foreach ($files as $f) {
-                if (Formats::fromPath($f['path']) === 'html') {
+                if (Formats::fromPath($f['path'], true) === 'html') {
                     foreach (HtmlCards::pageLinks($f['text']) as $href) {
                         try {
                             if (($t = $this->linkTarget($f['path'], $href)) !== $f['path']) {

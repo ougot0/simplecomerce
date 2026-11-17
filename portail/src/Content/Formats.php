@@ -12,10 +12,12 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class Formats
 {
-    public static function fromPath(string $path): ?string
+    /** @param bool $php pages PHP lues comme des pages HTML (seul le HTML autour du code est modifiable) */
+    public static function fromPath(string $path, bool $php = false): ?string
     {
         $p = strtolower($path);
         return match (true) {
+            $php && (str_ends_with($p, '.php') || str_ends_with($p, '.phtml')) => 'html',
             str_ends_with($p, '.json') => 'json',
             str_ends_with($p, '.yml'), str_ends_with($p, '.yaml') => 'yaml',
             str_ends_with($p, '.md'), str_ends_with($p, '.mdx'), str_ends_with($p, '.markdown') => 'markdown',
@@ -57,7 +59,20 @@ final class Formats
             return self::parseJsVars($src, $style);
         }
         if ($format === 'html') {
+            // Page PHP : chaque morceau de code est mis de côté (remplacé par une marque), et rien de ce qui touche
+            // à une marque n'est proposé. Le code est remis tel quel à l'écriture.
+            $php = [];
+            if (str_contains($src, '<?')) {
+                $src = (string) preg_replace_callback('/<\?(?:php\b|=)?.*?(?:\?>|\z)/s', function ($m) use (&$php) {
+                    $php[] = $m[0];
+                    return self::PHP_MARK . (count($php) - 1) . self::PHP_END;
+                }, $src);
+                $style['php'] = $php;
+            }
             $groups = HtmlCards::find($src);
+            if ($php) {
+                $groups = array_filter($groups, fn ($g) => !array_filter($g['cards'], fn ($c) => str_contains(substr($src, $c['start'], $c['end'] - $c['start']), self::PHP_MARK)));
+            }
             $data = [];
             foreach ($groups as $key => $g) {
                 $data[$key] = array_map(fn ($c) => HtmlCards::values($src, $c), $g['cards']);
@@ -67,6 +82,10 @@ final class Formats
                 $zones[] = [$g['cards'][0]['start'], $g['cards'][count($g['cards']) - 1]['end']];
             }
             $texts = HtmlCards::texts($src, $zones);
+            if ($php) {
+                $texts = array_filter($texts, fn ($t) => !str_contains(in_array($t['kind'], ['img', 'bg', 'href'], true) ? $t['el']['attrs']
+                    : substr($src, $t['el']['openEnd'], $t['el']['closeStart'] - $t['el']['openEnd']), self::PHP_MARK));
+            }
             $labels = array_map(fn ($g) => $g['label'], $groups);
             if ($texts) {
                 $data['textes'] = array_map(fn ($t) => HtmlCards::textValue($src, $t), $texts);
@@ -94,7 +113,7 @@ final class Formats
             'yaml' => self::yamlDump($data),
             'js' => ($style['prefix'] ?? 'window.CONTENU = ') . self::jsonEncode($data, $style['indent']) . ($style['suffix'] ?? ";\n"),
             'jsvars' => self::serializeJsVars($style, (array) $data),
-            'html' => self::serializeHtml($style, (array) $data),
+            'html' => self::restorePhp($style, self::serializeHtml($style, (array) $data)),
             default => "---\n" . self::yamlDump($data ?: []) . "---\n\n" . rtrim($body ?? $parsed['body'] ?? '') . "\n",
         };
         return ($style['bom'] ? "\u{FEFF}" : '') . $out;
@@ -177,6 +196,18 @@ final class Formats
             $src = substr($src, 0, $start) . $text . substr($src, $end);
         }
         return $src;
+    }
+
+    private const PHP_MARK = "\u{E000}";
+    private const PHP_END = "\u{E001}";
+
+    /** Remet le code PHP mis de côté à la lecture. */
+    private static function restorePhp(array $style, string $html): string
+    {
+        if (empty($style['php'])) {
+            return $html;
+        }
+        return (string) preg_replace_callback('/' . self::PHP_MARK . '(\d+)' . self::PHP_END . '/u', fn ($m) => $style['php'][(int) $m[1]] ?? '', $html);
     }
 
     private static function serializeJsVars(array $style, array $data): string

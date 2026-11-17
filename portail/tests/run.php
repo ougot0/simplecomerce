@@ -665,5 +665,30 @@ test('Tout le texte d\'une page : boutons, liens, menu, tableaux', function () {
     check($p3 === $page, 'adresse « javascript: » refusée');
 });
 
+test('Pages PHP : le HTML autour du code est modifiable, le code jamais touché', function () {
+    $dir = sys_get_temp_dir() . '/sc-php-' . bin2hex(random_bytes(4));
+    mkdir("$dir/includes", 0777, true);
+    file_put_contents("$dir/config.php", "<?php\n\$secret = 'x';\n");
+    $page = "<?php require 'includes/header.php'; \$annee = date('Y'); ?>\n<!doctype html><html><body>\n<h1>Restaurant du port</h1>\n<p>Cuisine de la mer, produits du jour.</p>\n"
+        . "<p>Ouvert depuis <?= \$annee - 10 ?> ans</p>\n<a class=\"btn\" href=\"reservation.php\">Réserver une table</a>\n<a href=\"<?= \$lien ?>\">Notre carte</a>\n</body></html>\n";
+    file_put_contents("$dir/index.php", $page);
+    $a = new FileSiteAdapter(new LocalBackend($dir), ['contentDir' => 'auto', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => '', 'webRoot' => true]);
+    $secs = ContentSchema::parse($a->discover()['schema'])['sections'];
+    $sec = current(array_filter($secs, fn ($s) => FileSiteAdapter::isPageTexts($s)));
+    check($sec !== false && ($sec['source']['file'] ?? '') === 'index.php', 'textes d\'une page PHP proposés');
+    if ($sec === false) {
+        return;
+    }
+    $vals = $a->getSingleton($sec);
+    $shown = implode(' | ', array_map('strval', $vals));
+    check(str_contains($shown, 'Restaurant du port') && str_contains($shown, 'Réserver une table') && !str_contains($shown, 'Ouvert depuis') && str_contains($shown, 'Notre carte') && !str_contains($shown, "\u{E000}"), 'textes avec du code PHP laissés de côté (adresse en PHP comprise)');
+    check(!array_filter($secs, fn ($s) => str_contains($s['source']['file'] ?? '', 'config')), 'fichier de réglages PHP jamais lu');
+    $k = array_search('Restaurant du port', $vals, true);
+    $ctx = ['summary' => 'x', 'author' => 't', 'changeId' => 'p', 'assets' => []];
+    $a->updateSingleton($sec, [$k => 'Restaurant <?php echo 1 ?> du port'] + $vals, $vals, $ctx);
+    $after = (string) file_get_contents("$dir/index.php");
+    check($after === str_replace('<h1>Restaurant du port</h1>', '<h1>Restaurant &lt;?php echo 1 ?&gt; du port</h1>', $page), 'titre modifié, code PHP intact, aucun code ajouté');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);

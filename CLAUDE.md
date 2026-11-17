@@ -309,6 +309,15 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (12) : « pas seulement ce site : pour tous les sites, des milliards d'utilisateurs, tout ce qui est modifiable ».
+  **Version Z12** : **pages PHP** lues comme des pages HTML (`Formats::fromPath($p, true)` pour la détection seulement) : chaque
+  bloc `<?php … ?>`/`<?= … ?>` est remplacé à la lecture par une marque (`\u{E000}n\u{E001}`) et remis tel quel à l'écriture
+  (`restorePhp`) ; aucun texte, fiche, adresse de lien ou photo qui touche une marque n'est proposé ; texte saisi échappé
+  (`<?php` → `&lt;?php`). Fichiers PHP techniques jamais lus (`api/ admin/ wp-admin/ wp-includes/`, `config*.php`, `db`,
+  `functions`, `commande`, `paiement`, `webhook`…). `handMade` accepte `index.php`. 169 vérifications.
+  Rappel de ce qui est couvert pour tous les sites : HTML/PHP (textes, boutons, liens, menu, tableaux, photos, fiches),
+  fichiers de données JS/JSON/YAML/Markdown, réglages, Shopify, WordPress/WooCommerce, Webflow, catalogue hébergé.
+  Pas encore : Wix, Squarespace, PrestaShop ; textes fabriqués par le JavaScript d'un site React/Vite compilé.
 - 17/11/2026 (11) : « tout ce qui est écrit dans le site doit être modifiable : textes, boutons, produits, tout ». **Version Z11** :
   `HtmlCards::texts` propose désormais (hors fiches de produits) : **boutons et liens** (`boutonN`, libellé « Menu / Bouton /
   Lien »), **adresse des liens** (`lienN`, « javascript:/data: » refusés, pas les ancres `#`), et les petits textes

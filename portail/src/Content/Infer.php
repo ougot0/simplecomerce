@@ -276,7 +276,7 @@ final class Infer
         $skipped = [];
         $markdown = [];
         foreach ($files as $file) {
-            $format = Formats::fromPath($file['path']);
+            $format = Formats::fromPath($file['path'], true);
             $base = preg_replace('/\.[^.]+$/', '', basename($file['path']));
             if (str_starts_with($base, '_') || str_starts_with($base, 'simplecommerce') || preg_match('/package(-lock)?|tsconfig|manifest|composer/i', $base)) {
                 $skipped[] = $file['path'];
