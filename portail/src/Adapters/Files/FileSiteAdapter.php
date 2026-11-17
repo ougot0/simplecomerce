@@ -1156,8 +1156,48 @@ final class FileSiteAdapter implements Adapter
             $before = Status::toFile($parsed ? Status::fromFile($parsed['data']) : Status::OPEN);
             $after = Status::toFile($status);
             $text = $parsed ? Formats::serialize($parsed, $after) : Formats::create('json', $after);
-            return [[['path' => $path, 'content' => $text]], ['before' => $before, 'after' => $after]];
+            $writes = [['path' => $path, 'content' => $text]];
+            // Toutes les pages affichent le message et les boutons de commande deviennent inactifs, même si le site
+            // ne sait pas lire le fichier d'état : rien à préparer chez le développeur. Retiré sans trace à la réouverture.
+            foreach (array_slice($this->htmlPages(), 0, 200) as $page) {
+                $raw = $this->backend->read($page);
+                if (!$raw) {
+                    continue;
+                }
+                $this->versions[$page] = $raw['version'];
+                $html = self::closureBlock($raw['content'], !empty($status['closed']) ? (string) ($status['message'] ?? '') : null);
+                if ($html !== $raw['content']) {
+                    $writes[] = ['path' => $page, 'content' => $html];
+                }
+            }
+            return [$writes, ['before' => $before, 'after' => $after]];
         });
+    }
+
+    /** Ajoute (message) ou retire (null) le bandeau de fermeture d'une page, sans toucher au reste. */
+    public static function closureBlock(string $html, ?string $message): string
+    {
+        $html = (string) preg_replace('#[ \t]*<!-- simplecommerce-fermeture -->.*?<!-- /simplecommerce-fermeture -->\r?\n?#s', '', $html);
+        if ($message === null) {
+            return $html;
+        }
+        $text = htmlspecialchars(trim($message) !== '' ? trim($message) : 'Nous sommes fermés pour le moment. À très bientôt !', ENT_QUOTES, 'UTF-8');
+        $block = '<!-- simplecommerce-fermeture --><div data-sc-fermeture role="status" style="position:sticky;top:0;z-index:2147483000;'
+            . 'background:#141210;color:#fff;text-align:center;padding:12px 16px;font:600 15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif">'
+            . nl2br($text, false) . '</div>'
+            . '<script>(function(){var r=/(command|ajout|panier|achet|r[ée]serv|payer|paiement|cart|buy|order|checkout)/i;'
+            . 'function off(){document.querySelectorAll("button,a,input[type=submit],input[type=button]").forEach(function(b){'
+            . 'if(b.closest("[data-sc-fermeture]")||b.hasAttribute("data-sc-off"))return;'
+            . 'var t=(b.textContent||b.value||"")+" "+(b.getAttribute("class")||"")+" "+(b.getAttribute("href")||"")+" "+(b.getAttribute("aria-label")||"");'
+            . 'if(!r.test(t))return;b.setAttribute("data-sc-off","");b.setAttribute("aria-disabled","true");b.style.opacity=".45";b.style.pointerEvents="none";b.style.cursor="not-allowed";'
+            . 'if("disabled" in b)b.disabled=true;b.tabIndex=-1;});}'
+            . 'off();new MutationObserver(off).observe(document.documentElement,{childList:true,subtree:true});})();</script>'
+            . '<!-- /simplecommerce-fermeture -->';
+        if (preg_match('#<body\b[^>]*>#i', $html, $m, PREG_OFFSET_CAPTURE)) {
+            $at = $m[0][1] + strlen($m[0][0]);
+            return substr($html, 0, $at) . $block . "\n" . substr($html, $at);
+        }
+        return $block . "\n" . $html;
     }
 
     public function options(): array

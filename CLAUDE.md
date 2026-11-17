@@ -309,6 +309,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (4) : « quand c'est fermé, boutons pas cliquables + message “pré-ouverture, on ouvre bientôt” ». **Version Z4** :
+  `FileSiteAdapter::setStatus` (Réglages → Fermeture, sites reliés par fichiers) ajoute aussi dans **chaque page HTML**
+  (200 max) un bloc `<!-- simplecommerce-fermeture -->` juste après `<body>` : bandeau noir collant avec le message + petit
+  script qui désactive les boutons/liens de commande (texte/classe/lien contenant command, ajout, panier, achet, réserv,
+  payer, cart, buy, order, checkout), y compris ceux affichés plus tard (MutationObserver) ; le menu reste actif. Réouverture
+  = bloc retiré, pages identiques à l'octet (`closureBlock`). Testé (143 vérif.) + navigateur. Fonctionne même si le site ne
+  lit pas `simplecommerce-statut.json`.
 - 17/11/2026 (3) : « le site ne se ferme pas » (Bakers, commandesbakers.com, rubrique « Ouverture du site » = drapeau `ouverte` dans un
   fichier JS ; publication réussie). Cause : le `.htaccess` du site garde les scripts **1 jour** dans le navigateur
   (`ExpiresByType application/javascript "access plus 1 day"`, dépôt `ougot0/bakers-`, branche

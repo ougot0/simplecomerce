@@ -544,5 +544,21 @@ test('Fichier de réglages modifié : les navigateurs prennent la nouvelle versi
     check(file_get_contents("$dir/index.html") !== $v1 && substr_count((string) file_get_contents("$dir/index.html"), '?v=') === 1, 'marque changée à chaque modification, sans s\'empiler');
 });
 
+test('Fermeture : message sur toutes les pages et boutons de commande inactifs', function () {
+    $dir = sys_get_temp_dir() . '/sc-ferme-' . bin2hex(random_bytes(4));
+    @mkdir($dir, 0777, true);
+    $page = "<!doctype html><html><body class=\"x\">\n<h1>Bakers</h1><p>Pâtisserie et coffee shop du quartier.</p><button>Ajouter au panier</button>\n</body></html>\n";
+    file_put_contents("$dir/index.html", $page);
+    file_put_contents("$dir/contact.html", $page);
+    $a = new FileSiteAdapter(new LocalBackend($dir), ['contentDir' => 'auto', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => '', 'webRoot' => true]);
+    $ctx = ['summary' => 'Fermeture', 'author' => 'test', 'changeId' => 'f', 'assets' => []];
+    $a->setStatus(['closed' => true, 'message' => "Pré-ouverture : nous ouvrons très bientôt !", 'reopenOn' => null], $ctx);
+    $html = (string) file_get_contents("$dir/contact.html");
+    check(str_contains($html, 'data-sc-fermeture') && str_contains($html, 'Pré-ouverture : nous ouvrons très bientôt !') && str_contains($html, 'pointerEvents="none"'), 'message et blocage des boutons sur chaque page');
+    check(strpos($html, 'data-sc-fermeture') > strpos($html, '<body'), 'bandeau placé en haut de la page');
+    $a->setStatus(['closed' => false, 'message' => '', 'reopenOn' => null], $ctx);
+    check(file_get_contents("$dir/index.html") === $page && file_get_contents("$dir/contact.html") === $page, 'réouverture : pages remises exactement comme avant');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);
