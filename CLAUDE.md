@@ -309,6 +309,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 17/11/2026 (2) : « je ne veux plus remettre de fichiers ; et si un site est envoyé sur OVH par GitHub, tout doit se retrouver dans
+  Simple Commerce, quelle que soit la façon dont c'est envoyé ». Rappel : Simple Commerce lui-même part déjà tout seul (Y, Z
+  envoyés par GitHub, rien à faire). Pour les sites clients : la bonne liaison d'un site mis en ligne depuis GitHub est
+  **GitHub** (le portail écrit dans le dépôt, l'envoi automatique publie ; les changements du développeur sont relus seuls
+  depuis Y). **Version Z2** : un site relié par SFTP/FTP dont la page d'accueil porte `?v=<7 caractères>` (empreinte de la
+  recette d'envoi) affiche « Attention : votre site semble mis en ligne depuis GitHub → reliez-le avec GitHub »
+  (`FileSiteAdapter::deployedFromGit`, `warn` dans `partials/report.php`) ; même conseil dans les étapes SFTP. 136 vérif.
 - 17/11/2026 : **grave** — un de ses sites (« Commandesbakers ») relié par SFTP au dossier de **tout l'hébergement** affichait les
   rubriques de ses 5 sites (restaurant, architecte, Ougot…) : risque d'écrire sur un autre site. **Version Z** :
   `FileSiteAdapter::siteFolders()` (pas de page d'accueil à la racine + ≥ 2 sous-dossiers ayant chacun leur index) →

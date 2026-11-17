@@ -3,7 +3,7 @@
     <p><strong><?= $report['ok'] ? 'La connexion fonctionne.' : 'La connexion ne fonctionne pas encore.' ?></strong></p>
     <ul class="checks">
         <?php foreach ($report['checks'] as $c): ?>
-        <li><?= tag($c['ok'] ? 'live' : 'error', $c['ok'] ? 'OK' : 'À revoir') ?><span><?= e($c['label']) ?><?php if (!empty($c['hint'])): ?><span class="help block"><?= e($c['hint']) ?></span><?php endif ?></span></li>
+        <li><?= !empty($c['warn']) ? tag('draft', 'Attention') : tag($c['ok'] ? 'live' : 'error', $c['ok'] ? 'OK' : 'À revoir') ?><span><?= e($c['label']) ?><?php if (!empty($c['hint'])): ?><span class="help block"><?= e($c['hint']) ?></span><?php endif ?></span></li>
         <?php endforeach ?>
     </ul>
 </div>

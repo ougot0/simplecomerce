@@ -185,11 +185,30 @@ final class FileSiteAdapter implements Adapter
         ];
     }
 
+    /**
+     * Site relié chez l'hébergeur mais mis en ligne depuis GitHub (envoi automatique) : ce qui serait écrit ici serait
+     * effacé au prochain envoi. Indice : les pages portent l'empreinte d'un envoi (« ?v= » suivi de 7 caractères de commit).
+     */
+    private function deployedFromGit(): bool
+    {
+        if (!$this->backend instanceof SftpBackend && !$this->backend instanceof FtpBackend) {
+            return false;
+        }
+        $home = $this->backend->read('index.html');
+        return $home !== null && preg_match_all('/[?&]v=[0-9a-f]{7}\b/', $home['content']) >= 1;
+    }
+
     public function test(): array
     {
         $checks = $this->backend->test();
         if (!array_filter($checks, fn ($c) => !$c['ok'])) {
             try {
+                if ($this->deployedFromGit()) {
+                    $checks[] = ['label' => 'Votre site semble mis en ligne depuis GitHub', 'ok' => true, 'warn' => true,
+                        'hint' => 'S\'il est envoyé automatiquement depuis GitHub, reliez-le plutôt avec « GitHub » (même projet, même branche) : '
+                            . 'sinon, ce que vous modifiez ici serait effacé au prochain envoi. Avec GitHub, tout se retrouve au même endroit, '
+                            . 'que la modification vienne de Simple Commerce ou du développeur.'];
+                }
                 $this->init();
                 $files = $this->contentFiles();
                 $where = $this->options['contentDir'] !== '' ? "dossier « {$this->options['contentDir']} »" : 'content.json, data.json… à la racine';

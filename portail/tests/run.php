@@ -514,5 +514,15 @@ test('Dossier qui contient plusieurs sites', function () {
     check($open("$dir/ougot")->test()['ok'], 'un site avec un sous-dossier « blog » reste accepté');
 });
 
+test('Site chez l\'hébergeur mais envoyé depuis GitHub', function () {
+    $dir = sys_get_temp_dir() . '/sc-envoi-' . bin2hex(random_bytes(4));
+    @mkdir($dir, 0777, true);
+    file_put_contents("$dir/index.html", '<link rel="stylesheet" href="styles.css?v=1f0d383"><main>' . str_repeat('<article><h3>Gâteau</h3><span class="price">4 €</span></article>', 2) . '</main>');
+    $m = new \ReflectionMethod(FileSiteAdapter::class, 'deployedFromGit');
+    $local = new FileSiteAdapter(new LocalBackend($dir), ['contentDir' => 'auto', 'media' => ['dir' => 'auto', 'publicPrefix' => '/images'], 'publicUrl' => '', 'webRoot' => true]);
+    check($m->invoke($local) === false, 'pas d\'avertissement hors hébergeur');
+    check((bool) preg_match('/[?&]v=[0-9a-f]{7}\b/', (string) file_get_contents("$dir/index.html")), 'empreinte d\'envoi reconnue dans la page');
+});
+
 echo $passed . ' vérifications réussies' . ($failed ? ', ' . count($failed) . " en échec :\n - " . implode("\n - ", $failed) : '') . "\n";
 exit($failed ? 1 : 0);
