@@ -34,8 +34,15 @@ $verbs = ['create' => 'ajouté', 'delete' => 'supprimé', 'reorder' => 'ordre mo
 <?php endif ?>
 
 <?php $choices = (array) (Sites::extras($site)['folderChoices'] ?? []); ?>
-<?php if ($choices && !empty(Sites::extras($site)['liveMismatch']) && $role !== 'editor'): ?>
-<section class="notice folder-pick">
+<?php $x = Sites::extras($site); $folderTrouble = !empty($x['liveMismatch']) || !empty($x['wrongFolder']); ?>
+<?php if (!$choices && $folderTrouble && $role !== 'editor' && in_array($site['connector'], ['sftp', 'ftp'], true)): ?>
+<form method="post" action="<?= e($base) ?>/dossier/chercher" class="notice folder-pick"><?= csrf_field() ?>
+    <p><strong>Trouvons le bon dossier ensemble.</strong> Simple Commerce peut afficher la liste des sites rangés sur votre hébergement : vous n'aurez qu'à cliquer sur le bon.</p>
+    <button class="btn btn-primary" type="submit">Voir les sites de mon hébergement</button>
+</form>
+<?php endif ?>
+<?php if ($choices && $role !== 'editor'): ?>
+<section class="notice folder-pick" id="bon-site">
     <p><strong>Quel est le bon site ?</strong> Voici les sites trouvés sur votre hébergement. Cliquez sur celui qui s'affiche à l'adresse <?= e((string) (parse_url((string) $site['public_url'], PHP_URL_HOST) ?: 'de votre site')) ?> : Simple Commerce ne modifiera plus que lui.</p>
     <ul class="lines">
         <?php foreach ($choices as $c): $current = $c['dir'] === (string) ($site['config']['remoteRoot'] ?? ''); ?>

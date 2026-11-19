@@ -309,6 +309,13 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 19/11/2026 : capture : toujours l'ancien message rouge, sans la liste « Quel est le bon site ? » → la recherche des dossiers
+  avait échoué ou n'avait rien trouvé (probablement trop longue : 3 niveaux de tout l'hébergement). **Version Z14** :
+  `LiveCheck::hostSites` (2 niveaux seulement : « /bakers/index.html », « /www/index.php »…, titres des pages d'accueil,
+  ressemblance si la page en ligne est lisible) partagé par la vérification automatique et un bouton **« Voir les sites de mon
+  hébergement »** (POST `/s/{slug}/dossier/chercher`, `SiteController::searchFolders`) affiché dès qu'il y a un message
+  « mauvais dossier » ; la liste s'affiche alors même si la page en ligne n'a pas pu être lue. 169 vérifications.
+  Listing non testé contre son vrai hébergement.
 - 18/11/2026 : captures : le site « bakers » montrait « Textes de la page « Coumao » » (deux fois) + message rouge sans dossier
   proposé → Bakers relié au dossier d'un autre site (Coumao), et aucun dossier de l'hébergement n'a été reconnu comme la page
   en ligne. **Version Z13** : `LiveCheck` renvoie aussi `choices` (chaque site de l'hébergement : dossier, titre de sa page

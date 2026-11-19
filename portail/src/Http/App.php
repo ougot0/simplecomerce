@@ -99,6 +99,7 @@ final class App
             ['POST', "$s/avis/action", [ShopController::class, 'reviewAction']],
             ['POST', "$s/onglet", [ShopController::class, 'tabAction']],
             ['POST', "$s/dossier", [SiteController::class, 'chooseFolder']],
+            ['POST', "$s/dossier/chercher", [SiteController::class, 'searchFolders']],
             ['GET', "$s/statistiques", [ShopController::class, 'stats']],
             ['POST', "$s/statistiques/action", [ShopController::class, 'statsAction']],
             ['GET', "$s/reglages", [SettingsController::class, 'show']],

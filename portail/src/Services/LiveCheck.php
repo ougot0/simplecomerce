@@ -34,46 +34,7 @@ final class LiveCheck
             if ($mine !== null && self::same($live, $mine)) {
                 return ['state' => 'ok'];
             }
-            // Les autres dossiers de l'hébergement, vus depuis le dossier principal du compte.
-            $config = ['remoteRoot' => '/'] + $site['config'];
-            $root = Registry::create($site['connector'], $config, Sites::secrets($site), ['siteId' => $site['id'], 'publicUrl' => $site['public_url'], 'schema' => null]);
-            try {
-                $backend = $root instanceof FileSiteAdapter ? $root->backend : null;
-                $dirs = [];
-                foreach ($backend ? $backend->list('', 3) : [] as $f) {
-                    if (preg_match('#^((?:[^/]+/){1,2})(index|accueil|home)\.(html?|php)$#i', $f, $m)) {
-                        $dirs[rtrim($m[1], '/')] = true;
-                    }
-                }
-                $matches = [];
-                $scores = [];
-                $choices = [];
-                foreach (array_slice(array_keys($dirs), 0, 30) as $dir) {
-                    $html = self::home($backend, $dir);
-                    if ($html === null) {
-                        continue;
-                    }
-                    $sc = self::score($live, $html);
-                    // Chaque site de l'hébergement, avec le nom de sa page d'accueil : le commerçant peut choisir le bon.
-                    $choices[] = ['dir' => '/' . $dir, 'title' => self::title($html, $dir), 'score' => (int) round($sc)];
-                    if ($sc >= 70) {
-                        $matches[] = $dir;
-                        $scores[$dir] = $sc;
-                    }
-                }
-                usort($choices, fn ($a, $b) => $b['score'] <=> $a['score']);
-                // Plusieurs copies du site : on garde la plus fidèle à la page en ligne, si elle se distingue nettement.
-                if (count($matches) > 1) {
-                    arsort($scores);
-                    $best = array_slice($scores, 0, 2, true);
-                    $vals = array_values($best);
-                    if ($vals[0] - $vals[1] >= 5) {
-                        $matches = [array_key_first($best)];
-                    }
-                }
-            } finally {
-                $root->close();
-            }
+            ['choices' => $choices, 'matches' => $matches] = self::hostSites($site, $live);
             $current = trim((string) ($site['config']['remoteRoot'] ?? ''), '/');
             $matches = array_values(array_filter($matches, fn ($d) => $d !== $current));
             if (count($matches) === 1) {
@@ -82,10 +43,66 @@ final class LiveCheck
                 Log::info('dossier du site corrigé', ['site' => $site['slug'], 'from' => $current, 'to' => $folder]);
                 return ['state' => 'fixed', 'folder' => $folder];
             }
-            return ['state' => 'mismatch', 'candidates' => array_map(fn ($d) => '/' . $d, $matches), 'choices' => array_slice($choices, 0, 12)];
+            return ['state' => 'mismatch', 'candidates' => array_map(fn ($d) => '/' . $d, $matches), 'choices' => $choices];
         } catch (\Throwable $e) {
             Log::warn('vérification du site en ligne impossible', ['site' => $site['slug'], 'err' => $e]);
             return ['state' => 'unknown'];
+        }
+    }
+
+    /**
+     * Les sites rangés sur l'hébergement (un par dossier qui a sa page d'accueil), vus depuis le dossier principal du compte,
+     * avec le nom de leur page d'accueil et leur ressemblance avec la page en ligne ($live, si elle a pu être lue).
+     * Deux niveaux seulement (« /bakers », « /www »…) : rapide même sur un hébergement plein de fichiers.
+     * @return array{choices: array, matches: string[]}
+     */
+    public static function hostSites(array $site, ?string $live): array
+    {
+        $config = ['remoteRoot' => '/'] + $site['config'];
+        $root = Registry::create($site['connector'], $config, Sites::secrets($site), ['siteId' => $site['id'], 'publicUrl' => $site['public_url'], 'schema' => null]);
+        $matches = $scores = $choices = [];
+        try {
+            $backend = $root instanceof FileSiteAdapter ? $root->backend : null;
+            $dirs = [];
+            foreach ($backend ? $backend->list('', 2) : [] as $f) {
+                if (preg_match('#^([^/]+)/(index|accueil|home)\.(html?|php)$#i', $f, $m)) {
+                    $dirs[$m[1]] = true;
+                }
+            }
+            foreach (array_slice(array_keys($dirs), 0, 30) as $dir) {
+                $html = self::home($backend, $dir);
+                if ($html === null) {
+                    continue;
+                }
+                $sc = $live !== null ? self::score($live, $html) : 0.0;
+                $choices[] = ['dir' => '/' . $dir, 'title' => self::title($html, $dir), 'score' => (int) round($sc)];
+                if ($sc >= 70) {
+                    $matches[] = $dir;
+                    $scores[$dir] = $sc;
+                }
+            }
+        } finally {
+            $root->close();
+        }
+        usort($choices, fn ($a, $b) => $b['score'] <=> $a['score'] ?: strcmp($a['dir'], $b['dir']));
+        // Plusieurs copies du site : on garde la plus fidèle à la page en ligne, si elle se distingue nettement.
+        if (count($matches) > 1) {
+            arsort($scores);
+            $vals = array_values(array_slice($scores, 0, 2, true));
+            if ($vals[0] - $vals[1] >= 5) {
+                $matches = [array_key_first($scores)];
+            }
+        }
+        return ['choices' => array_slice($choices, 0, 12), 'matches' => $matches];
+    }
+
+    /** La page d'accueil en ligne, si elle peut être lue (pour classer les sites de l'hébergement). */
+    public static function livePage(array $site): ?string
+    {
+        try {
+            return empty($site['public_url']) ? null : self::fetch((string) $site['public_url']);
+        } catch (\Throwable) {
+            return null;
         }
     }
 

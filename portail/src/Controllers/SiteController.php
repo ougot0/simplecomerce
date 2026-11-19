@@ -73,6 +73,26 @@ final class SiteController
         return Response::redirect("/s/{$site['slug']}");
     }
 
+    /** « Voir les sites de mon hébergement » : la liste où choisir le bon dossier, à la demande. */
+    public static function searchFolders(array $p): Response
+    {
+        $ctx = Access::site($p['slug']);
+        $site = $ctx['site'];
+        if ($ctx['role'] === 'editor' || !in_array($site['connector'], ['sftp', 'ftp'], true)) {
+            throw \SimpleCommerce\Http\Halt::notFound();
+        }
+        try {
+            $choices = \SimpleCommerce\Services\LiveCheck::hostSites($site, \SimpleCommerce\Services\LiveCheck::livePage($site))['choices'];
+        } catch (\Throwable $e) {
+            \SimpleCommerce\Support\Log::warn('liste des sites de l\'hébergement impossible', ['site' => $site['slug'], 'err' => $e]);
+            $choices = [];
+        }
+        Sites::setExtras($site, ['folderChoices' => $choices]);
+        Session::flash($choices ? 'Voici les sites trouvés sur votre hébergement : choisissez le bon ci-dessous.'
+            : "Aucun site n'a été trouvé sur votre hébergement avec ces accès. Vérifiez l'adresse et l'identifiant dans Réglages → Connexion.", $choices ? 'ok' : 'error');
+        return Response::redirect("/s/{$site['slug']}#bon-site");
+    }
+
     public static function home(array $p): Response
     {
         $ctx = Access::site($p['slug']);

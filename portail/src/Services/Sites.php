@@ -206,7 +206,7 @@ final class Sites
             self::setExtras($site, ['folderChoices' => $r['choices'] ?? [], 'liveMismatch' => "Attention : les fichiers que Simple Commerce modifie ne sont pas ceux affichés sur $host. Vos modifications n'apparaissent donc pas en ligne. "
                 . ($c ? 'Dans Réglages → Connexion, mettez « ' . implode(' » ou « ', $c) . ' » dans « Dossier du site sur le serveur », puis enregistrez.'
                     : (!empty($r['choices']) ? 'Choisissez ci-dessous, dans la liste des sites de votre hébergement, celui qui s\'affiche à cette adresse.'
-                    : 'Dans Réglages → Connexion, indiquez le dossier exact du site (chez OVH : onglet Multisite, colonne « Dossier racine »), ou reliez le site par le service qui le met en ligne (GitHub…).'))]);
+                    : 'Cliquez ci-dessous sur « Voir les sites de mon hébergement » et choisissez le bon, ou reliez le site par le service qui le met en ligne (GitHub…).'))]);
         } elseif ($r['state'] === 'ok' && !empty($x['liveMismatch'])) {
             self::setExtras($site, ['liveMismatch' => null]);
         }
