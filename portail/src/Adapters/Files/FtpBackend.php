@@ -49,6 +49,11 @@ final class FtpBackend implements FileBackend
         // Certains serveurs derrière un routeur annoncent une adresse interne pour le mode passif : on garde celle du serveur.
         @ftp_set_option($conn, FTP_USEPASVADDRESS, false);
         ftp_pasv($conn, true);
+        // « ~ » : le dossier où l'on arrive en se connectant (le dossier personnel du compte).
+        if ($this->remoteRoot === '/~') {
+            $home = @ftp_pwd($conn);
+            $this->remoteRoot = is_string($home) && $home !== '' ? '/' . trim($home, '/') : '/';
+        }
         return $this->conn = $conn;
     }
 

@@ -309,6 +309,11 @@ ou la supprimer que sur demande. Encore une fois : **aucun lien avec le portail 
 
 ## 12. Journal
 
+- 19/11/2026 (2) : capture : « Aucun site n'a été trouvé sur votre hébergement ». Cause : la recherche se plaçait à `/`, qui en
+  SFTP chez OVH est la **racine de tout le serveur**, pas le dossier personnel (`/home/coumaoq`) — c'était aussi pourquoi Z8/Z13
+  ne trouvaient rien. **Version Z15** : `remoteRoot` « ~ » = dossier personnel du compte (`SftpBackend` : `realpath('.')`,
+  `FtpBackend` : `ftp_pwd` après connexion) ; `LiveCheck::hostSites` l'utilise. Les dossiers choisis (« /bakers ») restent
+  résolus depuis le dossier personnel (repli déjà existant). Non testé contre un vrai SFTP (refusé dans la session).
 - 19/11/2026 : capture : toujours l'ancien message rouge, sans la liste « Quel est le bon site ? » → la recherche des dossiers
   avait échoué ou n'avait rien trouvé (probablement trop longue : 3 niveaux de tout l'hébergement). **Version Z14** :
   `LiveCheck::hostSites` (2 niveaux seulement : « /bakers/index.html », « /www/index.php »…, titres des pages d'accueil,

@@ -58,7 +58,8 @@ final class LiveCheck
      */
     public static function hostSites(array $site, ?string $live): array
     {
-        $config = ['remoteRoot' => '/'] + $site['config'];
+        // Dossier personnel du compte (chez OVH /home/identifiant), pas la racine de tout le serveur de l'hébergeur.
+        $config = ['remoteRoot' => '~'] + $site['config'];
         $root = Registry::create($site['connector'], $config, Sites::secrets($site), ['siteId' => $site['id'], 'publicUrl' => $site['public_url'], 'schema' => null]);
         $matches = $scores = $choices = [];
         try {
